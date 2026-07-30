@@ -1,4 +1,4 @@
-# Vespera data platform
+# Vespera Compendium
 
 This repository reconstructs Vespera's shipped runtime data and verifies it against the running game.
 

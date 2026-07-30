@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolveBundles, table, balance, size } from "./extract.mjs";
 
-const dir = process.argv[2] || "/Users/joaichberger/Projects/vespera-modding/extracted";
+const dir = process.argv[2] || "extracted";
 const B = resolveBundles(dir);
 const idx = fs.readFileSync(path.join(dir, "assets", B.index), "utf8");
 

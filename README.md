@@ -1,6 +1,8 @@
-# Vespera data platform
+# Vespera Compendium
 
-A build-aware extraction and verification workspace for Vespera. It reconstructs the game's runtime data tables from the shipped Electron bundles, then checks those results against the running game through the Chrome DevTools Protocol.
+A searchable compendium for Vespera’s items, enemies, quests, recipes, and more.
+
+The project uses a build-aware extraction and verification workspace to reconstruct the game's runtime data tables from the shipped Electron bundles, then checks those results against the running game through the Chrome DevTools Protocol.
 
 The current repository contains the typed composition pipeline and runtime verification harness. Publishing surfaces such as versioned JSON, CSV, SQLite, the compendium website, and the SQL playground are tracked in the [active data-platform plan](docs/plans/2026-07-30-vespera-data-platform.md).
 

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "vespera-modding",
+      "name": "vespera-compendium",
       "devDependencies": {
         "bun-types": "^1.3.14",
         "typescript": "^5.9.3",

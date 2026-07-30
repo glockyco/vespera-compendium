@@ -1,5 +1,5 @@
 {
-  "name": "vespera-modding",
+  "name": "vespera-compendium",
   "private": true,
   "type": "module",
   "workspaces": ["packages/*"],

@@ -5,7 +5,7 @@ console.log = () => {};
 const { resolveBundles, table, balance, evalLiteral } = await import("./extract.mjs");
 console.log = previousLog;
 
-const dir = process.argv[2] || "/Users/joaichberger/Projects/vespera-modding/extracted";
+const dir = process.argv[2] || "extracted";
 const B = resolveBundles(dir);
 const IDX = fs.readFileSync(path.join(dir, "assets", B.index), "utf8");
 const itemsResult = table(IDX, [/stackable:/, /rarity:/, /"?sword_bronze/]);
