@@ -21,7 +21,7 @@ Build versioned machine-readable datasets and player-facing presentation surface
 - Create `packages/pipeline/src/publish.ts`: emit build-versioned JSON, CSV, and SQLite artifacts plus `latest` copies.
 - Create `packages/pipeline/src/diff.ts`: compare published build metadata and entity ids.
 - Create `packages/pipeline/src/invariants.ts`: validate ids, references, cardinality, and build metadata before publishing.
-- Create `site/`: build the Astro entity browser, SQL playground, Sheets page, and static deployment output.
+- Create `site/`: build the SvelteKit entity browser, SQL playground, Sheets page, and static deployment output.
 - Create `wrangler.toml`: configure the assets-only Cloudflare Worker for `vespera.compendiums.org`.
 - Modify `README.md`: document publishing and site commands after they exist.
 
@@ -76,20 +76,26 @@ Build versioned machine-readable datasets and player-facing presentation surface
 
 **Files:**
 - Create `site/package.json`
-- Create `site/astro.config.mjs`
+- Create `site/svelte.config.js`
+- Create `site/vite.config.ts`
 - Create `site/src/lib/data.ts`
-- Create `site/src/layouts/Layout.astro`
-- Create `site/src/pages/index.astro`
-- Create `site/src/pages/[table]/index.astro`
-- Create `site/src/pages/[table]/[id].astro`
-- Create `site/src/pages/query.astro`
-- Create `site/src/pages/sheets.astro`
-- Create `site/src/styles/global.css`
+- Create `site/src/routes/+layout.svelte`
+- Create `site/src/routes/+page.svelte`
+- Create `site/src/routes/[table]/+page.ts`
+- Create `site/src/routes/[table]/+page.svelte`
+- Create `site/src/routes/[table]/[id]/+page.ts`
+- Create `site/src/routes/[table]/[id]/+page.svelte`
+- Create `site/src/routes/query/+page.svelte`
+- Create `site/src/routes/sheets/+page.svelte`
+- Create `site/src/app.css`
 - Modify `package.json`
 
+- [ ] Configure SvelteKit with `@sveltejs/adapter-static`, root prerendering, and strict fallback-free output in `site/build`.
+  Verification: `bun run site:build`
+  Expected: the build completes without server-only routes or fallback HTML.
 - [ ] Generate one index and detail page per published entity table with raw-id fallback text for unresolved references.
   Verification: `bun run site:build`
-  Expected: `site/dist/items/sword_bronze_vs/index.html` exists and contains links derived from `item_sources`.
+  Expected: `site/build/items/sword_bronze_vs/index.html` exists and contains links derived from `item_sources`.
 - [ ] Add the in-browser `sql.js` console with inline errors, elapsed time, row count, schema inspection, five example queries, and base64url `#q=` sharing.
   Verification: run the built site in a browser, execute the enemy-drop example, reload its shared URL, and observe the same SQL and results.
 - [ ] Add copy-ready `IMPORTDATA` formulas for every published CSV and state that missing modelled sources do not prove unobtainability.
@@ -104,7 +110,7 @@ Build versioned machine-readable datasets and player-facing presentation surface
 - Modify `README.md`
 - Modify `package.json`
 
-- [ ] Configure an assets-only Worker serving `site/dist` at `vespera.compendiums.org` without an automated deploy workflow.
+- [ ] Configure an assets-only Worker serving `site/build` at `vespera.compendiums.org` without an automated deploy workflow.
   Verification: `bunx wrangler deploy --dry-run`
   Expected: Wrangler accepts the configuration and packages only static assets.
 - [ ] Document the publish, build, and manual deploy commands in `README.md`.
