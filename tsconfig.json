@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["bun-types"],
+    "baseUrl": ".",
+    "paths": {
+      "@vespera/core": ["./packages/core/src/index.ts"],
+      "@vespera/pipeline": ["./packages/pipeline/src/index.ts"],
+      "@vespera/harness": ["./packages/harness/src/index.ts"]
+    }
+  },
+  "include": ["packages/**/*.ts"]
+}

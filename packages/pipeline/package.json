@@ -1,0 +1,6 @@
+{
+  "name": "@vespera/pipeline",
+  "type": "module",
+  "private": true,
+  "main": "src/index.ts"
+}

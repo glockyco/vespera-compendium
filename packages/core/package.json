@@ -1,0 +1,6 @@
+{
+  "name": "@vespera/core",
+  "type": "module",
+  "private": true,
+  "main": "src/index.ts"
+}

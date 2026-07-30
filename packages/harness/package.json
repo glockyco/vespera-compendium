@@ -1,0 +1,6 @@
+{
+  "name": "@vespera/harness",
+  "type": "module",
+  "private": true,
+  "main": "src/index.ts"
+}

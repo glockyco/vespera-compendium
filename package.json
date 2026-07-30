@@ -1,0 +1,15 @@
+{
+  "name": "vespera-modding",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "verify": "bun run packages/pipeline/src/cli.ts verify",
+    "harness": "bun run packages/harness/src/cli.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14",
+    "typescript": "^5.9.3"
+  }
+}

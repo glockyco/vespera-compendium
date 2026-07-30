@@ -1,0 +1,8 @@
+node_modules/
+extracted/
+extracted-*/
+data/
+site/dist/
+site/.astro/
+.DS_Store
+*.sqlite
