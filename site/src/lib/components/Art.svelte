@@ -5,6 +5,10 @@
    * Boxes are fixed per size so a grid of several hundred cards reserves its layout before any
    * image arrives; without that, lazy loading reflows the page as the user scrolls. A row with no
    * art renders lettered rather than blank, because an empty frame reads as a loading failure.
+   *
+   * The image is decorative and carries an empty alt: every place this is used renders the record's
+   * name beside it, so describing the picture as well makes a screen reader announce the same name
+   * twice. `alt` is still required, because it supplies the letters of the fallback.
    */
   type Size = "sm" | "md" | "lg" | "hero";
 
@@ -26,12 +30,11 @@
   );
 </script>
 
-<span class="art art-{size}" class:art-rarity={rarity} data-rarity={rarity}>
+<span class="art art-{size}" class:art-rarity={rarity} data-rarity={rarity} aria-hidden="true">
   {#if href}
-    <img src={href} {alt} loading="lazy" decoding="async" />
+    <img src={href} alt="" loading="lazy" decoding="async" />
   {:else}
-    <span class="art-empty" aria-hidden="true">{initials}</span>
-    <span class="sr-only">{alt}</span>
+    <span class="art-empty">{initials}</span>
   {/if}
 </span>
 
@@ -100,16 +103,5 @@
     font-size: 0.7em;
     font-weight: 800;
     letter-spacing: 0.06em;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

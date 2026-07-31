@@ -1,3 +1,4 @@
+import { slotLabel } from "../format";
 import { primaryKeyColumn, rowByKey, rowsWhere, table, type Row } from "./dataset";
 
 /**
@@ -238,7 +239,7 @@ function shapeItem(row: Row): RecordShape {
   const chips: Chip[] = [];
   if (str(row.rarity)) chips.push({ tone: "rarity", label: "Rarity", value: String(row.rarity), rarity: str(row.rarity) });
   if (str(row.type)) chips.push({ tone: "neutral", label: "Type", value: String(row.type) });
-  if (str(row.slot)) chips.push({ tone: "neutral", label: "Slot", value: String(row.slot) });
+  if (str(row.slot)) chips.push({ tone: "neutral", label: "Slot", value: slotLabel(String(row.slot)) });
   if (str(row.class_requirement)) chips.push({ tone: "neutral", label: "Class", value: String(row.class_requirement) });
   if (num(row.sell_value) !== null) chips.push({ tone: "neutral", label: "Sells for", value: num(row.sell_value)!.toLocaleString("en-US") });
 
@@ -774,7 +775,7 @@ function shapeWorldBoss(row: Row): RecordShape {
   if (num(row.recommended_gear_level) !== null) {
     chips.push({ tone: "neutral", label: "Gear level", value: num(row.recommended_gear_level)! });
   }
-  if (str(row.gear_slot)) chips.push({ tone: "neutral", label: "Slot", value: String(row.gear_slot) });
+  if (str(row.gear_slot)) chips.push({ tone: "neutral", label: "Slot", value: slotLabel(String(row.gear_slot)) });
 
   return {
     heroSize: "hero",

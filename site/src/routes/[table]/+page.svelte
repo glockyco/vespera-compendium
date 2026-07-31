@@ -4,7 +4,7 @@
   import Art from "$lib/components/Art.svelte";
   import DataTable from "$lib/components/DataTable.svelte";
   import Search from "$lib/components/Search.svelte";
-  import { chance, duration, gold, nodeKind, titleCase } from "$lib/format";
+  import { chance, duration, gold, nodeKind, slotLabel, titleCase } from "$lib/format";
   import { tableLabel } from "$lib/labels";
   import type { PageData } from "./$types";
 
@@ -101,11 +101,12 @@
     if (column === "sell_value" || column === "price" || column === "reward_gold") {
       return gold(Number(value));
     }
+    if (column === "slot" || column === "gear_slot") return slotLabel(String(value));
     if (column === "type" && (data.name === "gathering_nodes" || data.name === "zone_resources")) {
       return nodeKind(String(value));
     }
     if (typeof value === "number") return value.toLocaleString("en-US");
-    if (column === "rarity" || column === "category" || column === "element" || column === "type" || column === "slot" || column === "kind") {
+    if (column === "rarity" || column === "category" || column === "element" || column === "type" || column === "kind") {
       return titleCase(String(value));
     }
     return String(value);
