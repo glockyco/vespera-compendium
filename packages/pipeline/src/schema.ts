@@ -6,7 +6,7 @@
  * object or splits one out into a join table, the reason is noted on the table.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type ColumnType = "text" | "integer" | "real" | "boolean";
 export type Column = { name: string; type: ColumnType };
@@ -38,13 +38,15 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      // One normalised path per row, replacing the source fields that carried art. Those were
+      // `imagePath` on four tables and `icon` on two, while `icon` on four others held literal `?`
+      // placeholders left by the game's own reskin, so no single source column could be published.
+      text("image"),
       text("type"),
       text("description"),
       text("rarity"),
       boolean("stackable"),
-      integer("value"),
-      text("icon"),
-      text("image_path"),
+      integer("sell_value"),
       text("slot"),
       text("sub_type"),
       text("class_requirement"),
@@ -74,6 +76,7 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       integer("level"),
       integer("max_hp"),
       integer("damage"),
@@ -83,7 +86,6 @@ export const TABLES: readonly TableSpec[] = [
       text("attack_style"),
       text("element"),
       boolean("is_boss"),
-      text("icon"),
       real("stun_resist"),
       real("freeze_resist"),
       real("poison_resist"),
@@ -99,7 +101,9 @@ export const TABLES: readonly TableSpec[] = [
       text("id"),
       text("name"),
       text("category"),
-      integer("level_req"),
+      // Named for the skill it gates. `level_req` said nothing about which of the game's three
+      // level scales it meant, and the game's own quest guidance is explicit that this is Crafting.
+      integer("crafting_level"),
       integer("xp"),
       integer("duration"),
     ],
@@ -112,13 +116,12 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("type"),
-      integer("level_req"),
+      integer("gathering_level"),
       integer("base_xp"),
       integer("base_duration"),
       text("required_tool"),
-      text("icon"),
-      text("image_path"),
     ],
   },
   {
@@ -132,8 +135,7 @@ export const TABLES: readonly TableSpec[] = [
       text("description"),
       text("category"),
       integer("act"),
-      integer("level_req"),
-      text("icon"),
+      integer("combat_level"),
       text("guidance"),
       text("dialogue_on_complete"),
       text("next_quest_id"),
@@ -152,19 +154,19 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("category"),
       text("description"),
       text("required_class"),
       text("required_subclass"),
-      integer("required_level"),
+      integer("combat_level"),
+      // A separate subclass unlock, not the combat gate, so it keeps its own name.
       integer("unlock_level"),
       integer("mana_cost"),
       integer("cooldown"),
       integer("execute_multiplier"),
       real("execute_threshold"),
       boolean("guaranteed_crit"),
-      text("icon"),
-      text("image_path"),
       // Kept alongside ability_tags so a CSV or spreadsheet reader sees the tags without a join.
       text("tags"),
     ],
@@ -198,12 +200,11 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("family"),
       integer("tier"),
       text("color"),
       text("description"),
-      text("icon"),
-      text("image_path"),
     ],
   },
   {
@@ -215,7 +216,7 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("item_id"),
       integer("price"),
-      integer("level_req"),
+      integer("combat_level"),
       text("category"),
       text("description"),
       integer("stock"),
@@ -230,15 +231,15 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("description"),
       text("type"),
-      integer("level_req"),
+      integer("combat_level"),
       integer("act"),
       boolean("heroic"),
       boolean("nightmare"),
       text("zone_essence"),
       text("required_boss"),
-      text("icon"),
     ],
   },
   {
@@ -249,13 +250,13 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("description"),
       text("category"),
       text("requirement_type"),
       integer("requirement_target"),
       text("requirement_item_id"),
       integer("reward_gold"),
-      text("icon"),
     ],
   },
   {
@@ -266,6 +267,7 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      text("image"),
       text("subtitle"),
       text("epithet"),
       integer("recommended_gear_level"),
@@ -273,7 +275,6 @@ export const TABLES: readonly TableSpec[] = [
       text("gear_name"),
       text("gear_item_id"),
       integer("gear_level"),
-      text("gear_icon"),
       text("accent"),
       text("accent2"),
     ],

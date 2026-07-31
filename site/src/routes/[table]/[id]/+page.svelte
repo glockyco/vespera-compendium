@@ -27,7 +27,7 @@
 
   function detailCellClass(column: Column, keyColumn: string, value: unknown): string {
     const classes: string[] = [];
-    if (column.name === keyColumn || column.name === "image_path" || column.name === "icon") {
+    if (column.name === keyColumn || column.name === "image") {
       classes.push("mono");
     }
     if (column.type === "integer" || column.type === "real") classes.push("num");

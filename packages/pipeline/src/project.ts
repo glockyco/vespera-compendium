@@ -1,4 +1,5 @@
 import type { ComposedTables } from "./compose.ts";
+import { collectImages, indexRefs } from "./images.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 /**
@@ -76,7 +77,11 @@ const TARGET_KINDS = [
   ["recipe", "recipes"],
 ] as const;
 
-export function projectAll(composed: ComposedTables, buildId: string): Dataset {
+export function projectAll(
+  composed: ComposedTables,
+  buildId: string,
+  extractedDir: string,
+): Dataset {
   const items = sourceRows(composed.items?.value);
   const enemies = sourceRows(composed.enemies?.value);
   const recipes = sourceRows(composed.recipes?.value);
@@ -92,6 +97,11 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
 
   const itemIds = new Set(items.map((item) => text(item.id)));
   const gatheringNodeIds = new Set(gatheringNodes.map((node) => text(node.id)));
+
+  // One normalised art path per row, keyed by (table, id). Resolved here rather than read off the
+  // source rows because the fields carrying a path differ per table and two of them are polymorphic.
+  const images = indexRefs(collectImages(composed, extractedDir));
+  const image = (table: string, id: unknown): Scalar => images.get(`${table}\u0000${text(id)}`) ?? null;
 
   // Collected first so `items.has_modelled_source` can be set in the same pass that emits items.
   const pendingSources: PendingSource[] = [];
@@ -147,13 +157,12 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       return {
         id: text(item.id),
         name: scalar(item.name),
+        image: image("items", item.id),
         type: scalar(item.type),
         description: scalar(item.description),
         rarity: scalar(item.rarity),
         stackable: scalar(item.stackable),
-        value: scalar(item.value),
-        icon: scalar(item.icon),
-        image_path: scalar(item.imagePath),
+        sell_value: scalar(item.value),
         slot: scalar(item.slot),
         sub_type: scalar(item.subType),
         class_requirement: scalar(item.classRequirement),
@@ -173,6 +182,7 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
     enemies: enemies.map((enemy) => ({
       id: text(enemy.id),
       name: scalar(enemy.name),
+      image: image("enemies", enemy.id),
       level: scalar(enemy.level),
       max_hp: scalar(enemy.maxHp),
       damage: scalar(enemy.damage),
@@ -182,7 +192,6 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       attack_style: scalar(enemy.attackStyle),
       element: scalar(enemy.element),
       is_boss: scalar(enemy.isBoss),
-      icon: scalar(enemy.icon),
       stun_resist: scalar(enemy.stunResist),
       freeze_resist: scalar(enemy.freezeResist),
       poison_resist: scalar(enemy.poisonResist),
@@ -192,20 +201,19 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       id: text(recipe.id),
       name: scalar(recipe.name),
       category: scalar(recipe.category),
-      level_req: scalar(recipe.levelReq),
+      crafting_level: scalar(recipe.levelReq),
       xp: scalar(recipe.xp),
       duration: scalar(recipe.duration),
     })),
     gathering_nodes: gatheringNodes.map((node) => ({
       id: text(node.id),
       name: scalar(node.name),
+      image: image("gathering_nodes", node.id),
       type: scalar(node.type),
-      level_req: scalar(node.levelReq),
+      gathering_level: scalar(node.levelReq),
       base_xp: scalar(node.baseXp),
       base_duration: scalar(node.baseDuration),
       required_tool: scalar(node.requiredTool),
-      icon: scalar(node.icon),
-      image_path: scalar(node.imagePath),
     })),
     quests: quests.map((quest) => {
       const rewards = nested(quest, "rewards");
@@ -215,8 +223,7 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
         description: scalar(quest.description),
         category: scalar(quest.category),
         act: scalar(quest.act),
-        level_req: scalar(quest.levelReq),
-        icon: scalar(quest.icon),
+        combat_level: scalar(quest.levelReq),
         guidance: scalar(quest.guidance),
         dialogue_on_complete: scalar(quest.dialogueOnComplete),
         next_quest_id: scalar(quest.nextQuestId),
@@ -232,19 +239,18 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       return {
         id: text(ability.id),
         name: scalar(ability.name),
+        image: image("abilities", ability.id),
         category: scalar(ability.category),
         description: scalar(ability.description),
         required_class: scalar(ability.requiredClass),
         required_subclass: scalar(ability.requiredSubclass),
-        required_level: scalar(ability.requiredLevel),
+        combat_level: scalar(ability.requiredLevel),
         unlock_level: scalar(ability.unlockLevel),
         mana_cost: scalar(ability.manaCost),
         cooldown: scalar(ability.cooldown),
         execute_multiplier: scalar(ability.executeMultiplier),
         execute_threshold: scalar(ability.executeThreshold),
         guaranteed_crit: scalar(ability.guaranteedCrit),
-        icon: scalar(ability.icon),
-        image_path: scalar(ability.imagePath),
         tags: tags.join(","),
       };
     }),
@@ -266,17 +272,16 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
     gems: gems.map((gem) => ({
       id: text(gem.id),
       name: scalar(gem.name),
+      image: image("gems", gem.id),
       family: scalar(gem.family),
       tier: scalar(gem.tier),
       color: scalar(gem.color),
       description: scalar(gem.description),
-      icon: scalar(gem.icon),
-      image_path: scalar(gem.imagePath),
     })),
     shop_listings: shopListings.map((listing) => ({
       item_id: text(listing.itemId),
       price: scalar(listing.price),
-      level_req: scalar(listing.levelReq),
+      combat_level: scalar(listing.levelReq),
       category: scalar(listing.category),
       description: scalar(listing.description),
       stock: scalar(listing.stock),
@@ -285,15 +290,15 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
     zones_dungeons: zonesDungeons.map((zone) => ({
       id: text(zone.id),
       name: scalar(zone.name),
+      image: image("zones_dungeons", zone.id),
       description: scalar(zone.description),
       type: scalar(zone.type),
-      level_req: scalar(zone.levelReq),
+      combat_level: scalar(zone.levelReq),
       act: scalar(zone.act),
       heroic: scalar(zone.heroic),
       nightmare: scalar(zone.nightmare),
       zone_essence: scalar(zone.zoneEssence),
       required_boss: scalar(zone.requiredBoss),
-      icon: scalar(zone.icon),
     })),
     achievements: achievements.map((achievement) => {
       const requirement = nested(achievement, "requirement");
@@ -301,18 +306,19 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       return {
         id: text(achievement.id),
         name: scalar(achievement.name),
+        image: image("achievements", achievement.id),
         description: scalar(achievement.description),
         category: scalar(achievement.category),
         requirement_type: scalar(requirement?.type),
         requirement_target: scalar(requirement?.target),
         requirement_item_id: scalar(requirement?.itemId),
         reward_gold: scalar(reward?.gold),
-        icon: scalar(achievement.icon),
       };
     }),
     world_bosses: worldBosses.map((boss) => ({
       id: text(boss.id),
       name: scalar(boss.name),
+      image: image("world_bosses", boss.id),
       subtitle: scalar(boss.subtitle),
       epithet: scalar(boss.epithet),
       recommended_gear_level: scalar(boss.recommendedGearLevel),
@@ -320,7 +326,6 @@ export function projectAll(composed: ComposedTables, buildId: string): Dataset {
       gear_name: scalar(boss.gearName),
       gear_item_id: scalar(boss.gearItemId),
       gear_level: scalar(boss.gearLevel),
-      gear_icon: scalar(boss.gearIcon),
       accent: scalar(boss.accent),
       accent2: scalar(boss.accent2),
     })),

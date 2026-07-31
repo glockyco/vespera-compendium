@@ -3,6 +3,7 @@ import path from "node:path";
 import { readInstalledBuildId } from "@vespera/core";
 import { composeAll } from "./compose.ts";
 import { toCsv } from "./csv.ts";
+import { collectImages, copyImages } from "./images.ts";
 import { checkInvariants } from "./invariants.ts";
 import { projectAll, type Dataset } from "./project.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
@@ -19,11 +20,14 @@ import { writeSqlite } from "./sqlite.ts";
 
 export const SQLITE_FILENAME = "vespera.sqlite";
 const LATEST_DIR = "latest";
+const IMAGE_DIR = "images";
 
 export type PublishResult = {
   buildId: string;
   outDirs: string[];
   tables: { name: string; rows: number }[];
+  images: number;
+  missingImages: string[];
 };
 
 export class InvariantError extends Error {}
@@ -44,6 +48,9 @@ export type Manifest = {
   buildId: string;
   generatedAt: string;
   sqlite: string;
+  /** Directory holding the game's own art, relative to the manifest. */
+  images: string;
+  imageCount: number;
   tables: ManifestTable[];
 };
 
@@ -65,6 +72,9 @@ const FOREIGN_ARTIFACTS = new Set(["runtime-evidence.json"]);
 
 function clearPublished(dir: string): void {
   if (!existsSync(dir)) return;
+  // Art is a directory rather than a file, so the file sweep below cannot reach it and a renamed or
+  // dropped asset would linger forever. Removing it wholesale is safe: every image is re-copied.
+  rmSync(path.join(dir, IMAGE_DIR), { recursive: true, force: true });
   for (const entry of readdirSync(dir)) {
     if (FOREIGN_ARTIFACTS.has(entry)) continue;
     const published =
@@ -80,12 +90,16 @@ function clearPublished(dir: string): void {
 export function publish(extractedDir = "extracted", buildId?: string): PublishResult {
   const composed = composeAll(extractedDir);
   const resolvedBuildId = buildId ?? readInstalledBuildId();
-  const dataset = projectAll(composed, resolvedBuildId);
+  const dataset = projectAll(composed, resolvedBuildId, extractedDir);
 
   const failures = checkInvariants(dataset, composed).filter((result) => result.status === "FAIL");
   if (failures.length > 0) {
     throw new InvariantError(failures.map((result) => `${result.id}: ${result.detail}`).join("\n"));
   }
+
+  const missingImages: string[] = [];
+  const imageRefs = collectImages(composed, extractedDir, missingImages);
+  const imageCount = new Set(imageRefs.map((ref) => ref.published)).size;
 
   const generatedAt =
     dataset.meta?.find((row) => row.key === "generated_at")?.value ?? new Date().toISOString();
@@ -95,6 +109,8 @@ export function publish(extractedDir = "extracted", buildId?: string): PublishRe
     buildId: resolvedBuildId,
     generatedAt: String(generatedAt),
     sqlite: SQLITE_FILENAME,
+    images: IMAGE_DIR,
+    imageCount,
     tables: TABLES.map((table) => ({
       name: table.name,
       slug: table.slug,
@@ -125,11 +141,14 @@ export function publish(extractedDir = "extracted", buildId?: string): PublishRe
     }
     writeFileSync(path.join(dir, "index.json"), `${JSON.stringify(manifest, null, 2)}\n`);
     writeSqlite(dataset, path.join(dir, SQLITE_FILENAME));
+    copyImages(imageRefs, extractedDir, path.join(dir, IMAGE_DIR));
   }
 
   return {
     buildId: resolvedBuildId,
     outDirs,
     tables: manifest.tables.map((table) => ({ name: table.name, rows: table.rows })),
+    images: imageCount,
+    missingImages,
   };
 }

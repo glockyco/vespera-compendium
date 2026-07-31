@@ -8,6 +8,7 @@ site/.svelte-kit/
 site/build/
 site/.wrangler/
 site/static/data/
+site/static/game/
 site/static/wasm/
 .DS_Store
 *.sqlite

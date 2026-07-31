@@ -48,13 +48,13 @@
     },
     {
       title: "Highest-level recipes and their inputs",
-      description: "Compare the highest-level recipes with their input items.",
-      sql: "SELECT r.name, r.level_req, group_concat(ri.item_id) AS inputs FROM recipes r JOIN recipe_inputs ri ON ri.recipe_id = r.id GROUP BY r.id ORDER BY r.level_req DESC LIMIT 30;",
+      description: "Compare the highest crafting-level recipes with their input items.",
+      sql: "SELECT r.name, r.crafting_level, group_concat(ri.item_id) AS inputs FROM recipes r JOIN recipe_inputs ri ON ri.recipe_id = r.id GROUP BY r.id ORDER BY r.crafting_level DESC LIMIT 30;",
     },
     {
-      title: "Equipment value by slot and rarity",
-      description: "Summarise equipment value across slots and rarities.",
-      sql: "SELECT slot, rarity, COUNT(*) AS n, ROUND(AVG(value)) AS avg_value FROM items WHERE slot IS NOT NULL GROUP BY slot, rarity ORDER BY slot, n DESC;",
+      title: "Equipment sell value by slot and rarity",
+      description: "Summarise equipment sell value across slots and rarities.",
+      sql: "SELECT slot, rarity, COUNT(*) AS n, ROUND(AVG(sell_value)) AS avg_sell_value FROM items WHERE slot IS NOT NULL GROUP BY slot, rarity ORDER BY slot, n DESC;",
     },
   ] as const;
 
