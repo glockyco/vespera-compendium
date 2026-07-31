@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readInstalledBuildId } from "@vespera/core";
 import { composeAll } from "./compose.ts";
@@ -54,6 +54,29 @@ function ordered(dataset: Dataset, tableName: string, columns: readonly string[]
   );
 }
 
+/**
+ * Removes files a previous publish wrote, including tables that a later schema no longer defines.
+ *
+ * The build-stamped directory is shared with the runtime evidence the harness emits for the same
+ * build, so it is protected by name: clearing the whole directory destroyed a verification record
+ * that cannot be regenerated without relaunching the game.
+ */
+const FOREIGN_ARTIFACTS = new Set(["runtime-evidence.json"]);
+
+function clearPublished(dir: string): void {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir)) {
+    if (FOREIGN_ARTIFACTS.has(entry)) continue;
+    const published =
+      entry.endsWith(".json") ||
+      entry.endsWith(".csv") ||
+      entry === SQLITE_FILENAME ||
+      // Journal sidecars are never written deliberately, but a crashed run could leave one behind.
+      entry.startsWith(`${SQLITE_FILENAME}-`);
+    if (published) rmSync(path.join(dir, entry), { force: true });
+  }
+}
+
 export function publish(extractedDir = "extracted", buildId?: string): PublishResult {
   const composed = composeAll(extractedDir);
   const resolvedBuildId = buildId ?? readInstalledBuildId();
@@ -86,8 +109,8 @@ export function publish(extractedDir = "extracted", buildId?: string): PublishRe
 
   const outDirs = [path.join("data", resolvedBuildId), path.join("data", LATEST_DIR)];
   for (const dir of outDirs) {
-    rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
+    clearPublished(dir);
 
     for (const table of TABLES) {
       const columns = table.columns.map((column) => column.name);
