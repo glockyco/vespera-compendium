@@ -57,6 +57,7 @@ Keep the previous extraction as `extracted-<buildId>/` when you want to diff two
 | `bun run site:build` | Sync the dataset, then prerender the whole site into `site/build` |
 | `bun run site:typecheck` | Typecheck the site |
 | `bun run cf-deploy` | Deploy `site/build` to `vespera.compendiums.org` |
+| `bun tools/serve-build.mjs` | Serve `site/build` locally with CDN-like compression, for measuring page weight |
 | `bun run harness --dir extracted` | Launch the isolated game harness and regenerate runtime evidence |
 | `bun run harness --dir extracted --only parity` | Compare static and live table cardinalities |
 | `bun run harness --dir extracted --only records` | Compare deterministic record samples field by field |
@@ -68,19 +69,23 @@ Keep the previous extraction as `extracted-<buildId>/` when you want to diff two
 - `packages/core` resolves build-specific bundles, reads the installed build id, balances JavaScript literals, and provides separate discovery and strict composition evaluators.
 - `packages/pipeline` reconstructs post-declaration mutations, runs the game's own gear-balance passes, projects the result into the published schema, checks invariants, and emits the artifacts.
 - `packages/harness` launches Vespera through CrossOver, identifies runtime tables by shape, probes live state, and emits evidence reports.
-- `site` is a prerendered SvelteKit app: one page per published record, an in-browser SQL playground over the published SQLite file, and copy-ready spreadsheet formulas.
-- `tools` contains build-diff and focused research utilities that have not yet moved into the typed publishing pipeline.
+- `site` is a prerendered SvelteKit app organised by the questions players ask rather than by the schema: a searchable shell, twelve entity browsers, one answer-first page per published record, a level-by-level progression spine, per-class ability and gear hubs, an acquisition overview, an in-browser SQL playground over the published SQLite file, and copy-ready spreadsheet formulas.
+- `tools` contains build-diff, community-evidence and focused research utilities that have not yet moved into the typed publishing pipeline.
 - `docs` contains the current build audit, build diffs, and generated runtime evidence.
 
 Runtime aliases and hashed bundle names are intentionally not treated as stable identifiers. Extraction and runtime identification use content shape and anchors instead.
 
 ## Published data
 
-`bun run publish` writes twenty-nine tables as both JSON and CSV, plus one SQLite database and an `index.json` manifest describing the schema. Twelve tables are entities (items, enemies, recipes, gathering nodes, quests, abilities, affixes, gems, shop listings, zones and dungeons, achievements, world bosses), sixteen are joins, and one carries build metadata.
+`bun run publish` writes thirty tables as both JSON and CSV, plus the game's own artwork, one SQLite database and an `index.json` manifest describing the schema. Twelve tables are entities (items, enemies, recipes, gathering nodes, quests, abilities, affixes, gems, shop listings, zones and dungeons, achievements, world bosses), sixteen are joins, and two carry metadata: `meta` for the build stamp and row counts, and `search_index` for one flattened row per record. The search index is the only file emitted with abbreviated JSON keys, which the manifest maps back to column names.
+
+Every record that has artwork carries one normalised `image` column, and the referenced files are republished beside the tables — 1326 images, 21.4 MiB. Published art paths carry a content hash so they can be served immutable; the game's own filenames cannot, because it reuses a name and busts the cache with a query string.
+
+The three level scales the game gates are published under names that say which skill they gate: `recipes.crafting_level`, `gathering_nodes.gathering_level`, and `combat_level` on quests, zones, shop listings and abilities. They are distinct skills and must never be merged in display. `items.level` is the game's own balance level for equipment and a property of the source otherwise, with `items.level_source` naming which of the seven provenances it came from.
 
 The datasets are stamped with the Steam build id, and `data/latest/` always mirrors the newest publish. Column order is canonical and rows are sorted by primary key, so republishing one build produces comparable bytes.
 
-`item_sources` is the inverse lookup the game has no screen for: the six modelled ways an item can be obtained. The repository does not claim that items without a modelled source are unobtainable. Empirical item reachability requires broader runtime instrumentation and remains outside the current harness.
+`item_sources` is the inverse lookup the game has no screen for: the six modelled ways an item can be obtained, each carrying the level and display name of what it points at. The repository does not claim that items without a modelled source are unobtainable. Empirical item reachability requires broader runtime instrumentation and remains outside the current harness.
 
 ## Project status
 
