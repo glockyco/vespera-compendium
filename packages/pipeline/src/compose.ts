@@ -10,7 +10,7 @@ import {
   generated,
   setByAnchor,
 } from "./anchors.ts";
-import { applyGearBalance } from "./gear.ts";
+import { applyGearBalance, gearBalanceLevels } from "./gear.ts";
 
 export type ComposedTable = {
   base: number;
@@ -485,7 +485,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
   );
   // The shipped pass edits the recipe array it is handed (it removes universal boss-drop recipes
   // and re-adds the starter ring), and our recipe list already carries both edits, so it gets a copy.
-  applyGearBalance({
+  const gearInput = {
     source: indexSource,
     items,
     itemsSymbol: baseItems.symbol,
@@ -493,7 +493,11 @@ export function composeAll(dir = "extracted"): ComposedTables {
     recipesSymbol: baseRecipes.symbol,
     definitions: soulbound as DataRecord,
     featureFlags: shippedFeatureFlags,
-  });
+  };
+  applyGearBalance(gearInput);
+  // Read from a second run of the same program rather than from the mutation above, because the
+  // pass rescales stats without recording the level it scaled them against.
+  const itemLevels = gearBalanceLevels({ ...gearInput, recipes: [...recipes] });
 
   const addedQuests = evalComposition(
     declarationByAnchor(indexSource, [/q_ash_bridge_001/, /Smoke and Bloodstone/], "{").text,
@@ -648,6 +652,12 @@ export function composeAll(dir = "extracted"): ComposedTables {
       live: collectionSize(worldBosses),
       mechanism: "literal",
       value: worldBosses,
+    },
+    itemLevels: {
+      base: Object.keys(itemLevels).length,
+      live: Object.keys(itemLevels).length,
+      mechanism: "shipped balance level",
+      value: itemLevels,
     },
   };
 }

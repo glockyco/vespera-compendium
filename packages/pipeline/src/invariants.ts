@@ -1,5 +1,5 @@
 import type { ComposedTables } from "./compose.ts";
-import { CURRENCY_ITEM_IDS, type Dataset, type Row } from "./project.ts";
+import { CURRENCY_ITEM_IDS, LEVEL_SOURCES, type Dataset, type Row } from "./project.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 /**
@@ -82,8 +82,50 @@ export function checkInvariants(dataset: Dataset, composed: ComposedTables): Inv
     checkPrimaryKeys(dataset),
     checkReferences(dataset),
     checkCardinality(dataset, composed),
+    checkLevels(dataset),
     checkMeta(dataset),
   ];
+}
+
+/**
+ * Item level and its provenance stay in step.
+ *
+ * A level with no stated source, or a source claiming a level that is absent, is the failure mode
+ * that matters here: a reader cannot tell a gear tier from a gathering requirement by looking, so
+ * the pair has to be trustworthy or the number is worse than no number at all.
+ */
+function checkLevels(dataset: Dataset): InvariantResult {
+  const allowed = new Set<string>(LEVEL_SOURCES);
+  const problems: string[] = [];
+  const report = (message: string): void => {
+    if (problems.length < 6) problems.push(message);
+  };
+
+  for (const row of dataset.items ?? []) {
+    const id = String(row.id);
+    const source = String(row.level_source ?? "");
+    if (!allowed.has(source)) {
+      report(`${id} has level_source ${source || "(empty)"}`);
+      continue;
+    }
+    const level = row.level;
+    if (source === "unknown") {
+      if (level !== null) report(`${id} is unknown but carries level ${level}`);
+      continue;
+    }
+    if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 300) {
+      report(`${id} has level ${level} from ${source}`);
+    }
+  }
+
+  return {
+    id: "levels",
+    status: problems.length === 0 ? "PASS" : "FAIL",
+    detail:
+      problems.length === 0
+        ? `every item level is an integer in 1..300 with one of ${LEVEL_SOURCES.length} stated sources`
+        : problems.join("; "),
+  };
 }
 
 function checkColumns(dataset: Dataset): InvariantResult {

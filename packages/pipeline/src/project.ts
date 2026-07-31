@@ -77,6 +77,22 @@ const TARGET_KINDS = [
   ["recipe", "recipes"],
 ] as const;
 
+/**
+ * Where an item's published level came from. Equipment carries the game's own balance level; for
+ * everything else the level is a property of the source, and saying which source it is keeps the
+ * number honest — a gathering requirement and a gear tier are not the same kind of number.
+ */
+export const LEVEL_SOURCES = [
+  "game-balance",
+  "world-boss-gear",
+  "crafting",
+  "gathering",
+  "enemy-drop",
+  "shop",
+  "unknown",
+] as const;
+export type LevelSource = (typeof LEVEL_SOURCES)[number];
+
 export function projectAll(
   composed: ComposedTables,
   buildId: string,
@@ -150,10 +166,69 @@ export function projectAll(
 
   const modelledSourceItemIds = new Set(pendingSources.map((source) => source.itemId));
 
+  // Level per item, in the game's own precedence. Equipment takes the shipped balance level; world
+  // boss gear takes the level the boss advertises, which the balance pass deliberately skips; and
+  // anything else takes a level off the source that yields it.
+  //
+  // Gathering, enemy and shop sources take the lowest level among them because that is the earliest
+  // point a player can reach the item, while crafting takes the highest because a recipe's stated
+  // requirement is a real gate rather than one of several ways in.
+  const balanceLevels = (composed.itemLevels?.value ?? {}) as Record<string, { level?: unknown }>;
+  const recipeLevels = new Map(recipes.map((recipe) => [text(recipe.id), Number(recipe.levelReq)]));
+  const nodeLevels = new Map(gatheringNodes.map((node) => [text(node.id), Number(node.levelReq)]));
+  const enemyLevels = new Map(enemies.map((enemy) => [text(enemy.id), Number(enemy.level)]));
+  const shopLevels = new Map(shopListings.map((listing) => [text(listing.itemId), Number(listing.levelReq)]));
+  const bossGearLevels = new Map(
+    worldBosses
+      .filter((boss) => text(boss.gearItemId))
+      .map((boss) => [text(boss.gearItemId), Number(boss.gearLevel)]),
+  );
+
+  const sourcesByItem = new Map<string, PendingSource[]>();
+  for (const source of pendingSources) {
+    const list = sourcesByItem.get(source.itemId);
+    if (list) list.push(source);
+    else sourcesByItem.set(source.itemId, [source]);
+  }
+
+  const levelOf = (itemId: string): { level: Scalar; source: LevelSource } => {
+    const balance = balanceLevels[itemId]?.level;
+    if (typeof balance === "number" && Number.isFinite(balance)) {
+      return { level: balance, source: "game-balance" };
+    }
+    const bossGear = bossGearLevels.get(itemId);
+    if (Number.isFinite(bossGear)) return { level: bossGear!, source: "world-boss-gear" };
+
+    const sources = sourcesByItem.get(itemId) ?? [];
+    const pick = (
+      kind: SourceKind,
+      levels: Map<string, number>,
+      choose: (values: number[]) => number,
+    ): number | null => {
+      const values = sources
+        .filter((entry) => entry.sourceKind === kind)
+        .map((entry) => levels.get(entry.sourceId))
+        .filter((value): value is number => Number.isFinite(value));
+      return values.length > 0 ? choose(values) : null;
+    };
+
+    const crafting = pick("recipe", recipeLevels, (values) => Math.max(...values));
+    if (crafting !== null) return { level: crafting, source: "crafting" };
+    const gathering = pick("gathering", nodeLevels, (values) => Math.min(...values));
+    if (gathering !== null) return { level: gathering, source: "gathering" };
+    const enemy = pick("enemy", enemyLevels, (values) => Math.min(...values));
+    if (enemy !== null) return { level: enemy, source: "enemy-drop" };
+    const shop = shopLevels.get(itemId);
+    if (Number.isFinite(shop)) return { level: shop!, source: "shop" };
+
+    return { level: null, source: "unknown" };
+  };
+
   const dataset: Dataset = {
     items: items.map((item) => {
       const stats = nested(item, "stats");
       const passive = nested(item, "passive");
+      const level = levelOf(text(item.id));
       return {
         id: text(item.id),
         name: scalar(item.name),
@@ -161,6 +236,8 @@ export function projectAll(
         type: scalar(item.type),
         description: scalar(item.description),
         rarity: scalar(item.rarity),
+        level: level.level,
+        level_source: level.source,
         stackable: scalar(item.stackable),
         sell_value: scalar(item.value),
         slot: scalar(item.slot),

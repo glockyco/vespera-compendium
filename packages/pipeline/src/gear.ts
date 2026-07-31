@@ -86,6 +86,50 @@ export type GearBalanceInput = {
 
 /** Runs the shipped class-gear and gear-balance passes over `items`, mutating it in place. */
 export function applyGearBalance(input: GearBalanceInput): void {
+  const { program, bindings } = buildProgram(input);
+  evalComposition(`(()=>{\n${program}\n})()`, bindings);
+}
+
+/**
+ * The balance level the game assigns each equipment item, which is what it scales stats against.
+ *
+ * Published as `items.level` so the compendium states the game's own number rather than inferring
+ * one from a recipe. `getCompleteGearBalanceLevel` returns null for world-boss gear and for
+ * `the_last_memory`, which the game excludes deliberately; those ids are simply absent here.
+ */
+export type GearLevel = { level: number; downOnly: boolean };
+
+export function gearBalanceLevels(input: GearBalanceInput): Record<string, GearLevel> {
+  const { program, bindings } = buildProgram(input);
+  // The recipe map is built once rather than per item: the shipped helper walks every recipe on
+  // each call, and calling it inside the map would make this quadratic for no change in result.
+  //
+  // The `equipment` and `stats` gate is the game's own, copied from `normalizeCompleteGearBalance`.
+  // Without it the helper happily returns its rarity fallback for resources and consumables, and we
+  // would publish a balance level for items the game never computes one for.
+  const collect = [
+    program,
+    `const __recipeLevels = getCompleteGearRecipeLevels();`,
+    `return Object.fromEntries(`,
+    `  Object.values(${input.itemsSymbol})`,
+    `    .filter((item) => item && item.id && item.type === "equipment" && item.stats)`,
+    `    .map((item) => [item.id, getCompleteGearBalanceLevel(item, __recipeLevels)])`,
+    `    .filter(([, level]) => level),`,
+    `);`,
+  ].join("\n");
+  return evalComposition(`(()=>{\n${collect}\n})()`, bindings) as Record<string, GearLevel>;
+}
+
+/**
+ * Slices the shipped source both entry points run.
+ *
+ * Shared rather than duplicated because the two must never diverge: a level read from a different
+ * program than the one that rescaled the stats would describe an item the game does not ship.
+ */
+function buildProgram(input: GearBalanceInput): {
+  program: string;
+  bindings: Record<string, unknown>;
+} {
   const { source } = input;
   const definitions = declarationByAnchor(source, [...SOULBOUND_PROBES], "{");
   const gearTiers = declarationByAnchor(source, [...GEAR_TIER_PROBES], "{");
@@ -115,9 +159,12 @@ export function applyGearBalance(input: GearBalanceInput): void {
     regionSource(source, REGION_START, REGION_END),
   ].join("\n");
 
-  evalComposition(`(()=>{\n${program}\n})()`, {
-    [input.itemsSymbol]: input.items,
-    [input.recipesSymbol]: input.recipes,
-    [definitions.symbol]: input.definitions,
-  });
+  return {
+    program,
+    bindings: {
+      [input.itemsSymbol]: input.items,
+      [input.recipesSymbol]: input.recipes,
+      [definitions.symbol]: input.definitions,
+    },
+  };
 }

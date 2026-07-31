@@ -45,6 +45,11 @@ export const TABLES: readonly TableSpec[] = [
       text("type"),
       text("description"),
       text("rarity"),
+      // The game's own balance level for equipment; for everything else a level read off the
+      // source that yields it. `level_source` says which, so a reader never has to guess whether a
+      // number is a gear tier or a gathering requirement.
+      integer("level"),
+      text("level_source"),
       boolean("stackable"),
       integer("sell_value"),
       text("slot"),
