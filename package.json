@@ -3,14 +3,19 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "site"
   ],
   "packageManager": "bun@1.3.14",
   "scripts": {
     "verify": "bun run packages/pipeline/src/cli.ts verify",
     "harness": "bun run packages/harness/src/cli.ts",
     "publish": "bun run packages/pipeline/src/cli.ts publish",
-    "data:sync": "bun run packages/pipeline/src/cli.ts sync-site"
+    "data:sync": "bun run packages/pipeline/src/cli.ts sync-site",
+    "site:dev": "bun run --cwd site dev",
+    "site:build": "bun run data:sync && bun run --cwd site build",
+    "site:typecheck": "bun run --cwd site typecheck",
+    "cf-deploy": "bun run --cwd site deploy"
   },
   "devDependencies": {
     "bun-types": "^1.3.14",

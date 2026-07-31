@@ -1,0 +1,29 @@
+{
+  "name": "@vespera/site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SvelteKit static compendium — entity browser, SQL playground, spreadsheet feeds",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "svelte-kit sync && tsc -p .",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "deploy:check": "wrangler deploy --dry-run --config wrangler.jsonc"
+  },
+  "dependencies": {
+    "@fontsource-variable/source-sans-3": "5.3.0",
+    "sql.js": "1.14.1"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.60.1",
+    "@sveltejs/vite-plugin-svelte": "7.1.2",
+    "@types/bun": "*",
+    "@types/sql.js": "1.4.11",
+    "svelte": "5.55.7",
+    "typescript": "5.9.3",
+    "vite": "8.0.13",
+    "wrangler": "4.103.0"
+  }
+}

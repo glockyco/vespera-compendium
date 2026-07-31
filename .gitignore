@@ -2,7 +2,10 @@ node_modules/
 extracted/
 extracted-*/
 data/
-site/dist/
-site/.astro/
+site/.svelte-kit/
+site/build/
+site/.wrangler/
+site/static/data/
+site/static/wasm/
 .DS_Store
 *.sqlite

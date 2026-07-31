@@ -7,7 +7,11 @@ import { verify } from "./verify.ts";
 const SITE_DATA_DIR = path.join("site", "static", "data");
 const SITE_WASM_DIR = path.join("site", "static", "wasm");
 const LATEST_DIR = path.join("data", "latest");
-const SQL_WASM = path.join("node_modules", "sql.js", "dist", "sql-wasm.wasm");
+// Bun may hoist a workspace dependency to the root or keep it in the member, so both are tried.
+const SQL_WASM_CANDIDATES = [
+  path.join("node_modules", "sql.js", "dist", "sql-wasm.wasm"),
+  path.join("site", "node_modules", "sql.js", "dist", "sql-wasm.wasm"),
+];
 
 function runVerify(dir: string): void {
   const checks = verify(dir);
@@ -41,12 +45,13 @@ function runSyncSite(): void {
   cpSync(LATEST_DIR, SITE_DATA_DIR, { recursive: true });
   console.log(`SYNCED ${LATEST_DIR} -> ${SITE_DATA_DIR}`);
 
-  if (!existsSync(SQL_WASM)) {
-    throw new Error(`${SQL_WASM} not found — run "bun install" first`);
+  const sqlWasm = SQL_WASM_CANDIDATES.find((candidate) => existsSync(candidate));
+  if (!sqlWasm) {
+    throw new Error(`sql-wasm.wasm not found in ${SQL_WASM_CANDIDATES.join(" or ")} — run "bun install" first`);
   }
   mkdirSync(SITE_WASM_DIR, { recursive: true });
-  cpSync(SQL_WASM, path.join(SITE_WASM_DIR, "sql-wasm.wasm"));
-  console.log(`SYNCED ${SQL_WASM} -> ${path.join(SITE_WASM_DIR, "sql-wasm.wasm")}`);
+  cpSync(sqlWasm, path.join(SITE_WASM_DIR, "sql-wasm.wasm"));
+  console.log(`SYNCED ${sqlWasm} -> ${path.join(SITE_WASM_DIR, "sql-wasm.wasm")}`);
   console.log(`SQLite database: ${path.join(SITE_DATA_DIR, SQLITE_FILENAME)}`);
 }
 

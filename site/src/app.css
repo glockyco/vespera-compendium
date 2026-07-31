@@ -1,0 +1,422 @@
+/**
+ * The palette, panel treatment and typography are Vespera's own, read out of the shipped bundle
+ * (`index-TpX1HTVU.css`, `GameView-V33hRMR7.css`, `mercenary-war-table.css`) rather than invented, so
+ * the compendium reads as an extension of the game instead of a third-party table dump.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --obsidian: #030813;
+  --painted-indigo: #071426;
+  --painted-surface: #0d1c32;
+  --painted-elevated: #132640;
+
+  /* Brass accents */
+  --brass: #d6a94f;
+  --brass-warm: #f0c76a;
+  --brass-deep: #9b6f24;
+
+  /* Ink */
+  --parchment: #f1e6c8;
+  --lavender-grey: #aeb9c8;
+  --text-muted: #718095;
+
+  /* Secondary hues */
+  --royal-blue: #3b5980;
+  --teal-dust: #4c6f9a;
+  --lilac-painted: #8f7aa5;
+  --ember: #b86638;
+
+  /* Panel idiom */
+  --line: rgba(185, 151, 86, 0.34);
+  --line-soft: rgba(146, 180, 176, 0.18);
+  --teal: #5fc6b6;
+  --cyan: #65b9dd;
+  --green: #8ed5a4;
+  --red: #dc806e;
+  --kicker: #91c9bf;
+  --radius: 12px;
+  --panel-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 236, 189, 0.05);
+
+  /* Rarity */
+  --rarity-common: #9088a8;
+  --rarity-uncommon: #84a56e;
+  --rarity-rare: #7dd3fc;
+  --rarity-epic: #a98bc9;
+  --rarity-legendary: #d9b881;
+  --rarity-mythic: #f0445e;
+  --rarity-living: #78d7d0;
+
+  --font-ui: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--painted-indigo);
+  /* The game's own vignette, which keeps the page from reading as a flat slab. */
+  background-image: radial-gradient(circle at 55% -30%, rgba(68, 127, 126, 0.12), transparent 42%);
+  background-attachment: fixed;
+  color: var(--parchment);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--brass-warm);
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass-warm);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.35rem;
+  font-weight: 800;
+  color: var(--parchment);
+  line-height: 1.15;
+}
+
+h1 {
+  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+  color: var(--lavender-grey);
+}
+
+/* The game puts a small tracked label above every page title; this reproduces it. */
+.kicker {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--kicker);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, #07131e, #030a11 72%);
+  box-shadow: var(--panel-shadow);
+}
+
+.pad {
+  padding: clamp(0.9rem, 2vw, 1.4rem);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin: 0.6rem 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.9rem;
+}
+
+.card {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, #07131e, #030a11 72%);
+  color: var(--parchment);
+}
+
+.card:hover {
+  border-color: var(--brass);
+  text-decoration: none;
+}
+
+.card-name {
+  font-weight: 800;
+}
+
+.card-rows {
+  color: var(--kicker);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+/* Wide join tables must scroll rather than break the mobile viewport. */
+.scroll {
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.55rem 0.7rem;
+  background: var(--painted-elevated);
+  color: var(--kicker);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+td {
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(19, 38, 64, 0.35);
+}
+
+/* Long prose in a dense table: bound the column and clamp to a few lines so rows stay uniform.
+   The full text is always available on the record's own page. */
+.cell-prose {
+  min-width: 14rem;
+  max-width: 30rem;
+}
+
+.cell-prose > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rarity-common {
+  color: var(--rarity-common);
+}
+.rarity-uncommon {
+  color: var(--rarity-uncommon);
+}
+.rarity-rare {
+  color: var(--rarity-rare);
+}
+.rarity-epic {
+  color: var(--rarity-epic);
+}
+.rarity-legendary {
+  color: var(--rarity-legendary);
+}
+.rarity-mythic {
+  color: var(--rarity-mythic);
+}
+.rarity-living {
+  color: var(--rarity-living);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+input[type="search"],
+input[type="text"],
+textarea {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(3, 10, 17, 0.72);
+  color: var(--parchment);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+textarea {
+  width: 100%;
+  min-height: 8.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.btn {
+  padding: 0.38rem 0.7rem;
+  border: 1px solid rgba(212, 173, 98, 0.4);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(212, 173, 98, 0.11), rgba(212, 173, 98, 0.04));
+  color: var(--brass-warm);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--brass);
+}
+
+/* The game's confirm style, reserved for the one primary action on a page. */
+.btn-primary {
+  border: 1px solid #80d7c2;
+  background: linear-gradient(180deg, #9ae9d4, #67c6ae);
+  color: #07141b;
+}
+
+.error {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(220, 128, 110, 0.52);
+  border-radius: 6px;
+  background: rgba(113, 42, 37, 0.28);
+  color: #f0c0b6;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+}
+
+.status {
+  color: var(--kicker);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.chips {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.chip-row .btn {
+  flex: 0 0 auto;
+}
+
+.chip-note {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.formula code {
+  flex: 1 1 26rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: rgba(3, 10, 17, 0.72);
+  color: var(--lavender-grey);
+  overflow-wrap: anywhere;
+}
+
+.crumbs {
+  margin-bottom: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.schema-table {
+  margin-bottom: 0.8rem;
+}
+
+.schema-table summary {
+  color: var(--brass-warm);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.schema-cols {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--lavender-grey);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
