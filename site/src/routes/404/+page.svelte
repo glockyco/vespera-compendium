@@ -77,6 +77,6 @@
 
   .way-blurb {
     color: var(--lavender-grey);
-    font-size: 0.86rem;
+    font-size: var(--text-sm);
   }
 </style>

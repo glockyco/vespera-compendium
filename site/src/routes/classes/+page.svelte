@@ -70,18 +70,18 @@
 
   .class-name {
     color: var(--parchment);
-    font-size: 1.05rem;
+    font-size: var(--text-lead);
     font-weight: 800;
   }
 
   .class-blurb {
     color: var(--lavender-grey);
-    font-size: 0.88rem;
+    font-size: var(--text-sm);
   }
 
   .class-counts {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
   }
 </style>

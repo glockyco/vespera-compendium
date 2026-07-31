@@ -128,7 +128,7 @@
 
   .rung + .rung {
     padding-block-start: 0.55rem;
-    border-block-start: 1px dotted rgba(146, 180, 176, 0.14);
+    border-block-start: 1px dotted var(--hairline);
   }
 
   .rung-body {
@@ -156,14 +156,14 @@
   .rung-text {
     margin: 0.25rem 0 0;
     color: var(--lavender-grey);
-    font-size: 0.88rem;
+    font-size: var(--text-sm);
   }
 
   .effects {
     margin: 0.25rem 0 0;
     padding-inline-start: 1rem;
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--text-xs);
   }
 
   .slots {
@@ -175,7 +175,7 @@
   .slot h3 {
     margin-block-end: 0.3rem;
     color: var(--kicker);
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.11em;
     text-transform: uppercase;

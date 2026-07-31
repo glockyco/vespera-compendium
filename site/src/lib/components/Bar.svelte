@@ -34,7 +34,7 @@
     block-size: 0.4rem;
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(3, 8, 19, 0.8);
+    background: var(--panel-sunken);
     box-shadow: inset 0 0 0 1px var(--line-soft);
   }
 
@@ -48,7 +48,7 @@
   .bar-label {
     color: var(--parchment);
     font-variant-numeric: tabular-nums;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     font-weight: 700;
   }
 </style>

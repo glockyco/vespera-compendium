@@ -30,6 +30,35 @@
   --ember: #b86638;
 
   /* Panel idiom */
+  /* Panel idiom */
+  --panel-top: #07131e;
+  --panel-bottom: #030a11;
+  --panel-inset: rgba(3, 10, 17, 0.72);
+  --panel-raised: rgba(19, 38, 64, 0.5);
+  --panel-hover: rgba(19, 38, 64, 0.7);
+  --panel-hover-strong: rgba(19, 38, 64, 0.85);
+  --panel-sunken: rgba(3, 8, 19, 0.8);
+  /* Art frame: a lit face over a dark floor, so a transparent picture still reads as an object. */
+  --art-top: rgba(19, 38, 64, 0.9);
+  --art-bottom: rgba(3, 8, 19, 0.9);
+  /* The dotted separator between rows inside a panel, lighter than a panel edge. */
+  --hairline: rgba(146, 180, 176, 0.14);
+  --hairline-faint: rgba(146, 180, 176, 0.12);
+  --zebra: rgba(19, 38, 64, 0.35);
+  /* Control idiom: a brass hairline over a faint brass wash. */
+  --brass-edge: rgba(212, 173, 98, 0.4);
+  --brass-wash-top: rgba(212, 173, 98, 0.11);
+  --brass-wash-bottom: rgba(212, 173, 98, 0.04);
+  /* The game's confirm green and error red, reserved for those two meanings. */
+  --confirm-edge: #80d7c2;
+  --confirm-top: #9ae9d4;
+  --confirm-bottom: #67c6ae;
+  --confirm-ink: #07141b;
+  --error-edge: rgba(220, 128, 110, 0.52);
+  --error-surface: rgba(113, 42, 37, 0.28);
+  --error-ink: #f0c0b6;
+  /* The game's own vignette, which keeps a page from reading as a flat slab. */
+  --vignette: rgba(68, 127, 126, 0.12);
   --line: rgba(185, 151, 86, 0.34);
   --line-soft: rgba(146, 180, 176, 0.18);
   --teal: #5fc6b6;
@@ -52,6 +81,23 @@
   --font-ui: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
+
+  /* Type ramp.
+
+     Nine steps, because a compendium is read by scanning and every step has a distinct job: page
+     title, section title, opening sentence, body, secondary prose, metadata, chip labels, and the
+     game's own two pixel-sized idioms. Those two are inherited rather than chosen — the game's
+     kicker is 9px and its buttons 11px, and rounding them to a rem step would stop the compendium
+     reading as an extension of the game. */
+  --text-display: clamp(1.6rem, 3.4vw, 2.3rem);
+  --text-title: 1.1rem;
+  --text-lead: 1.05rem;
+  --text-body: 1rem;
+  --text-sm: 0.88rem;
+  --text-xs: 0.8rem;
+  --text-2xs: 0.72rem;
+  --text-kicker: 9px;
+  --text-control: 11px;
 }
 
 *,
@@ -64,7 +110,7 @@ body {
   margin: 0;
   background: var(--painted-indigo);
   /* The game's own vignette, which keeps the page from reading as a flat slab. */
-  background-image: radial-gradient(circle at 55% -30%, rgba(68, 127, 126, 0.12), transparent 42%);
+  background-image: radial-gradient(circle at 55% -30%, var(--vignette), transparent 42%);
   background-attachment: fixed;
   color: var(--parchment);
   font-family: var(--font-ui);
@@ -103,11 +149,11 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+  font-size: var(--text-display);
 }
 
 h2 {
-  font-size: 1.1rem;
+  font-size: var(--text-title);
 }
 
 p {
@@ -120,7 +166,7 @@ p {
   display: block;
   margin-bottom: 0.3rem;
   color: var(--kicker);
-  font-size: 9px;
+  font-size: var(--text-kicker);
   font-weight: 800;
   letter-spacing: 0.15em;
   line-height: 1.2;
@@ -130,7 +176,7 @@ p {
 .panel {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: linear-gradient(145deg, #07131e, #030a11 72%);
+  background: linear-gradient(145deg, var(--panel-top), var(--panel-bottom) 72%);
   box-shadow: var(--panel-shadow);
 }
 
@@ -154,7 +200,7 @@ p {
   margin: 0.6rem 0 0;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }
 
 .cards {
@@ -168,7 +214,7 @@ p {
   padding: 0.9rem 1rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: linear-gradient(145deg, #07131e, #030a11 72%);
+  background: linear-gradient(145deg, var(--panel-top), var(--panel-bottom) 72%);
   color: var(--parchment);
 }
 
@@ -184,7 +230,7 @@ p {
 .card-rows {
   color: var(--kicker);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }
 
 /* Wide join tables must scroll rather than break the mobile viewport. */
@@ -196,7 +242,7 @@ p {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  font-size: var(--text-sm);
 }
 
 th {
@@ -206,7 +252,7 @@ th {
   padding: 0.55rem 0.7rem;
   background: var(--painted-elevated);
   color: var(--kicker);
-  font-size: 10px;
+  font-size: var(--text-kicker);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -232,7 +278,7 @@ td {
 }
 
 tbody tr:nth-child(even) {
-  background: rgba(19, 38, 64, 0.35);
+  background: var(--zebra);
 }
 
 /* Long prose in a dense table: bound the column and clamp to a few lines so rows stay uniform.
@@ -252,12 +298,12 @@ tbody tr:nth-child(even) {
 
 .mono {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 
 .num {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   text-align: right;
   white-space: nowrap;
 }
@@ -298,28 +344,28 @@ textarea {
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(3, 10, 17, 0.72);
+  background: var(--panel-inset);
   color: var(--parchment);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 textarea {
   width: 100%;
   min-height: 8.5rem;
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   resize: vertical;
 }
 
 .btn {
   padding: 0.38rem 0.7rem;
-  border: 1px solid rgba(212, 173, 98, 0.4);
+  border: 1px solid var(--brass-edge);
   border-radius: 5px;
-  background: linear-gradient(180deg, rgba(212, 173, 98, 0.11), rgba(212, 173, 98, 0.04));
+  background: linear-gradient(180deg, var(--brass-wash-top), var(--brass-wash-bottom));
   color: var(--brass-warm);
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--text-control);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -332,31 +378,31 @@ textarea {
 
 /* The game's confirm style, reserved for the one primary action on a page. */
 .btn-primary {
-  border: 1px solid #80d7c2;
-  background: linear-gradient(180deg, #9ae9d4, #67c6ae);
-  color: #07141b;
+  border: 1px solid var(--confirm-edge);
+  background: linear-gradient(180deg, var(--confirm-top), var(--confirm-bottom));
+  color: var(--confirm-ink);
 }
 
 .error {
   padding: 0.7rem 0.9rem;
-  border: 1px solid rgba(220, 128, 110, 0.52);
+  border: 1px solid var(--error-edge);
   border-radius: 6px;
-  background: rgba(113, 42, 37, 0.28);
-  color: #f0c0b6;
+  background: var(--error-surface);
+  color: var(--error-ink);
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   white-space: pre-wrap;
 }
 
 .status {
   color: var(--kicker);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 code {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 .chips {
@@ -378,7 +424,7 @@ code {
 
 .chip-note {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 
 .formula {
@@ -394,7 +440,7 @@ code {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: rgba(3, 10, 17, 0.72);
+  background: var(--panel-inset);
   color: var(--lavender-grey);
   overflow-wrap: anywhere;
 }
@@ -402,7 +448,7 @@ code {
 .crumbs {
   margin-bottom: 0.9rem;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 
 .schema-table {
@@ -420,5 +466,5 @@ code {
   padding-left: 1.1rem;
   color: var(--lavender-grey);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }

@@ -107,14 +107,14 @@
 
   .wordmark-name {
     color: var(--brass);
-    font-size: 1.05rem;
+    font-size: var(--text-lead);
     font-weight: 800;
     letter-spacing: 0.02em;
   }
 
   .wordmark-sub {
     color: var(--kicker);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -134,13 +134,13 @@
     padding: 0.3rem 0.55rem;
     border-radius: 7px;
     color: var(--lavender-grey);
-    font-size: 0.86rem;
+    font-size: var(--text-sm);
     font-weight: 600;
     text-decoration: none;
   }
 
   .topbar-nav a:hover {
-    background: rgba(19, 38, 64, 0.7);
+    background: var(--panel-hover);
     color: var(--brass-warm);
     text-decoration: none;
   }
@@ -159,7 +159,7 @@
     margin: 0 auto;
     padding: 1.1rem clamp(1rem, 4vw, 3rem) 2rem;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
   }
 
   .sitefoot-meta {

@@ -23,6 +23,29 @@ colors:
   kicker: "#91c9bf"
   line: "rgba(185, 151, 86, 0.34)"
   line-soft: "rgba(146, 180, 176, 0.18)"
+  hairline: "rgba(146, 180, 176, 0.14)"
+  hairline-faint: "rgba(146, 180, 176, 0.12)"
+  panel-top: "#07131e"
+  panel-bottom: "#030a11"
+  panel-inset: "rgba(3, 10, 17, 0.72)"
+  panel-raised: "rgba(19, 38, 64, 0.5)"
+  panel-hover: "rgba(19, 38, 64, 0.7)"
+  panel-hover-strong: "rgba(19, 38, 64, 0.85)"
+  panel-sunken: "rgba(3, 8, 19, 0.8)"
+  art-top: "rgba(19, 38, 64, 0.9)"
+  art-bottom: "rgba(3, 8, 19, 0.9)"
+  zebra: "rgba(19, 38, 64, 0.35)"
+  vignette: "rgba(68, 127, 126, 0.12)"
+  brass-edge: "rgba(212, 173, 98, 0.4)"
+  brass-wash-top: "rgba(212, 173, 98, 0.11)"
+  brass-wash-bottom: "rgba(212, 173, 98, 0.04)"
+  confirm-edge: "#80d7c2"
+  confirm-top: "#9ae9d4"
+  confirm-bottom: "#67c6ae"
+  confirm-ink: "#07141b"
+  error-edge: "rgba(220, 128, 110, 0.52)"
+  error-surface: "rgba(113, 42, 37, 0.28)"
+  error-ink: "#f0c0b6"
   rarity-common: "#9088a8"
   rarity-uncommon: "#84a56e"
   rarity-rare: "#7dd3fc"
@@ -41,20 +64,47 @@ typography:
     fontSize: "1.1rem"
     fontWeight: 800
     lineHeight: 1.15
+  lead:
+    fontFamily: "{typography.display.fontFamily}"
+    fontSize: "1.05rem"
+    fontWeight: 400
+    lineHeight: 1.5
   body:
     fontFamily: "{typography.display.fontFamily}"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
-  label:
+  sm:
+    fontFamily: "{typography.display.fontFamily}"
+    fontSize: "0.88rem"
+    fontWeight: 400
+    lineHeight: 1.45
+  xs:
+    fontFamily: "{typography.display.fontFamily}"
+    fontSize: "0.8rem"
+    fontWeight: 400
+    lineHeight: 1.4
+  2xs:
+    fontFamily: "{typography.display.fontFamily}"
+    fontSize: "0.72rem"
+    fontWeight: 700
+    letterSpacing: "0.06em"
+    lineHeight: 1.35
+  kicker:
     fontFamily: "{typography.display.fontFamily}"
     fontSize: "9px"
     fontWeight: 800
     letterSpacing: "0.15em"
     lineHeight: 1.2
+  control:
+    fontFamily: "{typography.display.fontFamily}"
+    fontSize: "11px"
+    fontWeight: 800
+    letterSpacing: "0.08em"
+    lineHeight: 1.2
   mono:
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace"
-    fontSize: "0.9rem"
+    fontSize: "0.8rem"
     fontWeight: 400
 rounded:
   chip: "999px"
@@ -70,42 +120,48 @@ spacing:
   xl: "1.4rem"
 components:
   panel:
-    backgroundColor: "linear-gradient(145deg, #07131e, #030a11 72%)"
+    backgroundColor: "linear-gradient(145deg, {colors.panel-top}, {colors.panel-bottom} 72%)"
     rounded: "{rounded.panel}"
     padding: "clamp(0.9rem, 2vw, 1.4rem)"
   button:
-    backgroundColor: "linear-gradient(180deg, rgba(212, 173, 98, 0.11), rgba(212, 173, 98, 0.04))"
+    backgroundColor: "linear-gradient(180deg, {colors.brass-wash-top}, {colors.brass-wash-bottom})"
     textColor: "{colors.brass-warm}"
     rounded: "{rounded.control}"
     padding: "0.38rem 0.7rem"
-    typography: "{typography.label}"
+    typography: "{typography.control}"
   button-active:
-    backgroundColor: "color-mix(in srgb, #d6a94f 22%, transparent)"
+    backgroundColor: "color-mix(in srgb, {colors.brass} 22%, transparent)"
     textColor: "{colors.parchment}"
     rounded: "{rounded.control}"
     padding: "0.38rem 0.7rem"
+  button-primary:
+    backgroundColor: "linear-gradient(180deg, {colors.confirm-top}, {colors.confirm-bottom})"
+    textColor: "{colors.confirm-ink}"
+    rounded: "{rounded.control}"
+    padding: "0.38rem 0.7rem"
   field:
-    backgroundColor: "rgba(3, 10, 17, 0.72)"
+    backgroundColor: "{colors.panel-inset}"
     textColor: "{colors.parchment}"
     rounded: "{rounded.field}"
     padding: "0.45rem 0.6rem"
   chip:
-    backgroundColor: "rgba(19, 38, 64, 0.5)"
+    backgroundColor: "{colors.panel-raised}"
     textColor: "{colors.parchment}"
     rounded: "{rounded.chip}"
     padding: "0.18rem 0.5rem"
+    typography: "{typography.2xs}"
   chip-combat:
-    backgroundColor: "color-mix(in srgb, #b86638 14%, transparent)"
+    backgroundColor: "color-mix(in srgb, {colors.ember} 14%, transparent)"
     textColor: "{colors.parchment}"
     rounded: "{rounded.chip}"
     padding: "0.18rem 0.5rem"
   chip-gathering:
-    backgroundColor: "color-mix(in srgb, #8ed5a4 12%, transparent)"
+    backgroundColor: "color-mix(in srgb, {colors.green} 12%, transparent)"
     textColor: "{colors.parchment}"
     rounded: "{rounded.chip}"
     padding: "0.18rem 0.5rem"
   chip-crafting:
-    backgroundColor: "color-mix(in srgb, #65b9dd 12%, transparent)"
+    backgroundColor: "color-mix(in srgb, {colors.cyan} 12%, transparent)"
     textColor: "{colors.parchment}"
     rounded: "{rounded.chip}"
     padding: "0.18rem 0.5rem"
@@ -137,8 +193,11 @@ Painted indigo is the ground and obsidian the recess; surfaces step up through `
 is rationed: the wordmark, a quantity, a hovered border, an active filter. Parchment is body ink,
 `lavender-grey` is secondary prose, `text-muted` is metadata.
 
-Two colour families are semantic and must never be repurposed for decoration:
+The surface, hairline, control, confirm and error values are all tokens too (`panel-*`, `hairline*`,
+`brass-*`, `confirm-*`, `error-*`). They are alpha-composited over the ground rather than opaque, so
+a panel inside a panel deepens instead of flattening, and every one of them is the game's own value.
 
+Two colour families are semantic and must never be repurposed for decoration:
 - **Rarity** — the seven hues are the game's own and always mean rarity. They tint a name, an art
   frame or a chip value, never a background or an unrelated accent.
 - **The three level scales** — ember for Combat, green for Gathering, cyan for Crafting. These exist
@@ -150,6 +209,28 @@ Two colour families are semantic and must never be repurposed for decoration:
 
 One family, Source Sans 3, the game's own. Hierarchy comes from weight and tracking rather than from
 a second face. Headings are 800 weight and tight; body is 1.5 line-height at normal weight.
+
+The ramp is nine steps, exposed as `--text-*` custom properties, and nothing outside it may declare a
+literal size. Before it existed the codebase carried twenty-two distinct font sizes, eight of them
+between 0.76rem and 0.88rem, which is not a hierarchy but noise: no reader can tell those apart, and
+no contributor could tell which one to reach for.
+
+| Token | Size | Job |
+|---|---|---|
+| `--text-display` | `clamp(1.6rem, 3.4vw, 2.3rem)` | page title |
+| `--text-title` | `1.1rem` | section and card titles |
+| `--text-lead` | `1.05rem` | the opening sentence of a page |
+| `--text-body` | `1rem` | body prose |
+| `--text-sm` | `0.88rem` | secondary prose, descriptions, list rows |
+| `--text-xs` | `0.8rem` | metadata, counts, sub-lines |
+| `--text-2xs` | `0.72rem` | chip labels and fact labels |
+| `--text-kicker` | `9px` | the tracked uppercase kicker |
+| `--text-control` | `11px` | buttons |
+
+The last two are pixel values because they are the game's own: its kicker is 9px and its buttons
+11px, and rounding them onto the rem scale would break the inheritance that makes this read as part
+of Vespera. The one deliberate exception to the ramp is the lettered art fallback, which sizes in
+`em` so the initials scale with whichever art box holds them.
 
 The kicker is the signature: 9px, 800 weight, `0.15em` tracking, uppercase, in `kicker` teal, sitting
 above a page title or as a section heading inside a panel. It is what makes a panel read as a ledger
@@ -213,8 +294,9 @@ border takes the rarity tint.
   boundary of this dataset, never evidence an item cannot be obtained.
 - **Do** reserve layout before art loads, and lazy-load below the fold.
 - **Don't** signal rarity or level scale by colour alone; the label always carries it too.
-- **Don't** introduce a colour literal. Everything comes from the tokens above, which come from the
-  game.
+- **Don't** write a literal colour or font size. Every value comes from a `--` token in `app.css`,
+  and those come from the game. A value that genuinely has no token is a missing token, not an
+  exception: add it here and in `:root` in the same change.
 - **Don't** render a `snake_case` column name, a raw asset path, or a bare enum token to a player.
 - **Don't** add a second shadow step or a card that floats. Depth here is tonal.
 - **Don't** put schema metadata in a page's opening. The build stamp lives in the footer.

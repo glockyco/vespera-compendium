@@ -69,7 +69,7 @@
 <style>
   .lede {
     max-inline-size: 46rem;
-    font-size: 1.05rem;
+    font-size: var(--text-lead);
   }
 
   .home-search {
@@ -80,16 +80,16 @@
   .home-hint {
     margin: 0.5rem 0 0;
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--text-xs);
   }
 
   kbd {
     padding: 0.05rem 0.35rem;
     border: 1px solid var(--line-soft);
     border-radius: 5px;
-    background: rgba(19, 38, 64, 0.6);
+    background: var(--panel-hover);
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
   }
 
   .question-grid {
@@ -109,13 +109,13 @@
 
   .question-title {
     color: var(--parchment);
-    font-size: 1.05rem;
+    font-size: var(--text-lead);
     font-weight: 800;
   }
 
   .question-sub {
     color: var(--lavender-grey);
-    font-size: 0.88rem;
+    font-size: var(--text-sm);
   }
 
   .browse {
@@ -127,7 +127,7 @@
   .browse-group h2 {
     margin-block-end: 0.5rem;
     color: var(--kicker);
-    font-size: 0.76rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -165,13 +165,13 @@
 
   .browse-count {
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
   }
 
   .tools {
     margin-block-start: 2rem;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
   }
 </style>

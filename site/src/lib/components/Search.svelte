@@ -222,7 +222,7 @@
 
   .search-lg .search-input {
     padding: 0.75rem 1rem;
-    font-size: 1.05rem;
+    font-size: var(--text-lead);
   }
 
   .search-results {
@@ -252,7 +252,7 @@
   }
 
   .highlighted a {
-    background: rgba(19, 38, 64, 0.85);
+    background: var(--panel-hover-strong);
   }
 
   .search-text {
@@ -272,7 +272,7 @@
 
   .search-sub {
     color: var(--text-muted);
-    font-size: 0.76rem;
+    font-size: var(--text-xs);
   }
 
   .search-meta {
@@ -284,7 +284,7 @@
 
   .search-kind {
     color: var(--kicker);
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -292,7 +292,7 @@
 
   .search-level {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
   }
 
@@ -300,7 +300,7 @@
     margin: 0;
     padding: 0.5rem;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 
   .sr-only {

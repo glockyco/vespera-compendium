@@ -29,15 +29,15 @@
     padding: 0.18rem 0.5rem;
     border: 1px solid var(--line-soft);
     border-radius: 999px;
-    background: rgba(19, 38, 64, 0.5);
-    font-size: 0.82rem;
+    background: var(--panel-raised);
+    font-size: var(--text-xs);
     line-height: 1.35;
     white-space: nowrap;
   }
 
   .chip-label {
     color: var(--text-muted);
-    font-size: 0.72rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

@@ -48,7 +48,7 @@
   .answer-head h2 {
     margin: 0;
     color: var(--kicker);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -56,7 +56,7 @@
 
   .answer-count {
     color: var(--text-muted);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
   }
 

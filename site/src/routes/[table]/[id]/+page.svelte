@@ -198,7 +198,7 @@
   .record-sub {
     margin-block: -0.25rem 0.5rem;
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--text-xs);
   }
 
   .record-description {
@@ -227,13 +227,15 @@
   .block-more {
     margin: 0.5rem 0 0;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 
   .stat-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: 0.25rem 1rem;
+    /* A wide column gap so a value never sits flush against the next column's label, which reads as
+       one run-on pair. */
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.25rem 2.2rem;
     margin: 0;
   }
 
@@ -243,12 +245,12 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding-block: 0.15rem;
-    border-block-end: 1px dotted rgba(146, 180, 176, 0.14);
+    border-block-end: 1px dotted var(--hairline);
   }
 
   .stat dt {
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--text-xs);
   }
 
   .stat dd {
@@ -266,7 +268,7 @@
 
   .line-list > li + li {
     margin-block-start: 0.15rem;
-    border-block-start: 1px dotted rgba(146, 180, 176, 0.12);
+    border-block-start: 1px dotted var(--hairline-faint);
     padding-block-start: 0.15rem;
   }
 
@@ -297,12 +299,12 @@
     gap: 0.15rem 0.7rem;
     inline-size: 100%;
     color: var(--lavender-grey);
-    font-size: 0.84rem;
+    font-size: var(--text-sm);
   }
 
   .line-fact-label {
     color: var(--text-muted);
-    font-size: 0.68rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

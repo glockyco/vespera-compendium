@@ -46,7 +46,7 @@
     overflow: hidden;
     border: 1px solid var(--line-soft);
     border-radius: 8px;
-    background: linear-gradient(160deg, rgba(19, 38, 64, 0.9), rgba(3, 8, 19, 0.9));
+    background: linear-gradient(160deg, var(--art-top), var(--art-bottom));
   }
 
   .art img {
@@ -100,6 +100,9 @@
 
   .art-empty {
     color: var(--text-muted);
+    /* The one deliberate exception to the type ramp, recorded as such in DESIGN.md. These initials
+       must scale with whichever art box holds them: a 2rem thumbnail and a full-width hero frame
+       are orders apart, so the size is relative rather than a step off the ramp. */
     font-size: 0.7em;
     font-weight: 800;
     letter-spacing: 0.06em;

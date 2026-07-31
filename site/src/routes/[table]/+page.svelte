@@ -306,7 +306,7 @@
   .facet-label {
     min-inline-size: 7rem;
     color: var(--kicker);
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -314,7 +314,7 @@
 
   .facet .btn {
     padding: 0.15rem 0.55rem;
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
   }
 
   .btn-active {
@@ -341,7 +341,7 @@
     gap: 0.8rem;
     margin-block-end: 0.9rem;
     color: var(--lavender-grey);
-    font-size: 0.88rem;
+    font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
   }
 
@@ -382,12 +382,12 @@
     flex-wrap: wrap;
     gap: 0.1rem 0.6rem;
     color: var(--lavender-grey);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
   }
 
   .record-fact-label {
     color: var(--text-muted);
-    font-size: 0.66rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

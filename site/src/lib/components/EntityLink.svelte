@@ -47,7 +47,7 @@
   }
 
   .entity:hover {
-    background: rgba(19, 38, 64, 0.6);
+    background: var(--panel-hover);
     text-decoration: none;
   }
 
@@ -71,7 +71,7 @@
 
   .entity-sub {
     color: var(--text-muted);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     line-height: 1.3;
   }
 </style>

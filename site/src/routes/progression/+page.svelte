@@ -213,7 +213,7 @@
     margin-block-end: 0.4rem;
     padding-inline-start: 0.5rem;
     border-inline-start: 2px solid var(--line-soft);
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.11em;
     text-transform: uppercase;
@@ -237,7 +237,7 @@
   .gutter-count {
     margin: 0 0 0.3rem;
     color: var(--lavender-grey);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 
   .entries {
@@ -252,12 +252,12 @@
     align-items: center;
     gap: 0.4rem;
     padding-block: 0.1rem;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
   }
 
   .entry-meta {
     color: var(--text-muted);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
   }
 
@@ -266,7 +266,7 @@
     border: 1px solid var(--line-soft);
     border-radius: 999px;
     color: var(--brass);
-    font-size: 0.68rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

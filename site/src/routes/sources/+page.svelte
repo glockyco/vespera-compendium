@@ -104,7 +104,7 @@
   .source h2 {
     margin: 0;
     color: var(--parchment);
-    font-size: 1rem;
+    font-size: var(--text-body);
   }
 
   .source-count {
@@ -116,7 +116,7 @@
   .source-blurb {
     margin: 0.3rem 0 0.6rem;
     color: var(--lavender-grey);
-    font-size: 0.86rem;
+    font-size: var(--text-sm);
   }
 
   .rarity-list {
@@ -130,8 +130,8 @@
     justify-content: space-between;
     gap: 0.6rem;
     padding-block: 0.08rem;
-    border-block-end: 1px dotted rgba(146, 180, 176, 0.12);
-    font-size: 0.85rem;
+    border-block-end: 1px dotted var(--hairline-faint);
+    font-size: var(--text-sm);
   }
 
   .rarity-count {
@@ -142,7 +142,7 @@
   .source-rows {
     margin: 0.5rem 0 0;
     color: var(--text-muted);
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
   }
 
   .gap-note {
