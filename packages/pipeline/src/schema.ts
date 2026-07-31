@@ -302,6 +302,10 @@ export const TABLES: readonly TableSpec[] = [
       text("item_id"),
       text("source_kind"),
       text("source_id"),
+      // Carried here so a "where does this come from" answer can name the source and say how hard
+      // it is to reach without joining a different table per source kind.
+      integer("source_level"),
+      text("source_name"),
       integer("ordinal"),
       real("chance"),
       integer("min"),
@@ -315,6 +319,10 @@ export const TABLES: readonly TableSpec[] = [
     primaryKey: ["enemy_id", "ordinal"],
     columns: [
       text("enemy_id"),
+      // A drop is only useful as an answer when it names a place and a difficulty, and both live one
+      // join away. `zone_id` is the first zone listing this enemy; several enemies appear in none.
+      integer("enemy_level"),
+      text("zone_id"),
       integer("ordinal"),
       text("item_id"),
       real("chance"),
@@ -457,6 +465,28 @@ export const TABLES: readonly TableSpec[] = [
     ],
   },
 
+  {
+    /**
+     * One row per entity record, flattened for client-side search. It exists so the site can ship a
+     * single small file instead of fetching twelve tables to answer a keystroke, and so every
+     * result can be rendered identically regardless of which table it came from.
+     */
+    name: "search_index",
+    slug: "search-index",
+    kind: "meta",
+    primaryKey: ["table", "id"],
+    columns: [
+      text("table"),
+      text("id"),
+      text("slug"),
+      text("name"),
+      text("kind"),
+      text("subtitle"),
+      integer("level"),
+      text("rarity"),
+      text("image"),
+    ],
+  },
   {
     name: "meta",
     slug: "meta",

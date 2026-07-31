@@ -45,7 +45,14 @@ const INDEXED: [string, string][] = [
   ["world_boss_gear_stats", "boss_id"],
   ["world_boss_abilities", "boss_id"],
   ["shop_listings", "item_id"],
+  ["search_index", "name"],
 ];
+
+/**
+ * Quotes an identifier. `search_index.table` is a reserved word, and any future column could be
+ * too, so identifiers are quoted everywhere rather than only where a clash is already known.
+ */
+const quote = (name: string): string => `"${name.replaceAll('"', '""')}"`;
 
 export function writeSqlite(dataset: Dataset, filePath: string): void {
   for (const suffix of ["", "-wal", "-shm"]) {
@@ -59,9 +66,11 @@ export function writeSqlite(dataset: Dataset, filePath: string): void {
 
     for (const table of TABLES) {
       const columns = table.columns
-        .map((column) => `${column.name} ${AFFINITY[column.type]}`)
+        .map((column) => `${quote(column.name)} ${AFFINITY[column.type]}`)
         .join(", ");
-      db.run(`CREATE TABLE ${table.name} (${columns}, PRIMARY KEY (${table.primaryKey.join(", ")}))`);
+      db.run(
+        `CREATE TABLE ${quote(table.name)} (${columns}, PRIMARY KEY (${table.primaryKey.map(quote).join(", ")}))`,
+      );
     }
 
     db.transaction(() => {
@@ -70,7 +79,7 @@ export function writeSqlite(dataset: Dataset, filePath: string): void {
         if (rows.length === 0) continue;
         const names = table.columns.map((column) => column.name);
         const statement = db.prepare(
-          `INSERT INTO ${table.name} (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`,
+          `INSERT INTO ${quote(table.name)} (${names.map(quote).join(", ")}) VALUES (${names.map(() => "?").join(", ")})`,
         );
         for (const row of rows) {
           statement.run(
@@ -84,7 +93,7 @@ export function writeSqlite(dataset: Dataset, filePath: string): void {
     })();
 
     for (const [table, column] of INDEXED) {
-      db.run(`CREATE INDEX idx_${table}_${column} ON ${table}(${column})`);
+      db.run(`CREATE INDEX idx_${table}_${column} ON ${quote(table)}(${quote(column)})`);
     }
 
     db.run("VACUUM");

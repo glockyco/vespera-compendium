@@ -191,6 +191,61 @@ export function projectAll(
     else sourcesByItem.set(source.itemId, [source]);
   }
 
+  // The first zone listing each enemy, which is the place a drop answer names. An enemy in no zone
+  // stays null rather than being attached to a plausible one.
+  const zoneByEnemy = new Map<string, string>();
+  for (const zone of zonesDungeons) {
+    for (const enemyId of Array.isArray(zone.enemies) ? zone.enemies : []) {
+      const id = text(enemyId);
+      if (!zoneByEnemy.has(id)) zoneByEnemy.set(id, text(zone.id));
+    }
+  }
+
+  const recipeById = new Map(recipes.map((entry) => [text(entry.id), entry]));
+  const enemyById = new Map(enemies.map((entry) => [text(entry.id), entry]));
+  const nodeById = new Map(gatheringNodes.map((entry) => [text(entry.id), entry]));
+  const questById = new Map(quests.map((entry) => [text(entry.id), entry]));
+  const bossById = new Map(worldBosses.map((entry) => [text(entry.id), entry]));
+  const listingByItem = new Map(shopListings.map((entry) => [text(entry.itemId), entry]));
+  const itemById = new Map(items.map((entry) => [text(entry.id), entry]));
+
+  /**
+   * How a source row describes itself, per kind. World bosses report the gear level they recommend
+   * rather than the level of the gear they drop, because this column says how hard the source is to
+   * reach rather than what it yields.
+   */
+  const sourceDescription = (kind: SourceKind, sourceId: string): { level: Scalar; name: Scalar } => {
+    switch (kind) {
+      case "recipe": {
+        const recipe = recipeById.get(sourceId);
+        return { level: scalar(recipe?.levelReq), name: scalar(recipe?.name) };
+      }
+      case "enemy": {
+        const enemy = enemyById.get(sourceId);
+        return { level: scalar(enemy?.level), name: scalar(enemy?.name) };
+      }
+      case "gathering": {
+        const node = nodeById.get(sourceId);
+        return { level: scalar(node?.levelReq), name: scalar(node?.name) };
+      }
+      case "shop": {
+        // A shop source is keyed by the item itself, so its name is the item's.
+        return {
+          level: scalar(listingByItem.get(sourceId)?.levelReq),
+          name: scalar(itemById.get(sourceId)?.name),
+        };
+      }
+      case "quest": {
+        const quest = questById.get(sourceId);
+        return { level: scalar(quest?.levelReq), name: scalar(quest?.name) };
+      }
+      case "world_boss": {
+        const boss = bossById.get(sourceId);
+        return { level: scalar(boss?.recommendedGearLevel), name: scalar(boss?.name) };
+      }
+    }
+  };
+
   const levelOf = (itemId: string): { level: Scalar; source: LevelSource } => {
     const balance = balanceLevels[itemId]?.level;
     if (typeof balance === "number" && Number.isFinite(balance)) {
@@ -417,6 +472,8 @@ export function projectAll(
     enemy_drops: enemies.flatMap((enemy) =>
       nestedList(enemy, "drops").map((drop, ordinal) => ({
         enemy_id: text(enemy.id),
+        enemy_level: scalar(enemy.level),
+        zone_id: zoneByEnemy.get(text(enemy.id)) ?? null,
         ordinal,
         item_id: text(drop.itemId),
         chance: scalar(drop.chance),
@@ -539,6 +596,7 @@ export function projectAll(
       })),
     ),
     meta: [],
+    search_index: [],
   };
 
   // item_sources ordinals count within one (item, kind, source) group, so they are assigned after
@@ -548,10 +606,13 @@ export function projectAll(
     const group = `${source.itemId}\u0000${source.sourceKind}\u0000${source.sourceId}`;
     const ordinal = sourceOrdinals.get(group) ?? 0;
     sourceOrdinals.set(group, ordinal + 1);
+    const described = sourceDescription(source.sourceKind, source.sourceId);
     return {
       item_id: source.itemId,
       source_kind: source.sourceKind,
       source_id: source.sourceId,
+      source_level: described.level,
+      source_name: described.name,
       ordinal,
       chance: source.chance,
       min: source.min,
@@ -583,6 +644,10 @@ export function projectAll(
   );
 
   sortDataset(dataset);
+
+  // Built after sorting so its row order follows the tables it indexes, and after every entity table
+  // exists so it can read the published columns rather than re-deriving them from composed rows.
+  dataset.search_index = buildSearchIndex(dataset);
 
   dataset.meta = [
     { key: "schema_version", value: String(SCHEMA_VERSION) },
@@ -616,4 +681,79 @@ function sortDataset(dataset: Dataset): void {
       return 0;
     });
   }
+}
+
+/**
+ * How each entity table describes itself in search results.
+ *
+ * `kind` is the singular label a reader sees beside a hit; `level` and `subtitle` are whatever
+ * disambiguates two similarly named records of that type. Zones and dungeons share one table and
+ * are told apart by their own `type` column, so their label is resolved per row.
+ */
+const SEARCH_SHAPES: Record<
+  string,
+  { kind: string | ((row: Row) => string); level?: string; subtitle?: (row: Row) => Scalar }
+> = {
+  items: {
+    kind: "Item",
+    level: "level",
+    subtitle: (row) => [row.type, row.slot].filter(Boolean).join(" · ") || null,
+  },
+  enemies: {
+    kind: "Enemy",
+    level: "level",
+    subtitle: (row) => [row.element, row.attack_style].filter(Boolean).join(" · ") || null,
+  },
+  recipes: { kind: "Recipe", level: "crafting_level", subtitle: (row) => row.category },
+  gathering_nodes: {
+    kind: "Gathering node",
+    level: "gathering_level",
+    subtitle: (row) => row.type,
+  },
+  quests: { kind: "Quest", level: "combat_level", subtitle: (row) => row.category },
+  abilities: { kind: "Ability", level: "combat_level", subtitle: (row) => row.required_class },
+  affixes: { kind: "Affix", subtitle: (row) => row.category },
+  gems: { kind: "Gem", subtitle: (row) => row.family },
+  shop_listings: { kind: "Shop listing", level: "combat_level", subtitle: (row) => row.category },
+  zones_dungeons: {
+    kind: (row) => (row.type === "zone" ? "Zone" : "Dungeon"),
+    level: "combat_level",
+    // The entry level rather than a range: the upper bound of a zone's band is not a published
+    // fact, and inventing one would state something the game does not.
+    subtitle: (row) => (row.combat_level === null ? null : `Combat ${row.combat_level}`),
+  },
+  achievements: { kind: "Achievement", subtitle: (row) => row.category },
+  world_bosses: {
+    kind: "World boss",
+    level: "recommended_gear_level",
+    subtitle: (row) => row.epithet,
+  },
+};
+
+function buildSearchIndex(dataset: Dataset): Row[] {
+  const rows: Row[] = [];
+  for (const table of TABLES) {
+    if (table.kind !== "entity") continue;
+    const shape = SEARCH_SHAPES[table.name];
+    if (!shape) continue;
+    const keyColumn = table.primaryKey[0]!;
+    for (const row of dataset[table.name] ?? []) {
+      const id = String(row[keyColumn] ?? "");
+      if (!id) continue;
+      const level = shape.level ? row[shape.level] : null;
+      rows.push({
+        table: table.name,
+        id,
+        slug: table.slug,
+        // Shop listings are the one entity table whose rows carry no name of their own.
+        name: typeof row.name === "string" && row.name.length > 0 ? row.name : id,
+        kind: typeof shape.kind === "function" ? shape.kind(row) : shape.kind,
+        subtitle: shape.subtitle?.(row) ?? null,
+        level: typeof level === "number" ? level : null,
+        rarity: typeof row.rarity === "string" ? row.rarity : null,
+        image: typeof row.image === "string" ? row.image : null,
+      });
+    }
+  }
+  return rows;
 }

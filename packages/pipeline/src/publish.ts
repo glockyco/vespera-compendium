@@ -41,6 +41,8 @@ type ManifestTable = {
   columns: { name: string; type: string }[];
   json: string;
   csv: string;
+  /** Present when the JSON is emitted with abbreviated keys; maps short key to column name. */
+  jsonKeys?: Record<string, string>;
 };
 
 export type Manifest = {
@@ -53,6 +55,27 @@ export type Manifest = {
   imageCount: number;
   tables: ManifestTable[];
 };
+
+/**
+ * The search index is fetched whole by every visitor who types into the search field, so it is the
+ * one table whose JSON is optimised for the wire rather than for reading: keys are abbreviated and
+ * the output is not pretty-printed. That takes it from 575 KiB to 367 KiB.
+ *
+ * The mapping is published in the manifest rather than agreed by convention, so a consumer can
+ * expand it without hardcoding this list. CSV and SQLite keep the real column names.
+ */
+const SEARCH_INDEX_KEYS: Record<string, string> = {
+  t: "table",
+  i: "id",
+  s: "slug",
+  n: "name",
+  k: "kind",
+  b: "subtitle",
+  l: "level",
+  r: "rarity",
+  g: "image",
+};
+const SEARCH_INDEX_TABLE = "search_index";
 
 /** Rebuilds each row in schema column order so JSON key order is stable across releases. */
 function ordered(dataset: Dataset, tableName: string, columns: readonly string[]): unknown[] {
@@ -120,6 +143,7 @@ export function publish(extractedDir = "extracted", buildId?: string): PublishRe
       columns: table.columns.map((column) => ({ name: column.name, type: column.type })),
       json: `${table.name}.json`,
       csv: `${table.name}.csv`,
+      ...(table.name === SEARCH_INDEX_TABLE ? { jsonKeys: SEARCH_INDEX_KEYS } : {}),
     })),
   };
 
@@ -130,10 +154,18 @@ export function publish(extractedDir = "extracted", buildId?: string): PublishRe
 
     for (const table of TABLES) {
       const columns = table.columns.map((column) => column.name);
-      writeFileSync(
-        path.join(dir, `${table.name}.json`),
-        `${JSON.stringify(ordered(dataset, table.name, columns), null, 2)}\n`,
-      );
+      const rows = ordered(dataset, table.name, columns);
+      const json =
+        table.name === SEARCH_INDEX_TABLE
+          ? JSON.stringify(
+              (rows as Record<string, unknown>[]).map((row) =>
+                Object.fromEntries(
+                  Object.entries(SEARCH_INDEX_KEYS).map(([short, column]) => [short, row[column]]),
+                ),
+              ),
+            )
+          : `${JSON.stringify(rows, null, 2)}\n`;
+      writeFileSync(path.join(dir, `${table.name}.json`), json);
       writeFileSync(
         path.join(dir, `${table.name}.csv`),
         toCsv(columns, dataset[table.name] ?? []),
