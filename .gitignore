@@ -2,6 +2,8 @@ node_modules/
 extracted/
 extracted-*/
 data/
+# Community-evidence captures: third-party messages, kept local and never committed.
+research/
 site/.svelte-kit/
 site/build/
 site/.wrangler/
