@@ -73,6 +73,7 @@ function transformationCategory(table: string, field = ""): string {
   if (table === "gems") return field === "description" ? "gems.description-overlay" : "gems.base-table";
   if (table === "recipes") return field.startsWith("inputs") ? "recipes.input-normalization" : "recipes.runtime-filtering";
   if (table === "gatheringNodes") return field.startsWith("drops") ? "gathering.drop-normalization" : "gathering.runtime-extension";
+  if (table === "achievements") return "achievements.active-filter";
   return `${table}.base-table`;
 }
 

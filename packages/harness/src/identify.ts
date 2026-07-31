@@ -16,6 +16,11 @@ export const RUNTIME_SHAPES: { id: string; probe: string }[] = [
     id: "zonesDungeons",
     probe: '"levelReq" in v && "type" in v && (v.type === "zone" || v.type === "dungeon")',
   },
+  {
+    id: "achievements",
+    probe:
+      '"requirement" in v && v.requirement && typeof v.requirement === "object" && "type" in v.requirement && "target" in v.requirement && "category" in v',
+  },
 ];
 
 export async function identifyTables(
