@@ -366,6 +366,8 @@ code {
 
 .chip-row {
   display: flex;
+  /* Without wrapping, a row of facet chips runs off the side of a phone and clips mid-word. */
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 0.6rem;
 }

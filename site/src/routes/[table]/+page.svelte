@@ -19,16 +19,44 @@
 
   let isCardGrid = $derived(CARD_GRID_TABLES.has(data.name));
 
-  /** Facet values are whatever the data actually contains, so no page offers a filter that matches nothing. */
+  /** The game's own rarity ladder. Alphabetical order puts epic before common and reads as noise. */
+  const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "living"];
+
+  /** A facet chip shows the same words the record pages use, not the raw stored token. */
+  function facetLabel(column: string, value: string): string {
+    if (column === "slot" || column === "gear_slot") return slotLabel(value);
+    if (column === "type" && data.name === "gathering_nodes") return nodeKind(value);
+    return titleCase(value);
+  }
+
+  /**
+   * Facet values are whatever the data actually contains, so no page offers a filter that matches
+   * nothing. Chips are keyed by their *label*, because `ring1` and `ring2` are one slot to a player
+   * and two chips both reading "Ring" would be indistinguishable; selecting one matches either.
+   */
   let facets = $derived.by(() =>
     data.facetColumns.map((column) => {
-      const values = new Set<string>();
+      const byLabel = new Map<string, string[]>();
       for (const row of data.rows as Row[]) {
         const value = row[column];
         if (value === null || value === "") continue;
-        values.add(typeof value === "boolean" ? (value ? "yes" : "no") : String(value));
+        const raw = typeof value === "boolean" ? (value ? "yes" : "no") : String(value);
+        const label = facetLabel(column, raw);
+        const values = byLabel.get(label);
+        if (values) {
+          if (!values.includes(raw)) values.push(raw);
+        } else byLabel.set(label, [raw]);
       }
-      return { column, values: [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) };
+      const entries = [...byLabel.entries()].map(([label, values]) => ({ label, values }));
+      if (column === "rarity") {
+        entries.sort(
+          (left, right) =>
+            RARITY_ORDER.indexOf(left.values[0]!) - RARITY_ORDER.indexOf(right.values[0]!),
+        );
+      } else {
+        entries.sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true }));
+      }
+      return { column, entries };
     }),
   );
 
@@ -56,7 +84,9 @@
     const needle = filter.trim().toLowerCase();
     return (data.rows as Row[]).filter((row) => {
       for (const [column, wanted] of Object.entries(activeFacets)) {
-        if (wanted && facetValue(row, column) !== wanted) return false;
+        if (!wanted) continue;
+        const entry = facets.find((facet) => facet.column === column)?.entries.find((e) => e.label === wanted);
+        if (!entry || !entry.values.includes(facetValue(row, column))) return false;
       }
       if (levelNarrowed && data.levelColumn) {
         const level = row[data.levelColumn];
@@ -87,8 +117,8 @@
     maxLevel = null;
   }
 
-  function toggleFacet(column: string, value: string): void {
-    activeFacets = { ...activeFacets, [column]: activeFacets[column] === value ? "" : value };
+  function toggleFacet(column: string, label: string): void {
+    activeFacets = { ...activeFacets, [column]: activeFacets[column] === label ? "" : label };
   }
 
   /** Text columns render through the formatter that matches their meaning, not through String(). */
@@ -155,15 +185,15 @@
       <div class="facet">
         <span class="facet-label">{columnLabel(facet.column)}</span>
         <div class="chip-row">
-          {#each facet.values as value (value)}
+          {#each facet.entries as entry (entry.label)}
             <button
               type="button"
               class="btn"
-              class:btn-active={activeFacets[facet.column] === value}
-              aria-pressed={activeFacets[facet.column] === value}
-              onclick={() => toggleFacet(facet.column, value)}
+              class:btn-active={activeFacets[facet.column] === entry.label}
+              aria-pressed={activeFacets[facet.column] === entry.label}
+              onclick={() => toggleFacet(facet.column, entry.label)}
             >
-              {facet.column === "type" && data.name === "gathering_nodes" ? nodeKind(value) : titleCase(value)}
+              {entry.label}
             </button>
           {/each}
         </div>

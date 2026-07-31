@@ -62,11 +62,11 @@
   }
 
   .entity-name {
-    overflow: hidden;
+    /* Names wrap rather than truncate. In a narrow column an ellipsis turns "Crownless Hood of
+       Storm Regret" into "Crownless Hood of Storm R", which is not a name a player can match. */
+    overflow-wrap: anywhere;
     color: var(--cyan);
     font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .entity-sub {
