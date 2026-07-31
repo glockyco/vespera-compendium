@@ -1,6 +1,16 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { balance, evalComposition, locateTable, resolveBundles } from "@vespera/core";
+import { balance, collectionSize, evalComposition, locateTable, resolveBundles } from "@vespera/core";
+import {
+  callObjectAfterAnchor,
+  composedDeclarationByAnchor,
+  declarationByAnchor,
+  directTable,
+  frozenObjectAfterAnchor,
+  generated,
+  setByAnchor,
+} from "./anchors.ts";
+import { applyGearBalance } from "./gear.ts";
 
 export type ComposedTable = {
   base: number;
@@ -13,115 +23,6 @@ export type ComposedTables = Record<string, ComposedTable>;
 
 type DataRecord = Record<string, any>;
 
-type AnchoredDeclaration = { symbol: string; text: string };
-
-function declarationByAnchor(
-  source: string,
-  probes: RegExp | RegExp[],
-  expected?: "{" | "[",
-): AnchoredDeclaration {
-  const tests = Array.isArray(probes) ? probes : [probes];
-  const declaration = /(?:^|[\n,])\s*(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=\s*([\[{])/g;
-  let match: RegExpExecArray | null;
-  while ((match = declaration.exec(source))) {
-    if (expected && match[2] !== expected) continue;
-    const open = source.indexOf(match[2]!, match.index);
-    try {
-      const [, end] = balance(source, open);
-      const text = source.slice(open, end);
-      if (!tests.every((probe) => probe.test(text))) {
-        declaration.lastIndex = end;
-        continue;
-      }
-      return { symbol: match[1]!, text };
-    } catch {
-      continue;
-    }
-  }
-  throw new Error(`missing declaration anchor: ${tests.map((probe) => probe.source).join(", ")}`);
-}
-
-function composedDeclarationByAnchor(
-  source: string,
-  probes: RegExp | RegExp[],
-  expected?: "{" | "[",
-  bindings?: Record<string, unknown>,
-): any {
-  return evalComposition(declarationByAnchor(source, probes, expected).text, bindings);
-}
-
-function setByAnchor(source: string, probes: RegExp[]): Set<string> {
-  const calls = /new\s+Set\s*\(/g;
-  let match: RegExpExecArray | null;
-  while ((match = calls.exec(source))) {
-    const open = source.indexOf("(", match.index);
-    try {
-      const [, end] = balance(source, open);
-      const text = source.slice(match.index, end);
-      if (!probes.every((probe) => probe.test(text))) {
-        calls.lastIndex = end;
-        continue;
-      }
-      const raw = evalComposition(source.slice(open, end));
-      return new Set(
-        (Array.isArray(raw) ? raw : Object.keys((raw ?? {}) as object)).map((value) => String(value)),
-      );
-    } catch {
-      continue;
-    }
-  }
-  throw new Error(`missing Set anchor: ${probes.map((probe) => probe.source).join(", ")}`);
-}
-
-function functionByAnchor(source: string, probes: RegExp[]): { symbol: string; text: string } {
-  const functions = /function\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/g;
-  let match: RegExpExecArray | null;
-  while ((match = functions.exec(source))) {
-    const open = source.indexOf("{", match.index);
-    try {
-      const [, end] = balance(source, open);
-      const text = source.slice(match.index, end);
-      if (probes.every((probe) => probe.test(text))) return { symbol: match[1]!, text };
-      functions.lastIndex = end;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error(`missing function anchor: ${probes.map((probe) => probe.source).join(", ")}`);
-}
-
-function generated(source: string, probes: RegExp[], setup: string): any {
-  const fn = functionByAnchor(source, probes);
-  return evalComposition(`(()=>{${setup};${fn.text};return ${fn.symbol}();})()`);
-}
-
-function collectionIds(value: any): Set<string> {
-  return new Set(
-    Array.isArray(value)
-      ? value.map((entry) => String(entry?.id)).filter((id) => id !== "undefined")
-      : Object.keys(value ?? {}),
-  );
-}
-
-function callObjectAfterAnchor(source: string, callPattern: RegExp, idAnchor: string): DataRecord {
-  for (const call of source.matchAll(callPattern)) {
-    const at = call.index ?? 0;
-    if (!source.slice(at, at + 500).includes(idAnchor)) continue;
-    const open = source.indexOf("{", at);
-    const [start, end] = balance(source, open);
-    return evalComposition(source.slice(start, end)) as DataRecord;
-  }
-  throw new Error(`missing call/object anchor: ${idAnchor}`);
-}
-
-function frozenObjectAfterAnchor(source: string, anchor: RegExp): DataRecord {
-  const match = anchor.exec(source);
-  if (!match) throw new Error(`missing object anchor: ${anchor.source}`);
-  const open = source.indexOf("(", match.index);
-  const [, end] = balance(source, open);
-  return evalComposition(source.slice(open + 1, end - 1)) as DataRecord;
-}
-
 function stripAchievementTitle(entry: DataRecord): DataRecord {
   if (!entry?.reward || !Object.prototype.hasOwnProperty.call(entry.reward, "title")) return entry;
   const reward = { ...entry.reward };
@@ -129,9 +30,31 @@ function stripAchievementTitle(entry: DataRecord): DataRecord {
   return { ...entry, reward };
 }
 
-function directTable(source: string, probes: RegExp[], minBytes: number): any {
-  const located = locateTable(source, probes, minBytes);
-  return evalComposition(located.code);
+/**
+ * Achievement gold is not literal. The bundle declares a per-achievement weight table, divides a
+ * fixed total pot across it, rounds each share to 500 gold, then overwrites every matching
+ * achievement's reward. The shipped declaration chain is evaluated as-is so the rounding rules and
+ * the single hand-tuned exception stay the game's own rather than a restatement of them here.
+ */
+function achievementGoldRewards(source: string): Record<string, number> {
+  const weights = /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\(\s*\{\s*wake_first_spark:/.exec(source);
+  if (!weights) throw new Error("missing achievement gold weight table");
+  const derivation = /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\(\s*Object\.fromEntries\(/g;
+  derivation.lastIndex = weights.index;
+  const rewards = derivation.exec(source);
+  if (!rewards) throw new Error("missing achievement gold reward derivation");
+  const [, end] = balance(source, rewards.index + rewards[0].indexOf("("));
+  const declarations = source.slice(weights.index, end);
+  if (!/goldWeight/.test(declarations)) throw new Error("unexpected achievement gold derivation shape");
+  return evalComposition(`(()=>{const ${declarations};return ${rewards[1]};})()`) as Record<string, number>;
+}
+
+function collectionIds(value: unknown): Set<string> {
+  return new Set(
+    Array.isArray(value)
+      ? value.map((entry) => String((entry as { id?: unknown })?.id)).filter((id) => id !== "undefined")
+      : Object.keys((value ?? {}) as object),
+  );
 }
 
 const BOSS_HP_CURVE = [
@@ -341,191 +264,6 @@ function composeEnemies(
   return enemies;
 }
 
-function rarityMultiplier(rarity: unknown): number {
-  return ({ common: 1, uncommon: 1.1, rare: 1.22, epic: 1.36, legendary: 1.52, mythic: 1.7, living: 1.52 } as Record<string, number>)[String(rarity)] ?? 1;
-}
-
-const PERCENT_STATS = new Set([
-  "armorPen", "bleedChance", "blockChance", "blockReduction", "critChance", "critDamage",
-  "dodgeChance", "doubleHitChance", "fireDamage", "fireResist", "freezeChance", "goldFind",
-  "haste", "hpRegenPerTick", "lifeSteal", "manaCostReduction", "poisonApplyChance",
-  "poisonDamage", "poisonResist", "stunChance", "tripleHitChance",
-]);
-const STAT_POWER: Record<string, number> = {
-  attack: 1, strength: 1, defense: 1, intelligence: 1, magicDamage: 1, dexterity: 1,
-  hitpoints: 0.4, maxHp: 0.4, maxMana: 0.18, haste: 2000, critChance: 1000,
-  lifeSteal: 500, fireDamage: 1.2, fireResist: 500, poisonDamage: 1.2, poisonResist: 500,
-  dodgeChance: 500, blockChance: 500, blockReduction: 500, hpRegenPerTick: 200,
-  manaCostReduction: 200,
-};
-const GEAR_CURVE = [
-  { level: 1, offense: 35, health: 30 }, { level: 10, offense: 60, health: 60 },
-  { level: 25, offense: 105, health: 120 }, { level: 32, offense: 130, health: 170 },
-  { level: 40, offense: 160, health: 220 }, { level: 50, offense: 190, health: 280 },
-  { level: 55, offense: 220, health: 350 }, { level: 60, offense: 250, health: 450 },
-  { level: 75, offense: 300, health: 600 }, { level: 85, offense: 370, health: 850 },
-  { level: 95, offense: 430, health: 1200 }, { level: 105, offense: 500, health: 2000 },
-  { level: 120, offense: 560, health: 2800 }, { level: 124, offense: 620, health: 3700 },
-  { level: 130, offense: 640, health: 3900 }, { level: 140, offense: 720, health: 4600 },
-  { level: 150, offense: 780, health: 5200 },
-];
-const CLASS_BUDGETS: Record<string, { attack: number; primary: number; magic: number; defense: number; health: number }> = {
-  barbarian: { attack: 1, primary: 1, magic: 0, defense: 1.95, health: 1.2 },
-  arcanist: { attack: 0.65, primary: 1, magic: 0.45, defense: 1.5, health: 1.08 },
-  warden: { attack: 0.55, primary: 1, magic: 0, defense: 1.45, health: 1.07 },
-  nightblade: { attack: 1.05, primary: 0.35, magic: 0, defense: 1.25, health: 0.95 },
-};
-const OFFENSE_SHARE: Record<string, number> = { mainHand: 0.3, offHand: 0.18, head: 0.08, chest: 0.08, legs: 0.08, amulet: 0.1, ring1: 0.09, ring2: 0.09 };
-const SURVIVAL_SHARE: Record<string, number> = { mainHand: 0, offHand: 0.15, head: 0.15, chest: 0.25, legs: 0.2, amulet: 0.08, ring1: 0.085, ring2: 0.085 };
-const PERCENT_CAPS: Record<string, number> = {
-  armorPen: 0.08, bleedChance: 0.08, blockChance: 0.08, blockReduction: 0.12,
-  critChance: 0.03, critDamage: 0.35, dodgeChance: 0.06, doubleHitChance: 0.08,
-  fireDamage: 0.12, fireResist: 0.15, freezeChance: 0.08, goldFind: 0.15, haste: 0.05,
-  hpRegenPerTick: 0.05, lifeSteal: 0.015, manaCostReduction: 0.08,
-  poisonApplyChance: 0.08, poisonDamage: 0.12, poisonResist: 0.15, stunChance: 0.08,
-  tripleHitChance: 0.04,
-};
-
-function normalizeClassId(value: unknown): string | null {
-  const id = String(value ?? "").trim().toLowerCase();
-  if (!id) return null;
-  return ({ warrior: "barbarian", mage: "arcanist", ranger: "warden", rogue: "nightblade" } as Record<string, string>)[id] ?? id;
-}
-
-function inferItemClass(item: DataRecord, definitions: DataRecord): string | null {
-  if (!item || item.type !== "equipment") return null;
-  const definition = definitions[item.id] as DataRecord | undefined;
-  for (const candidate of [item.classRequirement, item.classAffinity, definition?.classAffinity]) {
-    if (candidate && candidate !== "universal") return normalizeClassId(candidate);
-  }
-  if (["ring1", "ring2", "amulet"].includes(item.slot)) {
-    const id = String(item.id ?? "").toLowerCase();
-    if (/(?:^|[_\s-])(mage|arcanist)(?:[_\s-]|$)/.test(id)) return "arcanist";
-    if (/(?:^|[_\s-])(ranger|warden)(?:[_\s-]|$)/.test(id)) return "warden";
-    if (/(?:^|[_\s-])(rogue|nightblade)(?:[_\s-]|$)/.test(id)) return "nightblade";
-    if (/(?:^|[_\s-])(warrior|barbarian)(?:[_\s-]|$)/.test(id)) return "barbarian";
-  }
-  if (["sword", "shield"].includes(item.subType)) return "barbarian";
-  if (["staff", "tome", "wand"].includes(item.subType)) return "arcanist";
-  if (["bow", "quiver"].includes(item.subType)) return "warden";
-  if (item.subType === "dagger") return "nightblade";
-  if (!["head", "chest", "legs"].includes(item.slot)) return null;
-  const stats = item.stats ?? {};
-  const text = `${item.id ?? ""} ${item.name ?? ""}`.toLowerCase();
-  if (stats.magicDamage || stats.intelligence || /robe|cloth|spell|arcane|arcanist|mage|runebreak|codex|linen/.test(text)) return "arcanist";
-  if (stats.dexterity || /quiver|bow|warden|ranger|trail|wild|hunt/.test(text)) return "warden";
-  if (stats.lifeSteal || stats.poisonDamage || /rogue|nightblade|shadow|stalker|fang|silent|mask|dagger|cowl/.test(text)) return "nightblade";
-  if (stats.strength || /plate|cuirass|helm|greaves|buckler|warrior|barbarian|guard/.test(text)) return "barbarian";
-  return null;
-}
-
-function curveValue(level: number, field: "offense" | "health"): number {
-  if (level <= GEAR_CURVE[0]!.level) return GEAR_CURVE[0]![field];
-  for (let index = 1; index < GEAR_CURVE.length; index++) {
-    const next = GEAR_CURVE[index]!;
-    if (level <= next.level) {
-      const previous = GEAR_CURVE[index - 1]!;
-      const progress = (level - previous.level) / Math.max(1, next.level - previous.level);
-      return previous[field] + (next[field] - previous[field]) * progress;
-    }
-  }
-  return GEAR_CURVE.at(-1)![field];
-}
-
-function statPower(stats: DataRecord): number {
-  return Object.entries(stats).reduce((total, [stat, value]) =>
-    total + (typeof value === "number" ? Math.max(0, value) * (STAT_POWER[stat] ?? 0) : 0), 0);
-}
-
-function composeItems(items: DataRecord, definitions: DataRecord, recipes: DataRecord[]): DataRecord {
-  const standardCategories = new Set(["smithing", "woodworking", "leatherworking", "jewelry"]);
-  const universalBossDrops = new Set(["ironpeak_talisman_vs", "amulet_cinder_vs", "ring_nexus_full_vs"]);
-  const sharedStarters = new Set(["helm_bronze_vs"]);
-  const legacyUniversal = new Set<string>();
-  const standardRecipes = recipes.filter((recipe) => {
-    const output = recipe?.outputs?.[0]?.itemId;
-    return standardCategories.has(recipe?.category) && items[output]?.type === "equipment" &&
-      !/^craft_nightmare_(?:warrior|mage|ranger|rogue)_(?:head|ring|amulet|signet)$/.test(String(recipe?.id ?? ""));
-  });
-  for (const recipe of standardRecipes) {
-    const id = recipe?.outputs?.[0]?.itemId;
-    if (id && !inferItemClass(items[id], definitions) && !sharedStarters.has(id) && !universalBossDrops.has(id)) legacyUniversal.add(id);
-  }
-  const assignments: Record<string, string[]> = {
-    arcanist: ["insignia_ring_vs", "gloomveil_pendant_vs", "blight_relic_vs", "runic_amulet_vs"],
-    warden: ["verdant_charm_vs", "amulet_forest_vs", "tanglewood_idol_vs", "elemental_core_ring_vs", "ring_fire_vs", "ring_plague_vs", "captain_amulet_vs", "amulet_depths_vs", "amulet_plague_vs", "cinderfall_sigil_vs", "amulet_nexus_full_vs"],
-    nightblade: ["ashenvale_ward_vs", "depths_token_vs", "ring_shadow_vs", "ring_pirate_vs"],
-    barbarian: ["trophy_necklace"],
-  };
-  for (const [classId, ids] of Object.entries(assignments)) for (const id of ids) if (items[id]) items[id].classRequirement = classId;
-  for (const id of legacyUniversal) if (items[id] && !items[id].classRequirement) items[id].classRequirement = "barbarian";
-  for (const recipe of standardRecipes) {
-    const id = recipe?.outputs?.[0]?.itemId;
-    const classId = id ? inferItemClass(items[id], definitions) : null;
-    if (id && classId && items[id]) items[id].classRequirement = classId;
-  }
-  for (const id of [...sharedStarters, ...universalBossDrops]) if (items[id]) delete items[id].classRequirement;
-
-  const recipeLevels = new Map<string, number>();
-  for (const recipe of recipes) {
-    const level = Math.max(1, Math.round(Number(recipe?.levelReq) || 1));
-    for (const output of recipe?.outputs ?? []) {
-      if (items[output?.itemId]?.type === "equipment") recipeLevels.set(output.itemId, Math.max(level, recipeLevels.get(output.itemId) ?? 0));
-    }
-  }
-  const balanceLevel = (item: DataRecord): { level: number; downOnly: boolean } | null => {
-    const id = String(item?.id ?? "");
-    if (!id || id.startsWith("wb_") || id === "the_last_memory") return null;
-    const recipeLevel = recipeLevels.get(id);
-    if (recipeLevel) return { level: recipeLevel, downOnly: false };
-    if (id.startsWith("divine_")) return { level: 150, downOnly: false };
-    if (item.rarity === "living") return { level: 120, downOnly: false };
-    if (id.includes("_eternal_")) return { level: 140, downOnly: false };
-    if (id.includes("_spectral_gear_") || id.includes("_spectral_shadow_") || id.includes("offhand_spectral")) return { level: 130, downOnly: false };
-    if (id.startsWith("nightmare_") || id.endsWith("_nightmare")) return { level: 124, downOnly: false };
-    if (id.includes("_void_gear_") || id.includes("_void_shadow_") || id.startsWith("forged_")) return { level: 120, downOnly: false };
-    if (id.startsWith("heroic_") || id.endsWith("_heroic") || id.includes("_abyssal_")) return { level: 105, downOnly: false };
-    const levelByRarity = ({ common: 25, uncommon: 32, rare: 50, epic: 75, legendary: 105, mythic: 140 } as Record<string, number>)[item.rarity];
-    return levelByRarity ? { level: levelByRarity, downOnly: true } : null;
-  };
-  const scaleGroup = (item: DataRecord, names: string[], target: number, rarity: number, downOnly: boolean): void => {
-    const present = names.filter((name) => typeof item.stats?.[name] === "number" && item.stats[name] > 0);
-    if (present.length === 0 || !(target > 0)) return;
-    const power = statPower(Object.fromEntries(present.map((name) => [name, item.stats[name]])));
-    if (!(power > 0) || (downOnly && power * rarity <= target * 1.03)) return;
-    const scale = target / Math.max(1e-6, power * rarity);
-    for (const name of present) item.stats[name] = Math.max(1, Math.round(item.stats[name] * scale));
-  };
-  for (const item of Object.values(items) as DataRecord[]) {
-    if (!(item?.type === "equipment" && item.stats)) continue;
-    const balance = balanceLevel(item);
-    if (!balance) continue;
-    const survivalShare = SURVIVAL_SHARE[item.slot] ?? 0;
-    if (!balance.downOnly && survivalShare > 0) {
-      if (typeof item.stats.defense !== "number") item.stats.defense = 1;
-      if (typeof item.stats.maxHp !== "number" && typeof item.stats.hitpoints !== "number") item.stats.maxHp = 1;
-    }
-    const classId = inferItemClass(item, definitions);
-    const budget = CLASS_BUDGETS[classId ?? ""] ?? {
-      attack: 0.8125, primary: 0.8375, magic: 0.1125, defense: 1.5375, health: 1.075,
-    };
-    const offense = curveValue(balance.level, "offense");
-    const health = curveValue(balance.level, "health");
-    const rarity = recipeLevels.has(item.id) ? 1 : rarityMultiplier(item.rarity === "living" || /(?:^divine_|^heroic_|_heroic$|^nightmare_|_nightmare$|_abyssal_|_void_gear_|_void_shadow_|_spectral_gear_|_spectral_shadow_|offhand_spectral|_eternal_|^the_last_memory$)/.test(item.id) ? "legendary" : item.rarity);
-    const offenseShare = OFFENSE_SHARE[item.slot] ?? 0;
-    scaleGroup(item, ["attack", "strength", "intelligence", "magicDamage", "dexterity"], offense * (budget.attack + budget.primary + budget.magic) * offenseShare, rarity, balance.downOnly);
-    scaleGroup(item, ["defense"], offense * budget.defense * survivalShare, rarity, balance.downOnly);
-    scaleGroup(item, ["hitpoints", "maxHp"], health * budget.health * 0.4 * survivalShare, rarity, balance.downOnly);
-    scaleGroup(item, ["maxMana"], offense * (budget.magic > 0 ? 0.25 : 0.08) * survivalShare, rarity, balance.downOnly);
-    for (const [stat, value] of Object.entries(item.stats)) {
-      if (typeof value === "number" && PERCENT_STATS.has(stat) && PERCENT_CAPS[stat] !== undefined) {
-        item.stats[stat] = Math.max(0, Math.min(value, PERCENT_CAPS[stat]));
-      }
-    }
-  }
-  return items;
-}
-
 export function composeAll(dir = "extracted"): ComposedTables {
   const bundles = resolveBundles(dir);
   const indexSource = readFileSync(path.join(dir, "assets", bundles.index), "utf8");
@@ -561,8 +299,9 @@ export function composeAll(dir = "extracted"): ComposedTables {
   const shippedFeatureFlags = frozenObjectAfterAnchor(indexHtml, /__VESPERA_FEATURE_FLAGS__\s*=\s*Object\.freeze\s*\(/);
   // Late crafting and gathering tiers are gated behind the shipped grandworks flag. While it is
   // off the bundle never evaluates LATE_*_TIER_DEFS, so empty stand-ins keep composition honest.
+  const grandworks = shippedFeatureFlags.grandworks as { enabled?: unknown } | undefined;
   const lateTierFlags = {
-    GRANDWORKS_ENABLED: shippedFeatureFlags.grandworks?.enabled === true,
+    GRANDWORKS_ENABLED: grandworks?.enabled === true,
     LATE_CRAFTING_TIER_DEFS: [],
     LATE_GATHERING_TIER_DEFS: [],
   };
@@ -685,12 +424,16 @@ export function composeAll(dir = "extracted"): ComposedTables {
     zonesDungeons,
   );
 
-  const lateRecipes = composedDeclarationByAnchor(
-    indexSource,
-    [/craft_tower_supply_cache/, /Bind Endless Supply Cache/],
-    "[",
-    lateTierFlags,
-  ) as any[];
+  // The late crafting tier is spread into the shipped recipe table only while grandworks is on,
+  // so composing it unconditionally would publish eleven recipes no player can reach.
+  const lateRecipes = lateTierFlags.GRANDWORKS_ENABLED
+    ? (composedDeclarationByAnchor(
+        indexSource,
+        [/craft_tower_supply_cache/, /Bind Endless Supply Cache/],
+        "[",
+        lateTierFlags,
+      ) as any[])
+    : [];
   const keyRecipes = generated(
     indexSource,
     [/Corruption Key/, /craft_mythic_key_t/, /mythic_keys/],
@@ -740,7 +483,17 @@ export function composeAll(dir = "extracted"): ComposedTables {
   recipes.push(
     callObjectAfterAnchor(indexSource, /[A-Za-z_$][\w$]*\.push\(\s*\{/g, "craft_ring_copper"),
   );
-  composeItems(items, soulbound as DataRecord, recipes);
+  // The shipped pass edits the recipe array it is handed (it removes universal boss-drop recipes
+  // and re-adds the starter ring), and our recipe list already carries both edits, so it gets a copy.
+  applyGearBalance({
+    source: indexSource,
+    items,
+    itemsSymbol: baseItems.symbol,
+    recipes: [...recipes],
+    recipesSymbol: baseRecipes.symbol,
+    definitions: soulbound as DataRecord,
+    featureFlags: shippedFeatureFlags,
+  });
 
   const addedQuests = evalComposition(
     declarationByAnchor(indexSource, [/q_ash_bridge_001/, /Smoke and Bloodstone/], "{").text,
@@ -780,15 +533,21 @@ export function composeAll(dir = "extracted"): ComposedTables {
     quests[quest.id] = quest;
   }
 
-  const lateGathering = composedDeclarationByAnchor(
-    indexSource,
-    [/tower_alloy_seam/, /Dreadcore Hunting Ground/],
-    "[",
-    lateTierFlags,
-  ) as any[];
+  const lateGathering = lateTierFlags.GRANDWORKS_ENABLED
+    ? (composedDeclarationByAnchor(
+        indexSource,
+        [/tower_alloy_seam/, /Dreadcore Hunting Ground/],
+        "[",
+        lateTierFlags,
+      ) as any[])
+    : [];
   const gatheringNodes = [...gatheringBase, ...lateGathering].map(normalizeDropCarrier);
 
-  const achievements = achievementBase.map(stripAchievementTitle);
+  const achievementGold = achievementGoldRewards(indexSource);
+  const achievements = achievementBase.map(stripAchievementTitle).map((achievement) => {
+    const gold = achievementGold[String(achievement?.id)];
+    return Number.isFinite(gold) ? { ...achievement, reward: { gold } } : achievement;
+  });
   const retiredAchievementCategories = setByAnchor(indexSource, [/"abyss"/, /"mythic"/]);
   const retiredAchievementRequirements = setByAnchor(indexSource, [
     /abyss_boss_kills/,
@@ -849,14 +608,14 @@ export function composeAll(dir = "extracted"): ComposedTables {
       value: quests,
     },
     abilities: {
-      base: abilities.length ?? Object.keys(abilities).length,
-      live: abilities.length ?? Object.keys(abilities).length,
+      base: collectionSize(abilities),
+      live: collectionSize(abilities),
       mechanism: "literal",
       value: abilities,
     },
     affixes: {
-      base: affixes.length ?? Object.keys(affixes).length,
-      live: affixes.length ?? Object.keys(affixes).length,
+      base: collectionSize(affixes),
+      live: collectionSize(affixes),
       mechanism: "literal",
       value: affixes,
     },
@@ -867,14 +626,14 @@ export function composeAll(dir = "extracted"): ComposedTables {
       value: gems,
     },
     shopListings: {
-      base: shopListings.length ?? Object.keys(shopListings).length,
-      live: shopListings.length ?? Object.keys(shopListings).length,
+      base: collectionSize(shopListings),
+      live: collectionSize(shopListings),
       mechanism: "literal",
       value: shopListings,
     },
     zonesDungeons: {
-      base: zonesDungeons.length ?? Object.keys(zonesDungeons).length,
-      live: zonesDungeons.length ?? Object.keys(zonesDungeons).length,
+      base: collectionSize(zonesDungeons),
+      live: collectionSize(zonesDungeons),
       mechanism: "literal",
       value: zonesDungeons,
     },
@@ -885,8 +644,8 @@ export function composeAll(dir = "extracted"): ComposedTables {
       value: activeAchievements,
     },
     worldBosses: {
-      base: worldBosses.length ?? Object.keys(worldBosses).length,
-      live: worldBosses.length ?? Object.keys(worldBosses).length,
+      base: collectionSize(worldBosses),
+      live: collectionSize(worldBosses),
       mechanism: "literal",
       value: worldBosses,
     },
