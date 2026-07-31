@@ -11,3 +11,9 @@
 
 /wasm/*
   Cache-Control: public, max-age=31556952, immutable
+
+# Art filenames carry a content hash, so a given URL's bytes never change and a year is safe.
+# The game's own filenames are not: it reuses a name and busts with a query string, which is why
+# the publish step hashes the content into the published path.
+/game/*
+  Cache-Control: public, max-age=31556952, immutable

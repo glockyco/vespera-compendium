@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import type { ComposedTables } from "./compose.ts";
 
@@ -23,7 +24,7 @@ export type ImageRef = {
   id: string;
   /** Path inside the extracted build, without any query suffix. */
   source: string;
-  /** Path inside the published dataset, which is what the `image` column carries. */
+  /** Path inside the published dataset, content-hashed, which is what the `image` column carries. */
   published: string;
 };
 
@@ -64,6 +65,29 @@ function cleanPath(value: unknown): string | null {
 }
 
 /**
+ * Published art paths carry a content hash, which is what lets the CDN serve them immutable for a
+ * year without ever stranding a stale picture.
+ *
+ * The game's own filenames are not safe to cache that way. It reuses a name and busts the cache with
+ * a query string instead — `wood_oak.webp?v=bright-items-20260715` is a reskin of a path that
+ * already existed — so a client told to keep `wood_oak.webp` for a year would keep the wrong art
+ * through the next reskin. Hashing the bytes moves that versioning into the filename, where a CDN
+ * and a browser can both act on it.
+ *
+ * A side benefit worth having in this repository: an art change becomes visible as a diff in the
+ * published dataset rather than an invisible byte swap behind a stable name.
+ */
+const hashes = new Map<string, string>();
+
+function contentHash(file: string): string {
+  const cached = hashes.get(file);
+  if (cached) return cached;
+  const digest = createHash("sha256").update(readFileSync(file)).digest("hex").slice(0, 8);
+  hashes.set(file, digest);
+  return digest;
+}
+
+/**
  * Every image the published dataset references, resolved against the extracted build.
  *
  * A ref whose file is absent is skipped and appended to `missing` rather than throwing: a future
@@ -77,16 +101,21 @@ export function collectImages(
   const refs: ImageRef[] = [];
   const add = (table: string, id: string, source: string | null): void => {
     if (!source || !id) return;
-    if (!existsSync(path.join(extractedDir, source))) {
+    const file = path.join(extractedDir, source);
+    if (!existsSync(file)) {
       missing?.push(`${table}/${id}: ${source}`);
       return;
     }
-    // `assets/items/celestial/skybound-spirit.webp` publishes as `images/items/celestial/...`.
+    // `assets/items/celestial/skybound-spirit.webp` publishes as
+    // `images/items/celestial/skybound-spirit.<hash>.webp`.
+    const relative = source.slice("assets/".length);
+    const extension = path.posix.extname(relative);
+    const stem = relative.slice(0, relative.length - extension.length);
     refs.push({
       table,
       id,
       source,
-      published: path.posix.join("images", source.slice("assets/".length)),
+      published: `images/${stem}.${contentHash(file)}${extension}`,
     });
   };
 
