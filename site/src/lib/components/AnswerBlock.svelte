@@ -6,14 +6,17 @@
    * identical across all twelve and a reader learns the page shape once.
    *
    * `empty` is a sentence, not a dash. A block with nothing in it is usually saying something real
-   * — that no source is modelled for an item, say — and that is worth stating in words.
+   * — that no source is modelled for an item, say — and that is worth stating in words. Callers pass
+   * `isEmpty` explicitly because a snippet that renders nothing is still a snippet, so the presence
+   * of `children` cannot be used to detect it.
    */
   let {
     title,
     empty = undefined,
+    isEmpty = false,
     count = undefined,
     children,
-  }: { title: string; empty?: string; count?: number; children?: Snippet } = $props();
+  }: { title: string; empty?: string; isEmpty?: boolean; count?: number; children?: Snippet } = $props();
 </script>
 
 <section class="panel pad answer">
@@ -21,10 +24,10 @@
     <h2>{title}</h2>
     {#if count !== undefined}<span class="answer-count">{count}</span>{/if}
   </header>
-  {#if children}
+  {#if isEmpty || !children}
+    <p class="answer-empty">{empty ?? "Nothing modelled here yet."}</p>
+  {:else}
     {@render children()}
-  {:else if empty}
-    <p class="answer-empty">{empty}</p>
   {/if}
 </section>
 
