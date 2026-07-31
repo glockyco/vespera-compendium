@@ -1,11 +1,11 @@
 ---
 title: Vespera Data Platform
 type: plan
-status: active
+status: implemented
 created: 2026-07-30
 parent:
 superseded_by:
-archived:
+archived: 2026-07-31
 ---
 
 # Vespera Data Platform
