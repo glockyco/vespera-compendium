@@ -14,106 +14,119 @@ Build versioned machine-readable datasets and player-facing presentation surface
 
 ## File map
 
-- Modify `package.json`: expose extraction, publishing, site, and deploy commands.
-- Create `packages/core/src/anchors.ts`: own the twelve content-shape extraction specifications.
-- Create `packages/pipeline/src/extract.ts`: expose base-table extraction without CLI side effects.
+- Modify `package.json`: expose publishing, data-sync, site, and deploy commands.
+- Create `packages/core/src/build.ts`: own the installed build-id lookup for every package.
+- Create `packages/pipeline/src/anchors.ts`: share the content-shape anchor helpers.
+- Create `packages/pipeline/src/gear.ts`: run the shipped gear-balance passes instead of restating them.
 - Create `packages/pipeline/src/schema.ts`: define the stable schema version and normalized entity and join-table rows.
-- Create `packages/pipeline/src/publish.ts`: emit build-versioned JSON, CSV, and SQLite artifacts plus `latest` copies.
-- Create `packages/pipeline/src/diff.ts`: compare published build metadata and entity ids.
-- Create `packages/pipeline/src/invariants.ts`: validate ids, references, cardinality, and build metadata before publishing.
+- Create `packages/pipeline/src/project.ts`: flatten composed tables into deterministic rows.
+- Create `packages/pipeline/src/invariants.ts`: validate columns, ids, references, cardinality, and metadata before publishing.
+- Create `packages/pipeline/src/csv.ts`, `packages/pipeline/src/sqlite.ts`, `packages/pipeline/src/publish.ts`: emit build-versioned JSON, CSV, and SQLite artifacts plus `latest` copies.
 - Create `site/`: build the SvelteKit entity browser, SQL playground, Sheets page, and static deployment output.
-- Create `wrangler.toml`: configure the assets-only Cloudflare Worker for `vespera.compendiums.org`.
+- Create `site/wrangler.jsonc` and `site/src/worker.ts`: configure the custom-domain Cloudflare Worker for `vespera.compendiums.org`.
 - Modify `README.md`: document publishing and site commands after they exist.
 
 ## Tasks
 
-### Task 1: Stabilize extraction and published schema
+### Task 1: Restore live fidelity and the published schema
 
 **Files:**
-- Create `packages/core/src/anchors.ts`
-- Create `packages/pipeline/src/extract.ts`
+- Create `packages/core/src/build.ts`
+- Create `packages/pipeline/src/anchors.ts`
+- Create `packages/pipeline/src/gear.ts`
 - Create `packages/pipeline/src/schema.ts`
-- Create `packages/pipeline/src/invariants.ts`
-- Modify `packages/core/src/index.ts`
-- Modify `packages/pipeline/src/index.ts`
-- Modify `package.json`
+- Modify `packages/core/src/index.ts`, `packages/pipeline/src/compose.ts`, `packages/pipeline/src/verify.ts`, `packages/pipeline/src/index.ts`, `packages/harness/src/launch.ts`, `packages/harness/src/identify.ts`, `packages/harness/src/probes/parity.ts`, `packages/harness/src/probes/records.ts`
 
-- [ ] Move the twelve base-table specifications into typed content anchors with no hashed filenames or minified aliases.
-  Verification: `bun run extract extracted`
-  Expected: reports base counts for items, enemies, recipes, gathering nodes, quests, abilities, affixes, gems, shop listings, achievements, zones/dungeons, and world bosses.
-- [ ] Define schema version `1` and normalized rows for the twelve entity tables, seven join tables, and metadata table.
+- [x] Own the Steam manifest build-id lookup in `@vespera/core` and delete the pipeline and harness copies, keeping the harness error type its report layer branches on.
+  Verification: `grep -rn "readBuildId\|installedBuildId" packages` and `bunx tsc --noEmit`
+  Expected: one implementation, one harness wrapper, no diagnostics.
+- [x] Bring achievements under the live parity and record probes, publishing only the player-visible set rather than the raw bundle list.
+  Verification: `bun run harness --dir extracted --only parity --only records`
+  Expected: `parity.achievements` matches live and static at the visible count, and record sampling covers achievements.
+- [x] Publish equipment stats and achievement rewards by running the bundle's own module-scope passes, not restated constants, and discover the minified symbols they need by the content they declare.
+  Verification: `bun run harness --dir extracted`
+  Expected: every probe passes, including record samples for items and achievements.
+- [x] Define schema version `1` and normalized rows for the twelve entity tables, sixteen join tables, and metadata table, with canonical column order.
   Verification: `bunx tsc --noEmit`
   Expected: no diagnostics and every row type exported from `@vespera/pipeline`.
-- [ ] Reject duplicate ids, dangling join references, missing build metadata, and unresolved strict-composition dependencies.
-  Verification: `bun run verify extracted`
-  Expected: all static invariants and build-matching runtime evidence pass.
-- [ ] Commit.
+- [x] Commit.
   Message: `feat(pipeline): define published data schema`
 
 ### Task 2: Publish JSON, CSV, and SQLite
 
 **Files:**
-- Create `packages/pipeline/src/publish.ts`
+- Create `packages/pipeline/src/project.ts`
+- Create `packages/pipeline/src/invariants.ts`
 - Create `packages/pipeline/src/csv.ts`
 - Create `packages/pipeline/src/sqlite.ts`
-- Create `packages/pipeline/src/diff.ts`
+- Create `packages/pipeline/src/publish.ts`
 - Modify `packages/pipeline/src/cli.ts`
 - Modify `package.json`
 
-- [ ] Emit `data/<buildId>/` and `data/latest/` with one JSON and CSV file per table, `vespera-latest.sqlite`, and `index.json` carrying `buildId` and `schemaVersion`.
+- [x] Emit `data/<buildId>/` and `data/latest/` with one JSON and CSV file per table, `vespera.sqlite`, and `index.json` carrying `buildId` and `schemaVersion`, ordering every table by its primary key so republishing one build is byte-stable.
   Verification: `bun run publish extracted`
-  Expected: both directories contain twenty table files in each text format, one SQLite database, and one index.
-- [ ] Quote commas, double quotes, CR, and LF according to RFC 4180 and use stable column order from `schema.ts`.
-  Verification: parse `data/latest/items.csv` through the publisher's CSV reader and compare it to `items.json`.
+  Expected: both directories carry twenty-nine table files in each text format, one SQLite database with no journal sidecars, and one index.
+- [x] Reject missing or extra columns, duplicate ids, dangling join references, and row counts disagreeing with the composed tables, writing nothing when a check fails.
+  Verification: disable the item-source filter, run `bun run publish extracted`, then restore it.
+  Expected: exit code `1`, a named `references` failure, and unchanged output files.
+- [x] Quote commas, double quotes, CR, and LF according to RFC 4180 and use stable column order from `schema.ts`.
+  Verification: parse every emitted CSV through the publisher's CSV reader and compare against its JSON.
   Expected: every row and scalar value round-trips.
-- [ ] Populate inverse-source joins for recipes, enemy drops, gathering drops, shops, quests, achievements, and world-boss rewards without labelling missing rows unobtainable.
-  Verification: query `item_sources` in `vespera-latest.sqlite` grouped by `source_kind`.
-  Expected: non-zero recipe, enemy, gathering, and shop groups, with `936` current-build item rows.
-- [ ] Commit.
-  Message: `feat(publish): emit versioned datasets`
+- [x] Populate inverse-source joins for recipes, enemy drops, gathering drops, shops, quests, and world-boss rewards without labelling missing rows unobtainable.
+  Verification: query `item_sources` in `data/latest/vespera.sqlite` grouped by `source_kind`.
+  Expected: non-zero recipe, enemy, gathering, shop, quest, and world-boss groups over the current build's item rows.
+- [x] Commit.
+  Message: `feat(pipeline): emit versioned json csv and sqlite`
 
 ### Task 3: Build the compendium and query surfaces
 
 **Files:**
-- Create `site/package.json`
-- Create `site/svelte.config.js`
-- Create `site/vite.config.ts`
-- Create `site/src/lib/data.ts`
-- Create `site/src/routes/+layout.svelte`
-- Create `site/src/routes/+page.svelte`
-- Create `site/src/routes/[table]/+page.ts`
-- Create `site/src/routes/[table]/+page.svelte`
-- Create `site/src/routes/[table]/[id]/+page.ts`
-- Create `site/src/routes/[table]/[id]/+page.svelte`
-- Create `site/src/routes/query/+page.svelte`
-- Create `site/src/routes/sheets/+page.svelte`
-- Create `site/src/app.css`
+- Create `site/package.json`, `site/svelte.config.js`, `site/vite.config.ts`, `site/tsconfig.json`
+- Create `site/src/app.html`, `site/src/app.css`, `site/src/lib/labels.ts`
+- Create `site/src/lib/server/dataset.ts`, `site/src/lib/server/related.ts`, `site/src/lib/client/sql.ts`
+- Create `site/src/routes/+layout.svelte`, `site/src/routes/+layout.ts`, `site/src/routes/+page.server.ts`, `site/src/routes/+page.svelte`
+- Create `site/src/routes/[table]/+page.server.ts`, `site/src/routes/[table]/+page.svelte`
+- Create `site/src/routes/[table]/[id]/+page.server.ts`, `site/src/routes/[table]/[id]/+page.svelte`
+- Create `site/src/routes/query/+page.svelte`, `site/src/routes/sheets/+page.server.ts`, `site/src/routes/sheets/+page.svelte`, `site/src/routes/404/+page.svelte`
 - Modify `package.json`
 
-- [ ] Configure SvelteKit with `@sveltejs/adapter-static`, root prerendering, and strict fallback-free output in `site/build`.
+- [x] Configure SvelteKit with `@sveltejs/adapter-static`, whole-route prerendering, canonical trailing slashes, and strict fallback-free output in `site/build`.
+  Verification: `bun run site:build` and `bun run site:typecheck`
+  Expected: the build completes with no server-only routes or fallback HTML, and no type diagnostics.
+- [x] Generate one index and detail page per published entity table, taking each key column from the manifest rather than assuming `id`, with plain text for references that name no entity.
   Verification: `bun run site:build`
-  Expected: the build completes without server-only routes or fallback HTML.
-- [ ] Generate one index and detail page per published entity table with raw-id fallback text for unresolved references.
-  Verification: `bun run site:build`
-  Expected: `site/build/items/sword_bronze_vs/index.html` exists and contains links derived from `item_sources`.
-- [ ] Add the in-browser `sql.js` console with inline errors, elapsed time, row count, schema inspection, five example queries, and base64url `#q=` sharing.
-  Verification: run the built site in a browser, execute the enemy-drop example, reload its shared URL, and observe the same SQL and results.
-- [ ] Add copy-ready `IMPORTDATA` formulas for every published CSV and state that missing modelled sources do not prove unobtainability.
-  Verification: inspect the built Sheets page and confirm every formula targets an emitted CSV path.
-- [ ] Commit.
+  Expected: one detail page per entity row, including `site/build/shop-listings/bar_copper_vs/index.html`, and `site/build/items/sword_bronze_vs/index.html` carrying links derived from `item_sources`.
+- [x] Dress the site in the game's own palette, panel treatment, kicker typography and rarity colours, read out of the shipped stylesheets and with the game's font self-hosted.
+  Verification: grep the emitted stylesheet for the game's surface and rarity values, then load `/items/` in a browser.
+  Expected: those values appear in the emitted CSS, and the page renders dark indigo with brass-bordered panels, a tracked kicker, and rarity-coloured rows.
+- [x] Add the in-browser `sql.js` console with inline errors, elapsed query time, row count, schema inspection, five example queries, and base64url `#q=` sharing, loading the database on arrival and running the editor's SQL once it is ready.
+  Verification: open `/query`, watch the network panel, then exercise an empty result, an unknown table, a shared link, and a blocked database fetch.
+  Expected: one database request per session, `Run` never disabled while loading, zero rows reported as such, SQL errors shown inline with the query kept, a shared link repopulating and running itself, and a retry that recovers.
+- [x] Add copy-ready `IMPORTDATA` formulas for every published CSV and state that missing modelled sources do not prove unobtainability.
+  Verification: load the Sheets page and confirm every formula targets an emitted CSV path.
+  Expected: one formula and copy button per published table, all pointing at the deployed data URLs.
+- [x] Commit.
   Message: `feat(site): add compendium data browser`
 
 ### Task 4: Configure and verify deployment
 
 **Files:**
-- Create `wrangler.toml`
+- Create `site/wrangler.jsonc`
+- Create `site/src/worker.ts`
+- Create `site/static/_headers`
 - Modify `README.md`
 - Modify `package.json`
 
-- [ ] Configure an assets-only Worker serving `site/build` at `vespera.compendiums.org` without an automated deploy workflow.
-  Verification: `bunx wrangler deploy --dry-run`
-  Expected: Wrangler accepts the configuration and packages only static assets.
-- [ ] Document the publish, build, and manual deploy commands in `README.md`.
+- [x] Configure a custom-domain Worker serving `site/build` at `vespera.compendiums.org` with no workers.dev hostname and no automated deploy workflow, passing every request straight to the assets binding.
+  Verification: `bun run --cwd site deploy:check`
+  Expected: Wrangler accepts the configuration, reports the assets binding, and prints no workers.dev hostname.
+- [x] Cache hashed assets and the wasm immutably while leaving the published data revalidating, and allow cross-origin reads so spreadsheets can fetch the CSVs.
+  Verification: `curl -I` the deployed CSV and a hashed asset.
+  Expected: `access-control-allow-origin: *` with a revalidating cache on the data, and a one-year immutable cache on hashed assets.
+- [x] Deploy and confirm the live hostname serves the compendium.
+  Verification: `bun run cf-deploy`, then resolve the hostname and request the home page, an entity page, a CSV, and an unknown path.
+  Expected: the custom domain creates its own DNS record, pages return `200`, and an unknown path returns the prerendered 404.
+- [x] Document the publish, build, and manual deploy commands in `README.md`.
   Verification: every documented command exists in `package.json` and every linked path exists.
-- [ ] Commit.
-  Message: `chore(deploy): configure compendium worker`
+- [x] Commit.
+  Message: `feat(site): add sheets page and worker config`
