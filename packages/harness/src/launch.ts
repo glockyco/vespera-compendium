@@ -1,13 +1,13 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { readInstalledBuildId } from "@vespera/core";
 import { connect, type CdpClient } from "./cdp.ts";
 
 const GAME_DIR = path.join(
   os.homedir(),
   "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Vespera",
 );
-const MANIFEST = path.resolve(GAME_DIR, "../../appmanifest_4824420.acf");
 const WINE = "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine";
 const BOTTLE_DRIVE_C = path.join(
   os.homedir(),
@@ -29,15 +29,11 @@ export function findGameDir(): string | null {
 }
 
 export function readBuildId(): string {
-  let source: string;
   try {
-    source = readFileSync(MANIFEST, "utf8");
+    return readInstalledBuildId();
   } catch (cause) {
-    throw new HarnessUnavailableError(`Steam manifest not readable: ${MANIFEST}`, { cause });
+    throw new HarnessUnavailableError(cause instanceof Error ? cause.message : String(cause), { cause });
   }
-  const match = source.match(/"buildid"\s+"(\d+)"/);
-  if (!match) throw new HarnessUnavailableError(`buildid not found in ${MANIFEST}`);
-  return match[1]!;
 }
 
 export function winePathToHost(windowsPath: string): string {

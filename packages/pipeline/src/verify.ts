@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { readInstalledBuildId } from "@vespera/core";
 import { composeAll } from "./compose.ts";
 
 export type VerificationCheck = {
@@ -8,17 +8,6 @@ export type VerificationCheck = {
   status: "PASS" | "FAIL" | "SKIPPED";
   detail: string;
 };
-
-function installedBuildId(): string {
-  const manifest = path.join(
-    os.homedir(),
-    "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/appmanifest_4824420.acf",
-  );
-  const source = readFileSync(manifest, "utf8");
-  const match = source.match(/"buildid"\s+"(\d+)"/);
-  if (!match) throw new Error(`buildid not found in ${manifest}`);
-  return match[1]!;
-}
 
 export function runtimeEvidenceCheck(buildId: string): VerificationCheck {
   const file = path.join("data", buildId, "runtime-evidence.json");
@@ -63,7 +52,7 @@ export function verify(extractedDir = "extracted"): VerificationCheck[] {
   }));
   let buildId: string;
   try {
-    buildId = installedBuildId();
+    buildId = readInstalledBuildId();
   } catch (error) {
     checks.push({
       id: "runtimeEvidence",
