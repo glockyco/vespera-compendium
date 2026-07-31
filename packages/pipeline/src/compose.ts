@@ -45,8 +45,9 @@ function composedDeclarationByAnchor(
   source: string,
   probes: RegExp | RegExp[],
   expected?: "{" | "[",
+  bindings?: Record<string, unknown>,
 ): any {
-  return evalComposition(declarationByAnchor(source, probes, expected).text);
+  return evalComposition(declarationByAnchor(source, probes, expected).text, bindings);
 }
 
 function setByAnchor(source: string, probes: RegExp[]): Set<string> {
@@ -557,6 +558,18 @@ export function composeAll(dir = "extracted"): ComposedTables {
     Object.entries(dungeonWeaponPools[tier] ?? {}).flatMap(([classRequirement, ids]) =>
       ids.map((itemId) => ({ itemId, chance, min: 1, max: 1, classRequirement })),
     );
+  const shippedFeatureFlags = frozenObjectAfterAnchor(indexHtml, /__VESPERA_FEATURE_FLAGS__\s*=\s*Object\.freeze\s*\(/);
+  // Late crafting and gathering tiers are gated behind the shipped grandworks flag. While it is
+  // off the bundle never evaluates LATE_*_TIER_DEFS, so empty stand-ins keep composition honest.
+  const lateTierFlags = {
+    GRANDWORKS_ENABLED: shippedFeatureFlags.grandworks?.enabled === true,
+    LATE_CRAFTING_TIER_DEFS: [],
+    LATE_GATHERING_TIER_DEFS: [],
+  };
+  const questFeatureFlags = {
+    VESPERA_COHESION_PHASE_1_ENABLED: shippedFeatureFlags.cohesionPhase1 === true,
+    VESPERA_GLIMMERROOT_COHESION_PILOT_ENABLED: shippedFeatureFlags.glimmerrootCohesionPilot === true,
+  };
   const itemBase = evalComposition(baseItems.code, {
     getVeiledReliquaryRingScaledStats,
     VEILED_RELIQUARY_RING_MIN_LEVEL: 40,
@@ -564,16 +577,11 @@ export function composeAll(dir = "extracted"): ComposedTables {
   }) as DataRecord;
   const enemyBase = evalComposition(baseEnemies.code, { getNormalDungeonClassWeaponDrops }) as DataRecord[];
   const recipeBase = evalComposition(baseRecipes.code, {
-    LATE_CRAFTING_TIER_DEFS: [],
+    ...lateTierFlags,
     km: () => [],
     normalizeReplacementEndgameRecipe: (recipe: unknown) => recipe,
   }) as DataRecord[];
-  const gatheringBase = evalComposition(baseGathering.code, { LATE_GATHERING_TIER_DEFS: [] }) as DataRecord[];
-  const shippedFeatureFlags = frozenObjectAfterAnchor(indexHtml, /__VESPERA_FEATURE_FLAGS__\s*=\s*Object\.freeze\s*\(/);
-  const questFeatureFlags = {
-    VESPERA_COHESION_PHASE_1_ENABLED: shippedFeatureFlags.cohesionPhase1 === true,
-    VESPERA_GLIMMERROOT_COHESION_PILOT_ENABLED: shippedFeatureFlags.glimmerrootCohesionPilot === true,
-  };
+  const gatheringBase = evalComposition(baseGathering.code, lateTierFlags) as DataRecord[];
   const questBase = evalComposition(baseQuests.code, questFeatureFlags) as DataRecord;
   const achievementBase = evalComposition(baseAchievements.code) as DataRecord[];
 
@@ -681,6 +689,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     indexSource,
     [/craft_tower_supply_cache/, /Bind Endless Supply Cache/],
     "[",
+    lateTierFlags,
   ) as any[];
   const keyRecipes = generated(
     indexSource,
@@ -775,6 +784,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     indexSource,
     [/tower_alloy_seam/, /Dreadcore Hunting Ground/],
     "[",
+    lateTierFlags,
   ) as any[];
   const gatheringNodes = [...gatheringBase, ...lateGathering].map(normalizeDropCarrier);
 
