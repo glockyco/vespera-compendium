@@ -358,18 +358,88 @@ function coverageOf(prior, cutoffMillis) {
   };
 }
 
-/** Opens the pinned-message popout so the client fetches pins, which the collector then sees. */
+/**
+ * Opens the pinned-message popout so the client fetches pins, which the collector then sees.
+ *
+ * The control is a `div[role="button"]`, and calling `.click()` on it does nothing: the client
+ * drives this from pointer events, so the whole sequence has to be dispatched. Returns what the
+ * popout said, which is what distinguishes a channel with no pins from a click that never landed.
+ */
 export async function capturePins(page) {
-  return page
+  const opened = await page
     .evaluate(() => {
-      const button = document.querySelector(
-        'button[aria-label*="Pinned" i], [role="button"][aria-label*="Pinned" i]',
-      );
+      const button = document.querySelector('[role="button"][aria-label="Pinned Messages"]');
       if (!button) return false;
-      button.click();
+      for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+        button.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+      }
       return true;
     })
     .catch(() => false);
+  if (!opened) return { opened: false, empty: null };
+  await sleep(2500);
+  const empty = await page
+    .evaluate(() => {
+      const popout = document.querySelector('[class*="popout"], [role="dialog"]');
+      const text = popout ? popout.innerText : "";
+      // Dismiss it so the next channel's header is clickable.
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return /doesn't have any/i.test(text);
+    })
+    .catch(() => null);
+  return { opened: true, empty };
+}
+
+/**
+ * Collects pins for every already-captured channel and merges them into its archive.
+ *
+ * Pins are not time-bounded the way a message sweep is: a pin from before the cutoff is still the
+ * highest-signal message in a channel, so this runs over the whole roster independently.
+ */
+export async function sweepPins({ page, guildId, outDir, budgetMs = 240000 }) {
+  const rosterFile = path.join(outDir, "_roster.json");
+  if (!existsSync(rosterFile)) throw new Error(`no roster in ${outDir} — run discoverChannels first`);
+  const roster = JSON.parse(readFileSync(rosterFile, "utf8"));
+  const deadline = Date.now() + budgetMs;
+  const results = [];
+
+  for (const channel of roster.channels) {
+    if (channel.kind === "voice" || channel.kind === "forum") continue;
+    if (Date.now() > deadline) {
+      results.push({ channel: channel.name, deferred: true });
+      continue;
+    }
+    const file = path.join(outDir, `${channel.name}.json`);
+    if (!existsSync(file)) continue;
+    const record = JSON.parse(readFileSync(file, "utf8"));
+    if (record.pinsCheckedAt) {
+      results.push({ channel: channel.name, pins: record.pinCount, skipped: "checked" });
+      continue;
+    }
+
+    const collector = attachCollector(page, channel.name);
+    let outcome;
+    try {
+      await page
+        .goto(`https://discord.com/channels/${guildId}/${channel.id}`, { waitUntil: "domcontentloaded" })
+        .catch(() => {});
+      await sleep(5500);
+      outcome = await capturePins(page);
+      await sleep(1200);
+    } finally {
+      collector.detach();
+    }
+
+    const pins = new Map((record.pins ?? []).map((pin) => [pin.id, pin]));
+    for (const [id, pin] of collector.pins) pins.set(id, pin);
+    record.pins = [...pins.values()].sort((l, r) => Date.parse(l.ts) - Date.parse(r.ts));
+    record.pinCount = record.pins.length;
+    record.pinsCheckedAt = new Date().toISOString();
+    record.pinsEmptyState = outcome?.empty ?? null;
+    writeFileSync(file, `${JSON.stringify(record, null, 1)}\n`);
+    results.push({ channel: channel.name, pins: record.pinCount, empty: outcome?.empty, opened: outcome?.opened });
+  }
+  return results;
 }
 
 function summarize(record) {
