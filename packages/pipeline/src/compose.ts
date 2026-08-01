@@ -49,6 +49,27 @@ function achievementGoldRewards(source: string): Record<string, number> {
   return evalComposition(`(()=>{const ${declarations};return ${rewards[1]};})()`) as Record<string, number>;
 }
 
+/**
+ * The transform chain the shipped recipe expression applies to its own array literal.
+ *
+ * `locateTable` stops at the closing bracket, so the chain that follows it was being dropped. One
+ * link in it doubles the XP of every `craft_rune_*` recipe, which meant all 28 rune recipes were
+ * published at half the XP the game awards. Sliced verbatim rather than restated, so a future edit
+ * to the pass travels with the bundle instead of going stale here.
+ */
+function recipeTailSource(source: string): string {
+  const start = source.indexOf(".map(normalizeReplacementEndgameRecipe)");
+  if (start === -1) throw new Error("missing recipe normalization chain");
+  const anchor = ".filter(Boolean)";
+  const end = source.indexOf(anchor, start);
+  if (end === -1) throw new Error("missing recipe filter chain");
+  const tail = source.slice(start, end + anchor.length);
+  if (!/startsWith\("craft_rune_"\)/.test(tail)) {
+    throw new Error("recipe tail no longer carries the rune xp pass");
+  }
+  return tail;
+}
+
 function collectionIds(value: unknown): Set<string> {
   return new Set(
     Array.isArray(value)
@@ -315,7 +336,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     VEILED_RELIQUARY_RING_MAX_LEVEL: 200,
   }) as DataRecord;
   const enemyBase = evalComposition(baseEnemies.code, { getNormalDungeonClassWeaponDrops }) as DataRecord[];
-  const recipeBase = evalComposition(baseRecipes.code, {
+  const recipeBase = evalComposition(baseRecipes.code + recipeTailSource(indexSource), {
     ...lateTierFlags,
     km: () => [],
     normalizeReplacementEndgameRecipe: (recipe: unknown) => recipe,
@@ -344,6 +365,22 @@ export function composeAll(dir = "extracted"): ComposedTables {
   const soulbound = composedDeclarationByAnchor(indexSource, [/classAffinity:/, /soulrender/], "{");
   const gemsDeclaration = declarationByAnchor(indexSource, [/family:/, /rune_power_1/], "{");
   const gems = evalComposition(gemsDeclaration.text) as DataRecord;
+
+  /*
+   * The Tower Rebirth gems. The index bundle imports `TOWER_REBIRTH_GEM_DEFINITIONS` from
+   * `tower-rebirth-system.js` and `Object.assign`s it into both the gem table and the item table,
+   * unconditionally: `TOWER_REBIRTH_ENABLED` gates the Tower system itself, not these records.
+   *
+   * Reading only the literal declaration above missed all six — three Eclipsed and three Apex gems
+   * at tier 5, which the live game has and the composed table did not. The filename carries no
+   * content hash, so it is safe to name.
+   */
+  const towerSource = readFileSync(path.join(dir, "assets", "tower-rebirth-system.js"), "utf8");
+  const towerGems = frozenObjectAfterAnchor(
+    towerSource,
+    /TOWER_REBIRTH_GEM_DEFINITIONS\s*=\s*Object\.freeze/,
+  );
+  Object.assign(gems, towerGems);
   const gemDescriptions: Record<string, string> = {
     power: "A Vesper-forged ruby that drives more force through every strike.",
     guard: "A pale diamond cut to brace armor against the pressure beyond the Veil.",
@@ -376,6 +413,23 @@ export function composeAll(dir = "extracted"): ComposedTables {
     };
   }
   for (const definition of Object.values(gems) as DataRecord[]) {
+    /*
+     * Tower Rebirth gems take the shipped merge's own shape, not the rune-gem one below it. The
+     * bundle spreads the gem and overrides four fields, keyed on tier: a tier-5 Eclipsed Ruby is a
+     * legendary worth 25,000, where `tier * 50` would price it at 250.
+     */
+    if (Object.hasOwn(towerGems, String(definition.id))) {
+      const elite = Number(definition.tier) >= 6;
+      items[definition.id] = {
+        ...definition,
+        id: definition.id,
+        type: "resource",
+        rarity: elite ? "mythic" : "legendary",
+        stackable: true,
+        value: elite ? 75_000 : 25_000,
+      };
+      continue;
+    }
     items[definition.id] = {
       id: definition.id,
       name: definition.name,

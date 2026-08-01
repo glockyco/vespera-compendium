@@ -43,7 +43,9 @@ bunx @electron/asar extract \
   extracted
 ```
 
-Keep the previous extraction as `extracted-<buildId>/` when you want to diff two builds with `tools/diff-builds.mjs`. Composition reads the bundle filenames out of `index.html`, so the hashed asset names never need updating by hand.
+Keep the previous extraction as `extracted-<buildId>/` when you want to diff two builds with `tools/diff-builds.mjs`. Composition reads the bundle filenames out of `index.html`, so the hashed asset names never need updating by hand. Do not read those names as content hashes: the game reuses a filename across builds, so compare bytes rather than names when checking whether an extraction is current.
+
+When a parity probe reports a count mismatch, `bun tools/diff-live-tables.mjs extracted items,gems` names the rows the live game has and the composed dataset does not, which is what turns a count into a traceable pass.
 
 ## Commands
 
@@ -89,20 +91,14 @@ The datasets are stamped with the Steam build id, and `data/latest/` always mirr
 
 ## Project status
 
-The installed game is build `24503450`, and `extracted/` is an older extraction. Publishing stamps the
-installed build id, so `data/latest/` currently carries a stamp its assets do not match. The harness
-measures the gap rather than hiding it: build `24503450` passes 34 probes and fails 3, all of them the
-same drift the harness exists to catch: live has 955 items and 34 gems against 949 and 28 here, and
-`craft_rune_supreme_might` now awards 1000 XP rather than 500. See
-[the evidence report](docs/RUNTIME-EVIDENCE-24503450.md).
+Build `24503450` passes all 38 runtime probes. See [the evidence report](docs/RUNTIME-EVIDENCE-24503450.md)
+for the exact table, record, formula, and save checks.
 
-Re-extracting the installed build clears all three:
-
-```
-mv extracted extracted-24460838
-bunx @electron/asar extract "$HOME/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Vespera/resources/app.asar" extracted
-bun run publish extracted && bun run harness --dir extracted
-```
+Getting there took two composition fixes worth knowing about, because both were invisible to static
+verification and only the live harness could see them. The game reuses its bundle filenames across
+builds, so `index-D6527GFL.js` is not content-addressed and an extraction can be stale while looking
+current; compare bytes, not names. And `locateTable` stops at a table's closing bracket, so a
+transform chained onto the literal is silently dropped.
 
 ## Plans
 

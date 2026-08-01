@@ -1,8 +1,8 @@
 # Runtime evidence — build 24503450
 
-Ran at: 2026-08-01T06:22:09.376Z
+Ran at: 2026-08-01T08:39:39.203Z
 
-PASS 34 · FAIL 3 · SKIPPED 0 · UNRESOLVED 0
+PASS 38 · FAIL 0 · SKIPPED 0 · UNRESOLVED 0
 
 ## Transformation categories
 
@@ -23,11 +23,12 @@ PASS 34 · FAIL 3 · SKIPPED 0 · UNRESOLVED 0
 | items.normalization | 1 | 0 | 0 | 0 |
 | items.runtime-overlay | 1 | 0 | 0 | 0 |
 | items.stat-scaling | 1 | 0 | 0 | 0 |
-| parity.probe | 9 | 2 | 0 | 0 |
+| parity.probe | 11 | 0 | 0 | 0 |
 | quests.chain-rewrite | 1 | 0 | 0 | 0 |
 | quests.reward-rebalance | 1 | 0 | 0 | 0 |
 | quests.runtime-overlay | 1 | 0 | 0 | 0 |
-| recipes.runtime-filtering | 0 | 1 | 0 | 0 |
+| recipes.input-normalization | 1 | 0 | 0 | 0 |
+| recipes.runtime-filtering | 1 | 0 | 0 | 0 |
 | save.probe | 1 | 0 | 0 | 0 |
 | shopListings.base-table | 1 | 0 | 0 | 0 |
 | zonesDungeons.base-table | 1 | 0 | 0 | 0 |
@@ -36,14 +37,14 @@ PASS 34 · FAIL 3 · SKIPPED 0 · UNRESOLVED 0
 
 | Suite | Category | Probe | Status | Detail |
 |---|---|---|---|---|
-| parity | parity.probe | items | FAIL | items: alias=I live=955 static=949 |
+| parity | parity.probe | items | PASS | items: alias=I live=955 static=955 |
 | parity | parity.probe | enemies | PASS | enemies: alias=t live=137 static=137 |
 | parity | parity.probe | recipes | PASS | recipes: alias=R live=585 static=585 |
 | parity | parity.probe | gatheringNodes | PASS | gatheringNodes: alias=G live=61 static=61 |
 | parity | parity.probe | quests | PASS | quests: alias=Q live=161 static=161 |
 | parity | parity.probe | abilities | PASS | abilities: alias=U live=108 static=108 |
 | parity | parity.probe | affixes | PASS | affixes: alias=d live=70 static=70 |
-| parity | parity.probe | gems | FAIL | gems: alias=O live=34 static=28 |
+| parity | parity.probe | gems | PASS | gems: alias=O live=34 static=34 |
 | parity | parity.probe | shopListings | PASS | shopListings: alias=T live=28 static=28 |
 | parity | parity.probe | zonesDungeons | PASS | zonesDungeons: alias=$ live=32 static=32 |
 | parity | parity.probe | achievements | PASS | achievements: alias=a live=100 static=100 |
@@ -53,7 +54,8 @@ PASS 34 · FAIL 3 · SKIPPED 0 · UNRESOLVED 0
 | records | enemies.runtime-extension | enemies | PASS | enemies: 10 deterministic samples matched |
 | records | enemies.stat-scaling | enemies | PASS | enemies: 10 deterministic samples matched |
 | records | enemies.drop-normalization | enemies | PASS | enemies: 10 deterministic samples matched |
-| records | recipes.runtime-filtering | recipes.craft_rune_supreme_might.xp | FAIL | recipes.craft_rune_supreme_might.xp: live=1000 static=500 |
+| records | recipes.runtime-filtering | recipes | PASS | recipes: 10 deterministic samples matched |
+| records | recipes.input-normalization | recipes | PASS | recipes: 10 deterministic samples matched |
 | records | gathering.runtime-extension | gatheringNodes | PASS | gatheringNodes: 9 deterministic samples matched |
 | records | gathering.drop-normalization | gatheringNodes | PASS | gatheringNodes: 9 deterministic samples matched |
 | records | quests.runtime-overlay | quests | PASS | quests: 10 deterministic samples matched |
@@ -62,8 +64,8 @@ PASS 34 · FAIL 3 · SKIPPED 0 · UNRESOLVED 0
 | records | abilities.base-table | abilities | PASS | abilities: 10 deterministic samples matched |
 | records | abilities.tag-overlay | abilities | PASS | abilities: 10 deterministic samples matched |
 | records | affixes.base-table | affixes | PASS | affixes: 10 deterministic samples matched |
-| records | gems.base-table | gems | PASS | gems: 10 deterministic samples matched |
-| records | gems.description-overlay | gems | PASS | gems: 10 deterministic samples matched |
+| records | gems.base-table | gems | PASS | gems: 9 deterministic samples matched |
+| records | gems.description-overlay | gems | PASS | gems: 9 deterministic samples matched |
 | records | shopListings.base-table | shopListings | PASS | shopListings: 10 deterministic samples matched |
 | records | zonesDungeons.base-table | zonesDungeons | PASS | zonesDungeons: 8 deterministic samples matched |
 | records | achievements.active-filter | achievements | PASS | achievements: 10 deterministic samples matched |
