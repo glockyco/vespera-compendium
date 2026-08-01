@@ -28,9 +28,13 @@
    * Routes that carry their own full-width field as the page's primary instrument. Rendering the
    * shell's as well would put two identical, identically-named search boxes on screen, and two live
    * handlers racing for the `/` shortcut, so the shell yields on those routes.
+   *
+   * Keyed on the route id rather than the pathname: the pathname has to be compared against a
+   * `resolve()`d string, which does not match during prerender, so the duplicate shipped in the
+   * static HTML and was only removed once the client hydrated.
    */
-  const OWN_SEARCH = ["/", "/404/"];
-  let showShellSearch = $derived(!OWN_SEARCH.some((route) => page.url.pathname === resolve(route)));
+  const OWN_SEARCH = new Set(["/", "/404"]);
+  let showShellSearch = $derived(!OWN_SEARCH.has(page.route.id ?? ""));
 </script>
 
 <a class="skip" href="#main">Skip to content</a>

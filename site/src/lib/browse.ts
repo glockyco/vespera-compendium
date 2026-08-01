@@ -25,6 +25,28 @@ export const BROWSE_GROUPS: { question: string; tables: string[] }[] = [
 /** Flat table order derived from the groups, which is what the browse strip iterates. */
 export const BROWSE_ORDER: string[] = BROWSE_GROUPS.flatMap((group) => group.tables);
 
+/**
+ * What one row of each table is called.
+ *
+ * Declared rather than derived: stripping a trailing `s` turns Abilities into "abilitie", Enemies
+ * into "enemie" and Affixes into "affixe", and the twelve are a closed set anyway.
+ */
+export const TABLE_SINGULAR: Record<string, string> = {
+  items: "item",
+  enemies: "enemy",
+  recipes: "recipe",
+  gathering_nodes: "gathering node",
+  quests: "quest",
+  abilities: "ability",
+  affixes: "affix",
+  gems: "gem",
+  shop_listings: "shop listing",
+  zones_dungeons: "zone or dungeon",
+  achievements: "achievement",
+  world_bosses: "world boss",
+  classes: "class",
+};
+
 /** Columns each browser renders. `image` is drawn as art rather than as a text column. */
 export const BROWSE_COLUMNS: Record<string, string[]> = {
   items: ["image", "name", "type", "slot", "class_requirement", "rarity", "level", "sell_value"],
@@ -35,7 +57,9 @@ export const BROWSE_COLUMNS: Record<string, string[]> = {
   abilities: ["image", "name", "required_class", "category", "combat_level", "mana_cost", "cooldown"],
   affixes: ["name", "kind", "category", "min_value", "max_value", "value_is_percent"],
   gems: ["image", "name", "family", "tier"],
-  shop_listings: ["item_id", "price", "combat_level", "category", "stock"],
+  // `name` rather than `item_id`: a listing is the item it sells, and the raw id was the only thing
+  // identifying it here before the pipeline joined the name.
+  shop_listings: ["name", "price", "combat_level", "category", "stock"],
   zones_dungeons: ["image", "name", "type", "combat_level", "act", "heroic", "nightmare"],
   achievements: ["image", "name", "category", "requirement_type", "requirement_target", "reward_gold"],
   world_bosses: ["image", "name", "epithet", "recommended_gear_level", "gear_slot"],

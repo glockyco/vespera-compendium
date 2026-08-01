@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import { CARD_GRID_TABLES, columnLabel } from "$lib/browse";
+  import { CARD_GRID_TABLES, columnLabel, TABLE_SINGULAR } from "$lib/browse";
   import Art from "$lib/components/Art.svelte";
   import DataTable from "$lib/components/DataTable.svelte";
   import Search from "$lib/components/Search.svelte";
@@ -18,6 +18,12 @@
   let maxLevel = $state<number | null>(null);
 
   let isCardGrid = $derived(CARD_GRID_TABLES.has(data.name));
+
+  /** "Jump to an item", not "Jump to a item". Four of the twelve table nouns start with a vowel. */
+  let jumpPlaceholder = $derived.by(() => {
+    const singular = TABLE_SINGULAR[data.name] ?? tableLabel(data.name).toLowerCase();
+    return `Jump to ${/^[aeiou]/.test(singular) ? "an" : "a"} ${singular}…`;
+  });
 
   /** The game's own rarity ladder. Alphabetical order puts epic before common and reads as noise. */
   const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "living"];
@@ -174,7 +180,7 @@
 
 <div class="browse-controls">
   <div class="browse-search">
-    <Search scopeTable={data.name} placeholder="Jump to a {tableLabel(data.name).toLowerCase().replace(/s$/, '')}…" />
+    <Search scopeTable={data.name} placeholder={jumpPlaceholder} />
   </div>
   <input type="search" bind:value={filter} placeholder="Filter this list" aria-label="Filter the list" />
 </div>
