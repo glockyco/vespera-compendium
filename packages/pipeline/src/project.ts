@@ -93,6 +93,43 @@ export const LEVEL_SOURCES = [
 ] as const;
 export type LevelSource = (typeof LEVEL_SOURCES)[number];
 
+/**
+ * The game's own shorthand inside a display key. Left alone, `affix.class.mage.time_warp_cd`
+ * renders "Time Warp Cd", which is neither the game's word nor a readable one.
+ */
+const AFFIX_WORDS: Record<string, string> = {
+  cd: "Cooldown",
+  dmg: "Damage",
+  hp: "HP",
+  mp: "MP",
+  xp: "XP",
+  vs: "vs",
+  // A unit, not part of the name: the game's own label for this stat is "+{{value}}ms Stun
+  // Duration", so the unit rides with the value and never with the name.
+  ms: "",
+};
+
+/**
+ * A readable label for an affix, from the game's own `displayKey`.
+ *
+ * `affix.cp.armorPenetration` becomes "Armor Penetration". The game ships the key but no table of
+ * labels for it, so the final segment split on its camel humps is the closest thing to a name that
+ * is still the game's own word rather than an invented one. Falls back to the id, which is the only
+ * other identifier a row has.
+ */
+function affixName(displayKey: unknown, id: string): string {
+  const key = typeof displayKey === "string" ? (displayKey.split(".").pop() ?? "") : "";
+  const source = key || id.replace(/^affix_/, "").replace(/_/g, " ");
+  return source
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((word) => AFFIX_WORDS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .filter((word) => word.length > 0)
+    .join(" ");
+}
+
 export function projectAll(
   composed: ComposedTables,
   buildId: string,
@@ -110,8 +147,11 @@ export function projectAll(
   const zonesDungeons = sourceRows(composed.zonesDungeons?.value);
   const achievements = sourceRows(composed.achievements?.value);
   const worldBosses = sourceRows(composed.worldBosses?.value);
+  const classes = sourceRows(composed.classes?.value);
 
   const itemIds = new Set(items.map((item) => text(item.id)));
+  // Shop listings identify themselves by the item they sell, so name and art resolve through here.
+  const itemNames = new Map(items.map((item) => [text(item.id), text(item.name)]));
   const gatheringNodeIds = new Set(gatheringNodes.map((node) => text(node.id)));
 
   // One normalised art path per row, keyed by (table, id). Resolved here rather than read off the
@@ -332,6 +372,7 @@ export function projectAll(
     recipes: recipes.map((recipe) => ({
       id: text(recipe.id),
       name: scalar(recipe.name),
+      image: image("items", (nestedList(recipe, "outputs")[0] ?? {}).itemId),
       category: scalar(recipe.category),
       crafting_level: scalar(recipe.levelReq),
       xp: scalar(recipe.xp),
@@ -366,6 +407,23 @@ export function projectAll(
         reward_gather_xp: scalar(rewards?.gatherXp),
       };
     }),
+    classes: classes.map((entry) => ({
+      id: text(entry.classId),
+      name: scalar(entry.name),
+      image: image("classes", entry.classId),
+      title: scalar(entry.title),
+      description: scalar(entry.description),
+      focus: scalar(entry.focus),
+      world_role: scalar(entry.worldRole),
+    })),
+    class_traits: classes.flatMap((entry) =>
+      nestedList(entry, "traits").map((trait, ordinal) => ({
+        class_id: text(entry.classId),
+        ordinal,
+        label: scalar(trait.label),
+        tip: scalar(trait.tip),
+      })),
+    ),
     abilities: abilities.map((ability) => {
       const tags = Array.isArray(ability.tags) ? ability.tags.map(text) : [];
       return {
@@ -388,6 +446,7 @@ export function projectAll(
     }),
     affixes: affixes.map((affix) => ({
       id: text(affix.id),
+      name: affixName(affix.displayKey, text(affix.id)),
       kind: scalar(affix.kind),
       category: scalar(affix.category),
       display_key: scalar(affix.displayKey),
@@ -412,6 +471,8 @@ export function projectAll(
     })),
     shop_listings: shopListings.map((listing) => ({
       item_id: text(listing.itemId),
+      name: itemNames.get(text(listing.itemId)) ?? text(listing.itemId),
+      image: image("items", listing.itemId),
       price: scalar(listing.price),
       combat_level: scalar(listing.levelReq),
       category: scalar(listing.category),

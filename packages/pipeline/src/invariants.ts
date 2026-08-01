@@ -41,6 +41,9 @@ const REFERENCES: [string, string, string][] = [
   ["item_stats", "item_id", "items"],
   ["world_boss_gear_stats", "boss_id", "world_bosses"],
   ["world_boss_abilities", "boss_id", "world_bosses"],
+  ["class_traits", "class_id", "classes"],
+  ["abilities", "required_class", "classes"],
+  ["items", "class_requirement", "classes"],
 ];
 
 /** `item_sources.source_id` points at a different table per source kind. */
@@ -74,6 +77,7 @@ const COMPOSED_BY_TABLE: Record<string, string> = {
   zones_dungeons: "zonesDungeons",
   achievements: "achievements",
   world_bosses: "worldBosses",
+  classes: "classes",
 };
 
 export function checkInvariants(dataset: Dataset, composed: ComposedTables): InvariantResult[] {

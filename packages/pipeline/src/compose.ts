@@ -580,6 +580,17 @@ export function composeAll(dir = "extracted"): ComposedTables {
     2_000,
   );
 
+  // The game's own class definitions, which carry the copy the character select shows: a title, a
+  // description, a focus line, a world role, and the four traits each class is built around. The
+  // compendium had been substituting its own one-line summaries for these.
+  const classList = evalComposition(
+    declarationByAnchor(
+      indexSource,
+      [/classId:\s*"barbarian"/, /worldRole:/, /traits:\s*\[/],
+      "[",
+    ).text,
+  );
+
   return {
     items: {
       base: baseItems.count,
@@ -658,6 +669,12 @@ export function composeAll(dir = "extracted"): ComposedTables {
       live: Object.keys(itemLevels).length,
       mechanism: "shipped balance level",
       value: itemLevels,
+    },
+    classes: {
+      base: collectionSize(classList),
+      live: collectionSize(classList),
+      mechanism: "literal",
+      value: classList,
     },
   };
 }

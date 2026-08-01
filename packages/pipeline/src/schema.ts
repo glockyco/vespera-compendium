@@ -105,6 +105,9 @@ export const TABLES: readonly TableSpec[] = [
     columns: [
       text("id"),
       text("name"),
+      // A recipe has no art of its own; the game identifies it by what it produces. Resolved from
+      // the first output's item, the same way a world boss is identified by its reward gear.
+      text("image"),
       text("category"),
       // Named for the skill it gates. `level_req` said nothing about which of the game's three
       // level scales it meant, and the game's own quest guidance is explicit that this is Crafting.
@@ -152,6 +155,34 @@ export const TABLES: readonly TableSpec[] = [
     ],
   },
   {
+    name: "classes",
+    slug: "classes",
+    kind: "entity",
+    primaryKey: ["id"],
+    columns: [
+      text("id"),
+      text("name"),
+      text("image"),
+      // The character select's own one-line characterisation, for example "Relentless front-line
+      // bruiser". Distinct from the longer description below it.
+      text("title"),
+      text("description"),
+      // What the class's numbers actually scale with, in the game's words.
+      text("focus"),
+      // What the class does in the story, which is the only place the published data says so.
+      text("world_role"),
+    ],
+  },
+  {
+    name: "class_traits",
+    slug: "class-traits",
+    kind: "join",
+    // The four traits the game lists under each class. Ordinal preserves its order, which runs from
+    // the class's scaling stat outward to its specialities.
+    primaryKey: ["class_id", "ordinal"],
+    columns: [text("class_id"), integer("ordinal"), text("label"), text("tip")],
+  },
+  {
     name: "abilities",
     slug: "abilities",
     kind: "entity",
@@ -183,6 +214,11 @@ export const TABLES: readonly TableSpec[] = [
     primaryKey: ["id"],
     columns: [
       text("id"),
+      // The game ships no affix name, only `display_key`, which is a lookup key with no shipped
+      // label table behind it. This is that key's final segment split into words, so every surface
+      // shows "Armor Penetration" rather than the raw `affix_armor_penetration` id. Derived, not
+      // the game's own string, which is why `display_key` is published beside it.
+      text("name"),
       text("kind"),
       text("category"),
       text("display_key"),
@@ -220,6 +256,10 @@ export const TABLES: readonly TableSpec[] = [
     primaryKey: ["item_id"],
     columns: [
       text("item_id"),
+      // A listing has no name of its own; it is a price against an item. Resolved from `item_id` so
+      // a listing is identifiable without a join, the same way the browsers and search need it.
+      text("name"),
+      text("image"),
       integer("price"),
       integer("combat_level"),
       text("category"),

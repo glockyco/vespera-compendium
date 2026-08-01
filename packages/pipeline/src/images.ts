@@ -28,14 +28,20 @@ export type ImageRef = {
   published: string;
 };
 
-/** Composed table, published table name, and the field on it that carries a path. */
-const PATH_FIELDS: [composed: string, table: string, field: string][] = [
+/**
+ * Composed table, published table name, the field on it that carries a path, and the field carrying
+ * its primary key where that is not `id`.
+ */
+const PATH_FIELDS: [composed: string, table: string, field: string, idField?: string][] = [
   ["items", "items", "imagePath"],
   ["enemies", "enemies", "icon"],
   ["gatheringNodes", "gathering_nodes", "imagePath"],
   ["abilities", "abilities", "imagePath"],
   ["gems", "gems", "imagePath"],
   ["zonesDungeons", "zones_dungeons", "icon"],
+  // The character-select portraits, which are the only full-figure art the game ships. Class rows
+  // key on `classId` rather than `id`.
+  ["classes", "classes", "image", "classId"],
 ];
 
 /**
@@ -119,9 +125,9 @@ export function collectImages(
     });
   };
 
-  for (const [composedId, table, field] of PATH_FIELDS) {
+  for (const [composedId, table, field, idField = "id"] of PATH_FIELDS) {
     for (const row of rows(composed[composedId]?.value)) {
-      add(table, String(row.id ?? ""), cleanPath(row[field]));
+      add(table, String(row[idField] ?? ""), cleanPath(row[field]));
     }
   }
 
