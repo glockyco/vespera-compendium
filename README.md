@@ -89,7 +89,20 @@ The datasets are stamped with the Steam build id, and `data/latest/` always mirr
 
 ## Project status
 
-Build `24482455` passes all runtime probes. See [the evidence report](docs/RUNTIME-EVIDENCE-24482455.md) for the exact table, record, formula, and save checks.
+The installed game is build `24503450`, and `extracted/` is an older extraction. Publishing stamps the
+installed build id, so `data/latest/` currently carries a stamp its assets do not match. The harness
+measures the gap rather than hiding it: build `24503450` passes 34 probes and fails 3, all of them the
+same drift the harness exists to catch: live has 955 items and 34 gems against 949 and 28 here, and
+`craft_rune_supreme_might` now awards 1000 XP rather than 500. See
+[the evidence report](docs/RUNTIME-EVIDENCE-24503450.md).
+
+Re-extracting the installed build clears all three:
+
+```
+mv extracted extracted-24460838
+bunx @electron/asar extract "$HOME/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Vespera/resources/app.asar" extracted
+bun run publish extracted && bun run harness --dir extracted
+```
 
 ## Plans
 
