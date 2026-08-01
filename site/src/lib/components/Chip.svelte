@@ -28,7 +28,7 @@
     gap: 0.4ch;
     padding: 0.18rem 0.5rem;
     border: 1px solid var(--line-soft);
-    border-radius: 999px;
+    border-radius: var(--radius-chip);
     background: var(--panel-raised);
     font-size: var(--text-xs);
     line-height: 1.35;

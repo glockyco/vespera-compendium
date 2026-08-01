@@ -1,8 +1,8 @@
 import { error } from "@sveltejs/kit";
 import { BROWSE_COLUMNS, FACETS, LEVEL_COLUMN } from "$lib/browse";
-import { entityTables, primaryKeyColumn, table, tableBySlug } from "$lib/server/dataset";
+import { browsableTables, primaryKeyColumn, table, tableBySlug } from "$lib/server/dataset";
 
-export const entries = () => entityTables().map((entry) => ({ table: entry.slug }));
+export const entries = () => browsableTables().map((entry) => ({ table: entry.slug }));
 
 /**
  * Only the columns the browser actually renders are sent.

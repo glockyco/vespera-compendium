@@ -29,7 +29,7 @@
 </p>
 
 <div class="notfound-search">
-  <Search size="lg" placeholder="Search an item, enemy, quest, recipe or zone…" />
+  <Search size="lg" placeholder="Search an item, enemy, quest, recipe or zone…" narrowPlaceholder="Search the compendium…" />
 </div>
 
 <div class="ways">

@@ -10,7 +10,7 @@
    * name beside it, so describing the picture as well makes a screen reader announce the same name
    * twice. `alt` is still required, because it supplies the letters of the fallback.
    */
-  type Size = "sm" | "md" | "lg" | "hero";
+  type Size = "sm" | "md" | "lg" | "hero" | "portrait" | "wide";
 
   let {
     src,
@@ -45,7 +45,7 @@
     flex: 0 0 auto;
     overflow: hidden;
     border: 1px solid var(--line-soft);
-    border-radius: 8px;
+    border-radius: var(--radius-art);
     background: linear-gradient(160deg, var(--art-top), var(--art-bottom));
   }
 
@@ -55,6 +55,37 @@
     object-fit: contain;
     /* The source art is pixel-scaled game UI; smoothing it turns crisp edges to mush. */
     image-rendering: auto;
+  }
+
+  /*
+   * The character-select portraits are the one painted, full-figure art the game ships, and they
+   * are composed as standing figures on their own scene. They fill their frame rather than sitting
+   * contained inside it, which is the only place on the site art is treated as a picture rather
+   * than as an icon.
+   */
+  .art-portrait {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+  }
+
+  .art-portrait img {
+    object-fit: cover;
+    object-position: 50% 12%;
+  }
+
+  /*
+   * Zone and dungeon art is painted landscape — 1024x576 and wider. Contained in a square it
+   * occupies barely half the frame and reads as a colour smear with dead bands above and below, so
+   * places get a box in their own aspect and fill it.
+   */
+  .art-wide {
+    width: 5.5rem;
+    height: 3.1rem;
+  }
+
+  .art-wide img {
+    object-fit: cover;
   }
 
   .art-sm {

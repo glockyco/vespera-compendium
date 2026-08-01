@@ -1,19 +1,23 @@
 import { CLASSES } from "$lib/classes";
-import { table } from "$lib/server/dataset";
+import { rowsWhere, table } from "$lib/server/dataset";
 
 export const load = () => {
   const abilities = table("abilities");
   const items = table("items");
+  const classRows = table("classes");
 
   return {
     classes: CLASSES.map((id) => {
-      const classAbilities = abilities.filter((ability) => ability.required_class === id);
-      const ultimate = classAbilities.find((ability) => ability.category === "ultimate");
+      const record = classRows.find((row) => row.id === id);
       return {
         id,
-        abilityCount: classAbilities.length,
+        name: (record?.name as string) ?? id,
+        title: (record?.title as string) ?? "",
+        worldRole: (record?.world_role as string) ?? "",
+        image: (record?.image as string | null) ?? null,
+        traits: rowsWhere("class_traits", "class_id", id).map((trait) => String(trait.label)),
+        abilityCount: abilities.filter((ability) => ability.required_class === id).length,
         itemCount: items.filter((item) => item.class_requirement === id).length,
-        image: (ultimate?.image as string | null) ?? (classAbilities[0]?.image as string | null) ?? null,
       };
     }),
   };

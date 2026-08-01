@@ -30,10 +30,3 @@ export const SLOTS = [
  * then the payoff, then the subclass specialisation.
  */
 export const ABILITY_CATEGORY_ORDER = ["normal", "heal", "ultimate", "subclass"] as const;
-
-export const CLASS_BLURB: Record<ClassId, string> = {
-  barbarian: "Heavy weapons and staying power.",
-  arcanist: "Elemental damage and burst.",
-  warden: "Ranged control and sustain.",
-  nightblade: "Speed, crits and evasion.",
-};

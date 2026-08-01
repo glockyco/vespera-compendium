@@ -33,7 +33,7 @@
     flex: 1 1 4rem;
     block-size: 0.4rem;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: var(--radius-chip);
     background: var(--panel-sunken);
     box-shadow: inset 0 0 0 1px var(--line-soft);
   }
@@ -41,7 +41,7 @@
   .bar-fill {
     display: block;
     block-size: 100%;
-    border-radius: 999px;
+    border-radius: var(--radius-chip);
     background: linear-gradient(90deg, var(--teal-dust), var(--teal));
   }
 

@@ -66,6 +66,15 @@
   --green: #8ed5a4;
   --red: #dc806e;
   --kicker: #91c9bf;
+  /*
+   * Radius steps with the element's size, which is the game's own habit: a chip is a pill, a control
+   * is barely rounded, a panel is generously so. `--radius` keeps its short name because the panel
+   * is the idiom the whole site is built from.
+   */
+  --radius-chip: 999px;
+  --radius-control: 5px;
+  --radius-field: 6px;
+  --radius-art: 8px;
   --radius: 12px;
   --panel-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 236, 189, 0.05);
 
@@ -343,7 +352,7 @@ input[type="text"],
 textarea {
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-field);
   background: var(--panel-inset);
   color: var(--parchment);
   font-family: inherit;
@@ -361,7 +370,7 @@ textarea {
 .btn {
   padding: 0.38rem 0.7rem;
   border: 1px solid var(--brass-edge);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: linear-gradient(180deg, var(--brass-wash-top), var(--brass-wash-bottom));
   color: var(--brass-warm);
   font-family: inherit;
@@ -386,7 +395,7 @@ textarea {
 .error {
   padding: 0.7rem 0.9rem;
   border: 1px solid var(--error-edge);
-  border-radius: 6px;
+  border-radius: var(--radius-field);
   background: var(--error-surface);
   color: var(--error-ink);
   font-family: var(--font-mono);
@@ -439,7 +448,7 @@ code {
   min-width: 0;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--line-soft);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: var(--panel-inset);
   color: var(--lavender-grey);
   overflow-wrap: anywhere;

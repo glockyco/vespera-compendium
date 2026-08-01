@@ -114,9 +114,24 @@ export function rowsWhere(name: string, column: string, value: Scalar): Row[] {
   return table(name).filter((row) => row[column] === value);
 }
 
+/**
+ * Entity tables the generic browser must not claim, because a dedicated route already owns their
+ * URLs and renders them better.
+ *
+ * SvelteKit gives a static route precedence over a dynamic one, so `/classes/` would resolve to the
+ * class hall either way. Declaring it here means the prerender list says so rather than the outcome
+ * depending on route-matching order.
+ */
+const DEDICATED_SURFACES = new Set(["classes"]);
+
+/** Entity tables the generic `[table]` browser renders. */
+export function browsableTables(): ManifestTable[] {
+  return entityTables().filter((entry) => !DEDICATED_SURFACES.has(entry.name));
+}
+
 /** Every `(slug, key)` pair across the entity tables, which is the detail-page prerender list. */
 export function entityKeys(): { table: string; id: string }[] {
-  return entityTables().flatMap((spec) => {
+  return browsableTables().flatMap((spec) => {
     const column = primaryKeyColumn(spec.name);
     return table(spec.name).map((row) => ({ table: spec.slug, id: String(row[column]) }));
   });

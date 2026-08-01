@@ -39,11 +39,19 @@
 
   let {
     placeholder = "Search items, enemies, quests, recipes…",
+    /**
+     * Shown instead of `placeholder` on a narrow viewport.
+     *
+     * The home field's full prompt overran a 390px box and clipped to "…recipe or zor", which read
+     * as a broken control on the one instrument the page points at.
+     */
+    narrowPlaceholder = null,
     focusOnDesktop = false,
     scopeTable = null,
     size = "md",
   }: {
     placeholder?: string;
+    narrowPlaceholder?: string | null;
     /**
      * Focus the field on mount, but only on a wide viewport with a real pointer.
      *
@@ -59,6 +67,17 @@
 
   const LIMIT = 12;
 
+  let narrow = $state(false);
+  $effect(() => {
+    if (!narrowPlaceholder) return;
+    const query = window.matchMedia("(max-width: 30rem)");
+    const sync = () => (narrow = query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  });
+  let shownPlaceholder = $derived(narrow && narrowPlaceholder ? narrowPlaceholder : placeholder);
+
   let query = $state("");
   let entries = $state<Entry[] | null>(null);
   let loading = $state(false);
@@ -66,15 +85,25 @@
   let open = $state(false);
   let input = $state<HTMLInputElement | null>(null);
   let focused = false;
+  /**
+   * True while the field was focused by us rather than by the visitor.
+   *
+   * The index is deferred to first focus so a visitor who never searches never pays its 367 KiB.
+   * Focusing the home field on desktop would defeat exactly that on the site's busiest route, so a
+   * programmatic focus opens the field without fetching; the first keystroke pays.
+   */
+  let selfFocusing = false;
 
   $effect(() => {
     if (!focusOnDesktop || focused || !input) return;
     // A wide viewport with a real pointer: a desk, not a phone or a tablet held in one hand.
     if (!window.matchMedia("(min-width: 64rem) and (pointer: fine)").matches) return;
     focused = true;
+    selfFocusing = true;
     // preventScroll, because the field may sit below the shell's own copy and focusing it should
     // never yank the page down past the sentence explaining what the site is.
     input.focus({ preventScroll: true });
+    selfFocusing = false;
   });
 
   async function load(): Promise<void> {
@@ -176,14 +205,15 @@
     bind:value={query}
     type="search"
     class="search-input"
-    {placeholder}
+    placeholder={shownPlaceholder}
     autocomplete="off"
     spellcheck="false"
     aria-label={scopeTable ? `Search ${scopeTable.replace(/_/g, " ")}` : "Search the compendium"}
     onfocus={() => {
       open = true;
-      void load();
+      if (!selfFocusing) void load();
     }}
+    oninput={() => void load()}
     onblur={() => setTimeout(() => (open = false), 140)}
     onkeydown={onKeydown}
   />
@@ -263,7 +293,7 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.35rem 0.45rem;
-    border-radius: 8px;
+    border-radius: var(--radius-art);
     color: inherit;
     text-decoration: none;
   }

@@ -41,7 +41,7 @@
     gap: 0.55rem;
     min-inline-size: 0;
     padding: 0.2rem 0.35rem 0.2rem 0.2rem;
-    border-radius: 8px;
+    border-radius: var(--radius-art);
     color: inherit;
     text-decoration: none;
   }

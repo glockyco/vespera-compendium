@@ -264,7 +264,7 @@
   .tag {
     padding: 0.05rem 0.4rem;
     border: 1px solid var(--line-soft);
-    border-radius: 999px;
+    border-radius: var(--radius-chip);
     color: var(--brass);
     font-size: var(--text-2xs);
     font-weight: 700;

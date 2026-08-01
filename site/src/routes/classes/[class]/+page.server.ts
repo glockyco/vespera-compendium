@@ -48,6 +48,20 @@ export const load = ({ params }: { params: { class: string } }) => {
 
   const classItems = table("items").filter((item) => item.class_requirement === classId);
 
+  const record = table("classes").find((row) => row.id === classId);
+  const profile = {
+    name: (record?.name as string) ?? classId,
+    title: (record?.title as string) ?? "",
+    description: (record?.description as string) ?? "",
+    focus: (record?.focus as string) ?? "",
+    worldRole: (record?.world_role as string) ?? "",
+    image: (record?.image as string | null) ?? null,
+    traits: rowsWhere("class_traits", "class_id", classId).map((trait) => ({
+      label: String(trait.label ?? ""),
+      tip: String(trait.tip ?? ""),
+    })),
+  };
+
   const slots = SLOTS.map((slot) => ({
     slot,
     items: classItems
@@ -63,5 +77,5 @@ export const load = ({ params }: { params: { class: string } }) => {
       .sort((left, right) => (left.level ?? 0) - (right.level ?? 0)),
   }));
 
-  return { classId, abilities, slots, itemCount: classItems.length };
+  return { classId, profile, abilities, slots, itemCount: classItems.length };
 };

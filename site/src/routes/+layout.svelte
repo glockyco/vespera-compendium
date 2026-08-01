@@ -1,6 +1,7 @@
 <script lang="ts">
   import "@fontsource-variable/source-sans-3";
   import "../app.css";
+  import { page } from "$app/state";
   import { resolve } from "$app/paths";
   import Search from "$lib/components/Search.svelte";
   import type { LayoutData } from "./$types";
@@ -22,6 +23,14 @@
   ];
 
   let generated = $derived(data.generatedAt.slice(0, 10));
+
+  /**
+   * Routes that carry their own full-width field as the page's primary instrument. Rendering the
+   * shell's as well would put two identical, identically-named search boxes on screen, and two live
+   * handlers racing for the `/` shortcut, so the shell yields on those routes.
+   */
+  const OWN_SEARCH = ["/", "/404/"];
+  let showShellSearch = $derived(!OWN_SEARCH.some((route) => page.url.pathname === resolve(route)));
 </script>
 
 <a class="skip" href="#main">Skip to content</a>
@@ -33,9 +42,11 @@
       <span class="wordmark-sub">Compendium</span>
     </a>
 
-    <div class="topbar-search">
-      <Search />
-    </div>
+    {#if showShellSearch}
+      <div class="topbar-search">
+        <Search />
+      </div>
+    {/if}
 
     <nav class="topbar-nav" aria-label="Sections">
       {#each DESTINATIONS as destination (destination.href)}
@@ -70,7 +81,7 @@
     inset-block-start: 0.5rem;
     inset-inline-start: 0.5rem;
     padding: 0.5rem 0.8rem;
-    border-radius: 8px;
+    border-radius: var(--radius-art);
     background: var(--painted-elevated);
   }
 
@@ -132,7 +143,7 @@
 
   .topbar-nav a {
     padding: 0.3rem 0.55rem;
-    border-radius: 7px;
+    border-radius: var(--radius-control);
     color: var(--lavender-grey);
     font-size: var(--text-sm);
     font-weight: 600;
