@@ -25,7 +25,7 @@
 </p>
 
 <div class="home-search">
-  <Search size="lg" placeholder="Search an item, enemy, quest, recipe or zone…" />
+  <Search size="lg" focusOnDesktop placeholder="Search an item, enemy, quest, recipe or zone…" />
   <p class="home-hint">Press <kbd>/</kbd> from anywhere to search.</p>
 </div>
 

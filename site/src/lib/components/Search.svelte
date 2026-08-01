@@ -39,12 +39,19 @@
 
   let {
     placeholder = "Search items, enemies, quests, recipes…",
-    autofocus = false,
+    focusOnDesktop = false,
     scopeTable = null,
     size = "md",
   }: {
     placeholder?: string;
-    autofocus?: boolean;
+    /**
+     * Focus the field on mount, but only on a wide viewport with a real pointer.
+     *
+     * Not the `autofocus` attribute: that fires everywhere, and on a phone it opens the keyboard
+     * over the content the visitor came to read. It also moves focus without announcing it, which
+     * is why Svelte warns on it. Pressing `/` reaches this field from anywhere regardless.
+     */
+    focusOnDesktop?: boolean;
     /** Restricts results to one published table, for the entity browsers. */
     scopeTable?: string | null;
     size?: "md" | "lg";
@@ -58,6 +65,17 @@
   let highlighted = $state(0);
   let open = $state(false);
   let input = $state<HTMLInputElement | null>(null);
+  let focused = false;
+
+  $effect(() => {
+    if (!focusOnDesktop || focused || !input) return;
+    // A wide viewport with a real pointer: a desk, not a phone or a tablet held in one hand.
+    if (!window.matchMedia("(min-width: 64rem) and (pointer: fine)").matches) return;
+    focused = true;
+    // preventScroll, because the field may sit below the shell's own copy and focusing it should
+    // never yank the page down past the sentence explaining what the site is.
+    input.focus({ preventScroll: true });
+  });
 
   async function load(): Promise<void> {
     if (entries || loading) return;
@@ -168,7 +186,6 @@
     }}
     onblur={() => setTimeout(() => (open = false), 140)}
     onkeydown={onKeydown}
-    {autofocus}
   />
 
   <p class="sr-only" aria-live="polite">
