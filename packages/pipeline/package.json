@@ -2,5 +2,9 @@
   "name": "@vespera/pipeline",
   "type": "module",
   "private": true,
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "dependencies": {
+    "@vespera/core": "workspace:*",
+    "sharp": "^0.34.4"
+  }
 }

@@ -2,11 +2,11 @@
   "name": "@vespera/site",
   "version": "0.0.0",
   "private": true,
-  "description": "SvelteKit static compendium — entity browser, SQL playground, spreadsheet feeds",
+  "description": "SvelteKit static compendium \u2014 entity browser, SQL playground, spreadsheet feeds",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "bun run ../tools/build-site.ts",
     "typecheck": "svelte-kit sync && tsc -p .",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "deploy:check": "wrangler deploy --dry-run --config wrangler.jsonc"
