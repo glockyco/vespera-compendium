@@ -1,13 +1,13 @@
 /**
- * Turning published values into the words a player reads.
+ * Converts published values to the words a player reads.
  *
- * Every function here exists because the raw value is either unreadable (`0.05625`), ambiguous
- * (a bare `10` that could be any of three level scales), or an identifier the game never shows a
- * player (`maxHp`). Formatting lives in one module so a number reads identically wherever it
- * appears, and so the rule that the three level scales are never merged has one place to hold.
+ * Raw values can be unreadable, ambiguous, or hidden game identifiers.
+ * For example, `0.05625`, a bare `10`, and `maxHp` need context.
+ * One module formats these values the same way on every page.
+ * It also keeps the three level scales separate.
  */
 
-/** `0.05625` -> `5.6%`. Below a tenth of a percent, the exact figure is noise. */
+/** `0.05625` becomes `5.6%`. Below one tenth of a percent, the exact figure is noise. */
 export function chance(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
   if (value >= 1) return "always";
@@ -16,7 +16,7 @@ export function chance(value: number | null): string {
   return `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`;
 }
 
-/** Milliseconds as the game states them: `13000` -> `13s`, `300000` -> `5m`. */
+/** Formats milliseconds as the game states them: `13000` becomes `13s`, and `300000` becomes `5m`. */
 export function duration(ms: number | null): string {
   if (ms === null || !Number.isFinite(ms)) return "—";
   if (ms < 1000) return `${ms}ms`;
@@ -32,10 +32,7 @@ export function gold(value: number | null): string {
   return value === null || !Number.isFinite(value) ? "—" : value.toLocaleString("en-US");
 }
 
-/**
- * The stats the game treats as percentages. Anything outside this set is a flat amount, so `+120`
- * and `4%` are never confused for one another.
- */
+/** These stats use percentages. Other stats use flat amounts, so `+120` and `4%` stay distinct. */
 const PERCENT_STATS = new Set([
   "critChance",
   "blockChance",
@@ -48,7 +45,7 @@ const PERCENT_STATS = new Set([
   "poisonApplyChance",
 ]);
 
-/** Stat keys ship in the game's camelCase. `maxHp` -> `Max HP`, `critChance` -> `Crit chance`. */
+/** The game publishes stat keys in camelCase. `maxHp` becomes `Max HP`, and `critChance` becomes `Crit chance`. */
 export function statLabel(stat: string): string {
   const spaced = stat
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -87,9 +84,9 @@ export function slotLabel(slot: string): string {
 }
 
 /**
- * `gathering_nodes.type` and `zone_resources.resource_kind` name the same four activities with
- * different words — `hunt` against `hunting`, `fish` against `fishing`. Display uses one vocabulary
- * so a zone's resource list and the node it links to do not appear to disagree.
+ * `gathering_nodes.type` and `zone_resources.resource_kind` name four activities with different words.
+ * For example, one uses `hunt` and the other uses `hunting`.
+ * The page uses one vocabulary, so a zone and its linked node agree.
  */
 const NODE_KINDS: Record<string, string> = {
   ore: "Ore",
@@ -104,7 +101,7 @@ export function nodeKind(kind: string): string {
   return NODE_KINDS[kind] ?? statLabel(kind);
 }
 
-/** The three level scales, each named so a bare number never has to be guessed at. */
+/** Names the three level scales so a reader never has to guess a bare number. */
 export const LEVEL_SCALES = {
   combat: "Combat",
   gathering: "Gathering",
@@ -112,9 +109,8 @@ export const LEVEL_SCALES = {
 } as const;
 
 /**
- * The provenance sentence shown beside every item level. An item with no modelled level says so
- * rather than showing a blank, because a missing level is a boundary of this model and not a
- * property of the item.
+ * Returns the provenance sentence beside each item level.
+ * An item without a modelled level states that boundary instead of showing a blank.
  */
 export function levelNote(level: number | null, source: string): string {
   if (source === "unknown" || level === null) return "Level not modelled";

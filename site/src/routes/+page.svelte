@@ -11,7 +11,7 @@
 
   const n = (value: number) => value.toLocaleString("en-US");
 
-  /** Chapters are numbered in the ledger's own hand, not with the browser's list markers. */
+  /** Numbers chapters with the ledger's marks instead of browser list markers. */
   const CHAPTER_MARKS = ["I", "II", "III"];
 </script>
 
@@ -19,24 +19,22 @@
   <title>Vespera Compendium</title>
   <meta
     name="description"
-    content="Game systems, items, enemies, quests, recipes, abilities, and progression in Vespera, reconstructed from shipped game data and logic. Selected formulas and records pass live-game checks."
+    content="Game systems, items, enemies, quests, recipes, abilities, and progression in Vespera. The compendium uses shipped game data and logic. Selected formulas and records pass live-game checks."
   />
 </svelte:head>
 
 <!--
-  The hero. Provenance and the search field hold the left column, one real painted place holds the
-  right, and the guides begin immediately below. A visitor who knows what they want types it; a
-  visitor who does not reads the systems before meeting the database.
+  The hero puts provenance and search on the left and one painted place on the right.
+  Guides start below. Visitors can search first or read the systems before the database.
 -->
 <section class="hero">
   <div class="hero-ledger">
     <span class="kicker">EXPEDITION LEDGER</span>
     <h1>Find your way through Vespera</h1>
     <p class="lede">
-      Every claim the game supplies across {n(data.recordCount)} records and {data.mechanicCount} system
-      guides is source checked against the shipped logic. Selected formulas and facts also pass
-      live-game checks. Compendium headings and labels are marked separately, so you can see which
-      words are the game's.
+      The compendium checks every game claim across {n(data.recordCount)} records and {data.mechanicCount} system
+      guides against shipped logic. The game also checks selected formulas and facts live.
+      The compendium marks headings and labels separately, so you can see which words come from the game.
     </p>
     <div class="hero-search">
       <Search
@@ -63,14 +61,14 @@
 </section>
 
 <!--
-  The guides, first content after search. Three treatments rather than five identical cards: the
-  combat guide leads with a formula the game actually computes, the endgame guide reads as the route
-  it describes, and the other three are field-manual rows.
+  Guides follow search. Three treatments avoid five identical cards.
+  The combat guide leads with a computed formula. The endgame guide follows its route.
+  The other three use field-manual rows.
 -->
 <section class="band">
   <h2>Understand the game</h2>
   <p class="band-line">
-    Read the rules and formulas before you choose a class, build gear, or enter endgame.
+    Before you choose a class, build gear, or enter endgame, read the rules and formulas.
   </p>
 
   <div class="guides">
@@ -134,13 +132,13 @@
 </section>
 
 <!--
-  The class hall. The portraits, the title line, the world role and the traits are the game's own
-  character select, not a summary of it, so the plate is shared with `/classes/`.
+  The class hall uses game-authored portraits, titles, world roles, and traits.
+  The shared plate also appears on `/classes/`.
 -->
 <section class="band">
   <h2>Choose your class</h2>
   <p class="band-line">
-    Every ability and every piece of class-restricted gear the game defines, for each of the four.
+    Read every ability and every piece of class-restricted gear that the game defines for all four classes.
   </p>
   <div class="hall">
     {#each data.classes as entry (entry.id)}
@@ -156,14 +154,14 @@
 </section>
 
 <!--
-  The route, in the game's own three stretches. The old thirty-two row stop list showed the sort
-  order rather than the journey; a chapter with its own painted place, its Combat range and three
-  stops shows where a player is and what comes next.
+  This route follows the game's three stretches.
+  The old thirty-two-row list showed sort order, not the journey.
+  Each chapter now has a painted place, Combat range, and three stops.
 -->
 <section class="band">
   <h2>Follow Combat progression</h2>
   <p class="band-line">
-    Zones and dungeons interleaved, in the order you meet them, with the level each one expects.
+    Zones and dungeons appear in the order you meet them. Each one lists its expected level.
   </p>
   <ol class="chapters">
     {#each data.chapters as chapter, index (chapter.id)}
@@ -203,8 +201,8 @@
 </section>
 
 <!--
-  The complete index, last and quiet. It is a ledger of what the compendium holds, not a shop window:
-  one line per record type, its count, and the way in.
+  The index appears last and stays quiet.
+  It lists each record type, its count, and its entry link.
 -->
 <section class="band">
   <h2>Compendium index</h2>
@@ -347,13 +345,10 @@
   }
 
   /*
-   * A band foot and the ledger note each end in a way through, so their links are affordances rather
-   * than citations and carry the 2.75rem the stops, the index rows and the tools already carry. The
-   * leading is that same row height: a shorter one would let two targets on neighbouring lines
-   * overlap and hand a click to whichever link paints last, and the ledger is ruled in one measure
-   * anyway. Side padding is deliberately absent, because in running prose it either detaches the
-   * comma that follows the link or, pulled back with a negative margin, is painted over by the next
-   * run of text and stops taking the click it appears to offer.
+   * Band links and ledger notes act as touch targets, not citations.
+   * They use the same 2.75rem row height as stops, index rows, and tools.
+   * A shorter row lets targets overlap and sends clicks to the wrong link.
+   * No side padding keeps the comma and link in the same text flow.
    */
   .band-foot,
   .ledger-note {
@@ -369,8 +364,8 @@
   }
 
   /*
-   * The ledger's entry furniture: a tracked mark opening an entry and a dotted provenance stamp
-   * closing it. Both repeat across the page on purpose, because a ledger is read by its rulings.
+   * Each ledger entry opens with a tracked mark and closes with a dotted provenance stamp.
+   * Both repeat because a ledger is read by its rulings.
    */
   .entry-mark {
     display: block;
@@ -445,8 +440,8 @@
   }
 
   /*
-   * The worked formula. It is the page's proof that the guides are read out of shipped logic rather
-   * than written from memory, so it is set as a plate rather than folded into the prose.
+   * The worked formula proves that guides use shipped logic instead of memory.
+   * Put it on a plate instead of folding it into prose.
    */
   .formula-plate {
     display: grid;
@@ -466,8 +461,8 @@
     text-transform: uppercase;
   }
 
-  /* A formula is the one thing on the page allowed to scroll sideways: breaking it would change it.
-     `min-inline-size` is what keeps that scroll inside the plate rather than widening the document. */
+  /* A formula alone can scroll sideways because wrapping changes its meaning.
+     `min-inline-size` keeps the scroll inside the plate. */
   .formula-expression {
     min-inline-size: 0;
     overflow-x: auto;
@@ -488,8 +483,8 @@
     padding: 0.1rem 0.45rem;
     border: 1px solid var(--brass-edge);
     border-radius: var(--radius-chip);
-    /* The provenance vocabulary is one system, so a status wears one colour on every surface. This is the
-       same "Source checked" the guides mark, and it used to render warm here and deep there. */
+    /* One provenance vocabulary uses one color on every surface.
+       This matches the guides' "Source checked" stamp. */
     color: var(--brass-deep);
     font-size: var(--text-2xs);
     font-weight: 700;
@@ -531,8 +526,8 @@
   }
 
   /*
-   * The endgame guide as the route it describes: one ruled column, each system a stop on it. A
-   * summary card would have flattened eleven ordered systems into one sentence.
+   * The endgame guide follows its route: one ruled column with one system per stop.
+   * A summary card flattens eleven ordered systems into one sentence.
    */
   .route-steps {
     display: grid;
@@ -712,7 +707,7 @@
     font-size: var(--text-body);
   }
 
-  /* The leader rule between a name and its figure, which is what makes this read as a ledger. */
+  /* A leader rule connects each name to its count and gives the index its ledger form. */
   .ledger-rule {
     block-size: 0;
     border-block-end: 1px dotted var(--hairline-faint);

@@ -7,10 +7,10 @@
   let { data }: { data: PageData } = $props();
 
   /**
-   * The guide reads as a ledger: the claim on the left, where it came from in the right-hand
-   * gutter. Provenance is per string because that is how it was established — a game-authored
-   * formula can sit under a compendium-written label, and a shared badge would let the label
-   * inherit a claim the game never made.
+   * Shows the guide as a ledger.
+   * The claim sits left and its source note sits in the right gutter.
+   * Provenance stays per string because a game formula can sit under an editorial label.
+   * A shared badge gives the label a claim that the game never made.
    */
   const CATEGORY_KICKER: Record<PageData["category"], string> = {
     combat: "COMBAT SYSTEMS",
@@ -57,9 +57,9 @@
     Every line carries its own note. The game wrote the lines marked Source checked. The compendium
     wrote the lines marked Compendium wording.
     {#if data.live}
-      A line marked Live checked also ran in the game.
+      The game ran each line marked Live checked.
     {:else}
-      No line on this page has run in the live game yet.
+      The game has not run a line on this page yet.
     {/if}
   </p>
 </header>
@@ -124,7 +124,7 @@
           {#each section.facts as fact (fact.label.id)}
             <div class="fact" class:fact-tabular={fact.table}>
               <dt class="claim">
-                <!-- The id exists only to name the table below it. A fact with no table needs none. -->
+                <!-- The ID names the table below it. A fact without a table needs no ID. -->
                 <span
                   id={fact.table ? `fact-${fact.label.id}` : undefined}
                   data-mechanic-text={fact.label.id}
@@ -176,7 +176,7 @@
 
 {#if data.related.length > 0}
   <section class="related" aria-labelledby="related-head">
-    <h2 id="related-head" class="related-head">Go on from here</h2>
+    <h2 id="related-head" class="related-head">Related guides</h2>
     <ul>
       {#each data.related as entry (entry.href.id)}
         <li class="claim">
@@ -197,7 +197,7 @@
 <p class="back"><a href={resolve("/mechanics/")}>All game systems</a></p>
 
 <style>
-  /* The guide's own navigation targets. Breadcrumbs get their floor from the shared shell. */
+  /* Navigation targets for this guide. Breadcrumbs get their touch floor from the shared shell. */
   .back a,
   .toc a,
   .related a {
@@ -228,8 +228,9 @@
   }
 
   /*
-   * The scoped provenance line. It states what was checked, never that the guide as a whole ran in
-   * the game: probes cover four formulas, and a page-wide claim would outrun the evidence.
+   * The scoped provenance line states what was checked.
+   * It does not claim a live check for the whole guide.
+   * Probes cover four formulas, so a page-wide claim exceeds the evidence.
    */
   .scope {
     margin-block: 1rem 0.3rem;
@@ -298,10 +299,8 @@
     scroll-margin-block-start: 1rem;
   }
 
-  /*
-   * One claim: the content, then where it came from. The gutter turns provenance into a column the
-   * eye can skim past, instead of a badge interrupting every sentence.
-   */
+  /* Each claim puts content first and its source note second.
+     The gutter lets the eye skip provenance without a badge in every sentence. */
   .claim {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 8rem;
@@ -315,10 +314,10 @@
   }
 
   /*
-   * The measure cap sits on the prose, not on the column: the 64rem claim grid is what keeps the
-   * provenance gutter aligned down the page, while a 100ch line is what makes a paragraph hard to
-   * read. Only running text is capped, so a formula keeps its own overflow behaviour and is never
-   * reflowed into arithmetic that reads differently.
+   * Cap prose width, not the claim grid.
+   * The 64rem grid aligns the provenance gutter.
+   * A 100ch line is hard to read.
+   * Formulas keep their own overflow so arithmetic does not change.
    */
   .claim p {
     max-inline-size: 68ch;
@@ -348,7 +347,7 @@
     color: var(--brass-deep);
   }
 
-  /* The rare one. It is the only mark allowed any weight, because it is the only exception. */
+  /* This rare mark alone has extra weight because it marks the only exception. */
   .mark-live-verified {
     color: var(--teal);
     font-weight: 700;
@@ -382,11 +381,9 @@
   }
 
   /*
-   * Deliberately not `.formula`: the shared stylesheet already owns that name as a flex utility, and
-   * inheriting it laid the label, the expression and both provenance marks out on one line.
-   *
-   * A rule rather than a panel, so the formula does not become a card inside a card and its marks
-   * stay in the same gutter column as every other claim on the page.
+   * Do not use `.formula`. The shared stylesheet uses that name for a flex utility.
+   * That utility puts the label, expression, and provenance marks on one line.
+   * A rule keeps the formula out of nested panels and aligns its marks with other claims.
    */
   .formula-block {
     display: grid;
@@ -404,10 +401,7 @@
     text-transform: uppercase;
   }
 
-  /*
-   * A shipped formula is one long line and must not be reflowed into arithmetic that reads
-   * differently, so the expression scrolls inside its own box rather than wrapping.
-   */
+  /* Keep a shipped formula on one line. Scroll it inside its box instead of wrapping arithmetic. */
   .formula-expression {
     display: block;
     overflow-x: auto;
@@ -455,10 +449,10 @@
   }
 
   /*
-   * A value published as a uniform array of records reads as rows. It spans the fact grid, because
-   * a table squeezed into an 18rem column wraps every heading, and it carries one mark for the
-   * whole table: the array is one published string with one provenance, and a mark per row would
-   * claim a separate check for every row that was never made.
+   * Show a uniform record array as rows across the fact grid.
+   * An 18rem column wraps every heading.
+   * One mark covers the array because it is one published string.
+   * A mark per row claims a separate check that never happened.
    */
   .fact-tabular {
     grid-column: 1 / -1;
@@ -508,13 +502,13 @@
     font-size: var(--text-sm);
   }
 
-  /* Ranged on the last digit, so the shape of the curve is legible down the column and not only row by row. */
+  /* Rounding the last digit keeps the curve shape legible down the column. */
   .fact-table .numeric {
     font-variant-numeric: tabular-nums;
     text-align: end;
   }
 
-  /* The one mark, set below the table and to the same measure, so it annotates and never overlaps. */
+  /* Put one mark below the table at the same measure. It annotates without overlap. */
   .fact-tabular-value .mark {
     display: block;
     max-inline-size: var(--fact-table-measure);
@@ -551,10 +545,8 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
-    /*
-     * Still end-aligned once the gutter collapses, so a mark reads as an annotation of the claim
-     * above it rather than as the opening words of the block below it.
-     */
+    /* Keep the mark end-aligned after the gutter collapses.
+       It annotates the claim above instead of opening the next block. */
     .mark {
       padding-block-end: 0.2rem;
     }

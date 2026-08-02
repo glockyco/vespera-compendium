@@ -16,17 +16,17 @@
   const EXAMPLES = [
     {
       title: "Legendary items and where they come from",
-      description: "Find legendary item records and their modelled source paths.",
+      description: "List legendary item records and their modelled source paths.",
       sql: "SELECT i.name, s.source_kind, s.source_id, s.chance FROM item_sources s JOIN items i ON i.id = s.item_id WHERE i.rarity = 'legendary' ORDER BY s.chance DESC LIMIT 50;",
     },
     {
       title: "Which enemies drop a given item",
-      description: "Look up the enemies that drop ember_shard.",
+      description: "Find the enemies that drop ember_shard.",
       sql: "SELECT e.name, e.level, d.chance, d.min, d.max FROM enemy_drops d JOIN enemies e ON e.id = d.enemy_id WHERE d.item_id = 'ember_shard' ORDER BY e.level;",
     },
     {
       title: "Items with no modelled source yet",
-      description: "Items whose source is not modelled yet, which is a gap in the model rather than proof they cannot be obtained.",
+      description: "Find items without a modelled source. This gap does not prove that the items cannot be obtained.",
       sql: "SELECT id, name, type, rarity FROM items WHERE has_modelled_source = 0 ORDER BY id;",
     },
     {
@@ -36,7 +36,7 @@
     },
     {
       title: "Equipment sell value by slot and rarity",
-      description: "Summarise equipment sell value across slots and rarities.",
+      description: "Summarize equipment sell value across slots and rarities.",
       sql: "SELECT slot, rarity, COUNT(*) AS n, ROUND(AVG(sell_value)) AS avg_sell_value FROM items WHERE slot IS NOT NULL GROUP BY slot, rarity ORDER BY slot, n DESC;",
     },
   ] as const;
@@ -208,7 +208,7 @@
 
 <span class="kicker">SQL PLAYGROUND</span>
 <h1>SQL Playground</h1>
-<p>The whole Vespera database runs in your browser. Nothing is sent anywhere.</p>
+<p>The whole Vespera database runs in your browser. The page sends no data anywhere.</p>
 
 <div class="stack">
   <section class="panel pad">
@@ -316,26 +316,21 @@
 </div>
 
 <style>
-  /*
-   * A grid column defaults to max-content, so the widest result table stretched the whole page and
-   * pushed every panel past a phone viewport. Pinning the column to the container makes the table's
-   * own scroll container the thing that scrolls, which is what it was already built to do.
-   */
+  /* A max-content grid column lets the widest result table stretch the page.
+     Pin the column to the container so the table's own scroll area moves. */
   .stack {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /*
-   * An example's title is a sentence, not a word. The shared chip row pins a button to its
-   * intrinsic width, which pushed the longest one off a phone viewport, so here it may wrap.
-   */
+  /* An example title is a sentence, not a word.
+     Let the button wrap when its intrinsic width exceeds the phone viewport. */
   .chip-row .btn {
     flex: 0 1 auto;
     max-inline-size: 100%;
     text-align: start;
   }
 
-  /* Padding rather than a flex box, so the disclosure marker survives reaching the 44 px floor. */
+  /* Use padding instead of flex so the disclosure marker keeps its 44px floor. */
   .schema-table summary {
     padding-block: 0.6rem;
   }

@@ -35,10 +35,10 @@ import type {
 } from "./mechanics-verification";
 
 /**
- * The published pages recompute the approval in the browser. That is only a check if the browser
- * and the pipeline hash identical bytes, so these vectors are fixed here and the same expected hex
- * values are pinned by `packages/core/src/canonical-public-evidence.test.ts`. A change to either
- * serializer breaks one side of the pair loudly rather than quietly relabelling the site.
+ * Browser pages recompute the approval.
+ * That check works only when browser and pipeline hash identical bytes.
+ * These vectors and expected hex values stay fixed in both test files.
+ * A serializer change then fails one side instead of relabelling the site.
  */
 
 const hex = (character: string): string => character.repeat(64);

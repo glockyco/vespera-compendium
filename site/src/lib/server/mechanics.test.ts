@@ -9,10 +9,10 @@ import {
 } from "./mechanics";
 
 /**
- * The record-to-guide map and the artifact validator, on synthetic documents.
+ * Tests the record-to-guide map and artifact parser with synthetic documents.
  *
- * Nothing here reads a published data directory: the map has to hold for a table whose records do
- * not exist yet, and the validator has to reject artifacts a real build would never produce.
+ * No test reads a published data directory.
+ * The map must work before records exist, and the parser must reject impossible artifacts.
  */
 
 const hex = (character: string): string => character.repeat(64);
@@ -134,7 +134,7 @@ const BUNDLES: BundleIdentity[] = [
   { role: "gameView", bytes: 4096, sha256: hex("3") },
 ];
 
-/** A complete artifact whose approval hash is recomputed, so a fixture edit cannot self-agree. */
+/** Creates a complete artifact with a recomputed approval hash, so a fixture edit cannot agree with itself. */
 async function artifact(
   mutate: (draft: Record<string, unknown>) => void = () => {},
 ): Promise<Record<string, unknown>> {
@@ -333,7 +333,7 @@ const MAPPED: readonly [string, string][] = [
   ["items", "equipment-and-value"],
   ["gems", "equipment-and-value"],
   ["affixes", "equipment-and-value"],
-  // The publisher emits `shop_listings`; the contract calls the same table `shops`.
+  // The publisher emits `shop_listings`. The contract names the same table `shops`.
   ["shop_listings", "equipment-and-value"],
   ["shops", "equipment-and-value"],
 ];

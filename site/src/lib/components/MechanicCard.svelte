@@ -1,11 +1,10 @@
 <script lang="ts">
   /**
-   * One guide, summarised.
+   * Shows one guide summary.
    *
-   * The row is a field-manual entry rather than a card in a grid: a brass rule, the guide's name,
-   * the one line it covers, and the provenance stamp. The stamp is scoped on purpose — a guide is
-   * never live-verified as a whole, so the card states what was checked rather than implying the
-   * whole page passed a runtime probe.
+   * The row uses a field-manual form instead of a grid card.
+   * It has a brass rule, guide name, one-line scope, and provenance stamp.
+   * The stamp names the checked content. It does not claim a live probe for the whole guide.
    */
   import { resolve } from "$app/paths";
 
@@ -37,14 +36,14 @@
   .guide {
     display: grid;
     gap: 0.2rem;
-    /* A brass rule down the left, which is the ledger's own way of marking an entry. */
+    /* A brass rule marks the ledger entry. */
     padding: 0.75rem 0.9rem 0.8rem;
     border: 1px solid var(--line-soft);
     border-inline-start: 2px solid var(--brass-deep);
     border-radius: 0 var(--radius-control) var(--radius-control) 0;
     background: var(--panel-raised);
     color: var(--parchment);
-    /* Exponential easing: the row settles rather than snapping. */
+    /* Exponential easing lets the row settle instead of snapping. */
     transition:
       border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
       background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -74,10 +73,7 @@
     font-size: var(--text-sm);
   }
 
-  /*
-   * The provenance stamp sits below the summary, quiet by default. Almost every guide reads the
-   * same, so the eye should catch the exception rather than re-read the rule.
-   */
+  /* The provenance stamp stays quiet below the summary. It marks the exception without repeating the rule. */
   .guide-stamp {
     margin-block-start: 0.35rem;
     padding-inline-start: 0.5rem;

@@ -5,25 +5,23 @@ import { fileURLToPath } from "node:url";
 import { MANIFEST_FILE, parseManifest, type Manifest, type ManifestTable } from "../manifest";
 
 /**
- * Build-time access to the published dataset, and the only place in the site that touches a
- * filesystem.
+ * Provides build-time access to the published dataset.
+ * This is the only site module that reads a filesystem.
  *
- * A published build must render from one immutable tree. `tools/build-site.ts` verifies a snapshot
- * while holding the data lease, then hands this module a capability naming that snapshot and the
- * exact manifest bytes it verified. Reading `site/static/data` directly instead would reopen a
- * directory another command may already be replacing, so the two would be verifying and using
- * different trees. The capability closes that window: a read either resolves beneath the verified
- * root or fails the build.
+ * A published build reads one immutable tree.
+ * `tools/build-site.ts` checks a snapshot while it holds the data lease.
+ * It passes this module a capability with the snapshot and exact manifest bytes.
+ * Direct reads from `site/static/data` can use a tree that another command replaces.
+ * The capability closes that window. Reads stay beneath the checked root or fail the build.
  */
 
 export type { Manifest, ManifestTable };
 
 /**
- * Names the one data tree a build is entitled to read.
+ * Names the one data tree that a build can read.
  *
- * `manifestSha256` is what makes this more than a path: the wrapper verified those exact bytes, so
- * a snapshot swapped underneath the build is detected at the first read rather than silently
- * rendered.
+ * `manifestSha256` binds the capability to exact bytes.
+ * If a snapshot changes during the build, the first read detects it instead of returning changed data.
  */
 export type PublishedSnapshotCapability = {
   buildToken: string;
@@ -32,7 +30,7 @@ export type PublishedSnapshotCapability = {
   version: 1;
 };
 
-/** Absolute canonical path of the verified snapshot the wrapper prepared. */
+/** Absolute canonical path of the checked snapshot the wrapper prepared. */
 const SNAPSHOT_ROOT_VAR = "VESPERA_DATA_SNAPSHOT";
 
 /** Canonical JSON of the {@link PublishedSnapshotCapability} for that snapshot. */
@@ -41,9 +39,10 @@ const SNAPSHOT_CAPABILITY_VAR = "VESPERA_DATA_SNAPSHOT_CAPABILITY";
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /**
- * One path segment of a published data file: letters, digits and the three punctuation marks the
- * pipeline emits. Anything else — a separator variant, a dot segment, a leading dot, an absolute
- * path, a URL — never matches, so no name can climb out of the snapshot root.
+ * Allows one path segment in a published data filename.
+ *
+ * The pipeline emits letters, digits, and three punctuation marks.
+ * Separators, dot segments, leading dots, absolute paths, and URLs fail this pattern.
  */
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
@@ -56,12 +55,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * The dataset directory, searched rather than computed.
+ * Finds the dataset directory instead of calculating one path.
  *
- * The three contexts this runs in disagree about both the working directory and this module's own
- * location: `vite dev` loads it from source, `vite build` bundles it into
- * `.svelte-kit/output/server/chunks/`, and `svelte-kit sync` runs from elsewhere again. Anchoring
- * on the marker file is the only resolution that survives all three.
+ * `vite dev`, `vite build`, and `svelte-kit sync` use different working directories and module paths.
+ * The marker file is the only location rule that works in all three contexts.
  */
 function findDataDir(): string {
   const candidates: string[] = [];
@@ -107,12 +104,10 @@ function parseCapability(serialized: string): PublishedSnapshotCapability {
 }
 
 /**
- * The capability for a normal `vite dev` or `svelte-kit sync` run, over the working tree.
+ * Creates a capability for `vite dev` or `svelte-kit sync` over the working tree.
  *
- * A development server makes no approval claim, so it mints its own capability from whatever is in
- * `site/static/data`. Production never reaches this: `tools/build-site.ts` always exports both
- * environment variables, and a root without a capability is rejected below rather than falling
- * back here.
+ * Development makes no approval claim. It creates a capability from `site/static/data`.
+ * Production always supplies both environment variables. A missing capability fails below.
  */
 function developmentCapability(): PublishedSnapshotCapability {
   const root = path.resolve(findDataDir());
@@ -146,11 +141,10 @@ type AcceptedSnapshot = {
 
 let accepted: AcceptedSnapshot | undefined;
 
-/**
- * Validates a capability once per process and keeps it.
+/** Checks a capability once per process and keeps it.
  *
- * One build reads one tree. A second, different capability means two trees are in play, which is
- * exactly the race the capability exists to prevent, so it is refused rather than merged.
+ * One build reads one tree. A second capability puts two trees in use.
+ * The function rejects that race instead of merging the trees.
  */
 function acceptSnapshot(capability: PublishedSnapshotCapability): AcceptedSnapshot {
   if (accepted) {
@@ -191,11 +185,8 @@ function resolveBeneath(root: string, name: string): string {
 }
 
 /**
- * The site's only filesystem read.
- *
- * Every server surface reaches its data through here, so the set of files a build can open is the
- * set of path-safe names beneath one verified root, and that property is checkable by reading this
- * one function rather than by auditing every loader.
+ * Reads the site's only filesystem path.
+ * Every server surface uses this function, so all reads stay beneath one checked root.
  */
 export function readPublishedSnapshotFile<T>(capability: PublishedSnapshotCapability, name: string): T {
   const snapshot = acceptSnapshot(capability);
@@ -214,7 +205,7 @@ export function readPublishedSnapshotFile<T>(capability: PublishedSnapshotCapabi
   return parsed as T;
 }
 
-/** Reads one published JSON file by name, from this build's verified snapshot. */
+/** Reads one published JSON file by name, from this build's checked snapshot. */
 export function readDataFile<T>(fileName: string): T {
   return readPublishedSnapshotFile<T>(publishedSnapshotCapability(), fileName);
 }
@@ -245,9 +236,8 @@ export function tableByName(name: string): ManifestTable | undefined {
   return manifest().tables.find((entry) => entry.name === name);
 }
 
-/**
- * The key column of a table, read from the manifest rather than assumed to be `id`. Shop listings
- * are keyed by `item_id`, so hardcoding `id` would 404 every one of their detail pages.
+/** Returns the key column from the manifest instead of assuming `id`.
+ * Shop listings use `item_id`. An assumed `id` makes every detail URL fail.
  */
 export function primaryKeyColumn(name: string): string {
   const spec = tableByName(name);
@@ -267,16 +257,14 @@ export function rowsWhere(name: string, column: string, value: Scalar): Row[] {
 }
 
 /**
- * Entity tables the generic browser must not claim, because a dedicated route already owns their
- * URLs and renders them better.
- *
- * SvelteKit gives a static route precedence over a dynamic one, so `/classes/` would resolve to the
- * class hall either way. Declaring it here means the prerender list says so rather than the outcome
- * depending on route-matching order.
+ * Lists entity tables that the generic browser must not claim.
+ * A dedicated route already owns their URLs and shows them better.
+ * SvelteKit gives static routes precedence over dynamic routes, so `/classes/` reaches the class hall.
+ * The declaration makes the prerender list explicit instead of relying on route order.
  */
 const DEDICATED_SURFACES: Record<string, true> = { classes: true };
 
-/** Entity tables the generic `[table]` browser renders. */
+/** Entity tables that the generic `[table]` browser shows. */
 export function browsableTables(): ManifestTable[] {
   return entityTables().filter((entry) => DEDICATED_SURFACES[entry.name] !== true);
 }

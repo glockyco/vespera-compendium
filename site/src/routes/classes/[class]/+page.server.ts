@@ -6,11 +6,10 @@ import { mechanicDocuments, mechanicLinksFor } from "$lib/server/mechanics";
 export const entries = () => CLASSES.map((id) => ({ class: id }));
 
 /**
- * One class: its ability ladder and its gear, slot by slot.
- *
- * All nine slots are returned even when a class has no restricted item for one. In the current data
- * `ring2` and `relic1` are empty for every class, and omitting them would make the page look like
- * the game has seven slots.
+ * Loads one class with its ability ladder and gear by slot.
+ * Return all nine slots, including slots without restricted items.
+ * Current data leaves `ring2` and `relic1` empty for every class.
+ * Omitting them makes the game appear to have seven slots.
  */
 export const load = async ({ params }: { params: { class: string } }) => {
   if (!isClassId(params.class)) throw error(404, `Unknown class: ${params.class}`);
@@ -78,8 +77,8 @@ export const load = async ({ params }: { params: { class: string } }) => {
       .sort((left, right) => (left.level ?? 0) - (right.level ?? 0)),
   }));
 
-  // The class page is a bespoke route rather than the generic record detail, so it has to ask for its guide
-  // links explicitly. The map is the same exhaustive one every mapped table uses.
+  // This bespoke class page requests guide links explicitly.
+  // The map is the same exhaustive map used for every mapped table.
   const guides = mechanicLinksFor("classes", { id: classId }, await mechanicDocuments());
 
   return { classId, profile, abilities, slots, itemCount: classItems.length, guides };

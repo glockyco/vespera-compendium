@@ -1,8 +1,8 @@
 export const prerender = true;
 
 /**
- * Every internal link is written with a trailing slash, so pages are emitted as `items/index.html`
- * rather than `items.html`. That makes the directory URL canonical instead of relying on the host to
- * rewrite it, and keeps relative asset paths inside a page stable.
+ * Writes a trailing slash on each internal link.
+ * Pages then emit as `items/index.html` instead of `items.html`.
+ * The directory URL stays canonical and relative asset paths stay stable.
  */
 export const trailingSlash = "always";

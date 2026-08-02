@@ -2,16 +2,12 @@ import { slotLabel } from "../format";
 import { primaryKeyColumn, rowByKey, rowsWhere, table, type Row } from "./dataset";
 
 /**
- * The shape of a record page, resolved per entity type at build time.
+ * Defines the record-page shape for each entity type at build time.
  *
- * This replaced a generic "dump every related table as columns" pass. That pass was honest but
- * useless: it answered "what rows reference this id" when the reader asked "where do I get this",
- * and it made a quest's own guidance text — the single most useful field the game ships — one
- * anonymous column among fifteen.
- *
- * Each type below names its own blocks in the order a reader wants them, so the page leads with the
- * answer rather than with the schema. Every cross-reference resolves to a `Ref`, which carries the
- * art and rarity a link needs, so the rendering layer never re-joins anything.
+ * A generic table dump answered which rows reference an id.
+ * Readers asked where to get the record. Quest guidance became one anonymous column among fifteen.
+ * Each type now names its blocks in reader order and leads with the answer.
+ * Each cross-reference becomes a `Ref` with the art and rarity needed by the link.
  */
 
 /** A resolved link to another record: everything `EntityLink` needs, nothing more. */
@@ -27,7 +23,7 @@ export type Ref = {
 /** One line in a block: a reference plus the facts that qualify it. */
 export type Line = {
   ref: Ref | null;
-  /** Prose shown when there is no reference to link, or beside one that needs qualifying. */
+  /** Prose that a record page shows when no reference exists or when a reference needs context. */
   text?: string | null;
   chance?: number | null;
   quantity?: string | null;
@@ -39,12 +35,12 @@ export type Line = {
 export type Block = {
   title: string;
   empty?: string;
-  /** Rendered as prose rather than as a line list. */
+  /** Shows prose instead of a line list. */
   prose?: string | null;
-  /** Rendered as a labelled stat list. */
+  /** Shows a labelled stat list. */
   stats?: { label: string; value: string }[];
   lines?: Line[];
-  /** Drop-style lines get a proportion bar; the renderer keys off this. */
+  /** Drop-style lines use a proportion bar. */
   showChance?: boolean;
 };
 
@@ -161,7 +157,7 @@ export function shapeFor(tableName: string, row: Row): RecordShape {
   }
 }
 
-/** The heading a record page shows, which is not always the row's `name`. */
+/** The heading that a record page shows. It is not always the row's `name`. */
 export function headingFor(tableName: string, row: Row): { title: string; sub: string | null } {
   const key = primaryKeyColumn(tableName);
   if (tableName === "shop_listings") {
@@ -182,8 +178,7 @@ function shapeItem(row: Row): RecordShape {
     else byKind.set(kind, [source]);
   }
 
-  // Drop rows carry the enemy's level and zone, so a "where does this come from" line names a place
-  // and a difficulty without the page joining three tables per row.
+  // Drop rows carry enemy level and zone. This line names both without joining three tables per row.
   const dropsById = new Map<string, Row>();
   for (const drop of table("enemy_drops")) {
     if (drop.item_id === id) dropsById.set(String(drop.enemy_id), drop);
@@ -304,7 +299,7 @@ function shapeEnemy(row: Row): RecordShape {
       empty: "No drops are modelled for this enemy.",
       showChance: true,
       lines: drops.map((drop) => ({
-        // `gold` is a currency the drop table names alongside real items, so it has no record page.
+        // `gold` is currency, not an item. The drop table has no record page for it.
         ref: ref("items", drop.item_id),
         text: rowByKey("items", String(drop.item_id)) ? null : String(drop.item_id),
         chance: num(drop.chance),
@@ -349,8 +344,10 @@ function shapeRecipe(row: Row): RecordShape {
   const outputs = rowsWhere("recipe_outputs", "recipe_id", id);
   const inputs = rowsWhere("recipe_inputs", "recipe_id", id);
 
-  /** An input that is itself crafted shows its own inputs one level down, so a player sees the
-   * intermediate materials without navigating away and back. */
+  /**
+   * Shows inputs for a crafted input one level down.
+   * A player can see intermediate materials without leaving the page.
+   */
   const nested = (itemId: string): Line[] => {
     const producing = table("recipe_outputs").find((output) => output.item_id === itemId);
     if (!producing) return [];
@@ -440,7 +437,7 @@ function shapeGatheringNode(row: Row): RecordShape {
   };
 }
 
-/** Quest step types as verbs, so a step reads as an instruction rather than as an enum. */
+/** Maps quest step types to verbs, so each step reads as an instruction. */
 const STEP_VERBS: Record<string, string> = {
   KILL: "Defeat",
   COLLECT: "Collect",
@@ -464,7 +461,7 @@ function shapeQuest(row: Row): RecordShape {
 
   const blocks: Block[] = [];
 
-  // The game's own hint, and the most useful single field on the record.
+  // The game's hint is the most useful single field on the record.
   if (str(row.guidance)) blocks.push({ title: "Guidance", prose: str(row.guidance) });
 
   blocks.push({
@@ -550,7 +547,7 @@ function shapeAbility(row: Row): RecordShape {
   };
 }
 
-/** An effect row as a sentence, rather than as eight columns the reader has to recombine. */
+/** Converts an effect row to one sentence instead of eight columns. */
 function effectSentence(effect: Row): string {
   const parts: string[] = [String(effect.type ?? "effect")];
   const value = num(effect.value);
@@ -665,8 +662,8 @@ function shapeZone(row: Row): RecordShape {
   const enemyLinks = rowsWhere("zone_enemies", "zone_id", id);
   const resources = rowsWhere("zone_resources", "zone_id", id);
 
-  // The union of everything the zone's enemies drop, deduplicated to each item's best chance: a
-  // reader wants "can I get this here", not one row per enemy that happens to drop it.
+  // Deduplicate all enemy drops to each item's best chance.
+  // Readers ask whether an item drops here, not which enemy drops it.
   const best = new Map<string, number>();
   for (const link of enemyLinks) {
     for (const drop of rowsWhere("enemy_drops", "enemy_id", String(link.enemy_id))) {
@@ -788,7 +785,7 @@ function shapeWorldBoss(row: Row): RecordShape {
         title: "Reward",
         empty: "No reward is modelled for this boss.",
         lines: ref("items", row.gear_item_id) ? [{ ref: ref("items", row.gear_item_id) }] : [],
-        // Already formatted for display by the game, so they are rendered verbatim.
+        // The game formats these values. Show them unchanged.
         stats: statList(gearStats, "label", "display_value"),
       },
       {

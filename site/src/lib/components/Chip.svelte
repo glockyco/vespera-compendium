@@ -1,8 +1,9 @@
 <script lang="ts">
   /**
-   * One labelled fact. The three level scales get their own tones, and a scale chip always prints
-   * its scale name beside the number: the game's own quest guidance distinguishes Gathering 10 from
-   * Crafting 10 from combat level 10, and a bare `10` would silently merge them.
+   * Shows one labelled fact.
+   * Each level scale has its own tone and prints its scale name beside the number.
+   * The game's guidance distinguishes Gathering 10, Crafting 10, and Combat 10.
+   * A bare `10` merges these scales.
    */
   type Tone = "combat" | "gathering" | "crafting" | "rarity" | "neutral";
 
@@ -36,10 +37,7 @@
     line-height: 1.35;
   }
 
-  /*
-   * The label and the value each stay on one line, but a long pair breaks between them rather than
-   * running off a 320 px viewport. A short chip still reads as one pill because it has the room.
-   */
+  /* Keep each label and value on one line. A long pair breaks between them instead of leaving a 320px viewport. */
   .chip-label,
   .chip-value {
     white-space: nowrap;
@@ -59,7 +57,7 @@
     font-weight: 700;
   }
 
-  /* Each level scale carries its own hue as a second signal; the label already names the scale. */
+  /* Each level scale has its own hue. The label names the scale. */
   .chip-combat {
     border-color: color-mix(in srgb, var(--ember) 50%, transparent);
     background: color-mix(in srgb, var(--ember) 14%, transparent);

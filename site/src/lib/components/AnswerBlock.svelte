@@ -1,14 +1,12 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  /**
-   * One section of a record page. Every block on every record type uses this, so section chrome is
-   * identical across all twelve and a reader learns the page shape once.
+/**
+   * Shows one section of a record page.
+   * Every record type uses the same section chrome, so readers learn the page shape once.
    *
-   * `empty` is a sentence, not a dash. A block with nothing in it is usually saying something real
-   * — that no source is modelled for an item, say — and that is worth stating in words. Callers pass
-   * `isEmpty` explicitly because a snippet that renders nothing is still a snippet, so the presence
-   * of `children` cannot be used to detect it.
+   * `empty` is a sentence, not a dash. An empty block can state that no source is modelled.
+   * Callers pass `isEmpty` because an empty `children` snippet still exists.
    */
   let {
     title,

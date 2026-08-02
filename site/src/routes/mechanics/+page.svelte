@@ -10,7 +10,7 @@
   <title>Game systems — Vespera Compendium</title>
   <meta
     name="description"
-    content="The rules Vespera runs on: combat mathematics, ability scaling, skills and crafting, equipment value, and endgame progression, read out of the shipped game logic."
+    content="The rules Vespera runs on: combat mathematics, ability scaling, skills and crafting, equipment value, and endgame progression, based on shipped game logic."
   />
 </svelte:head>
 
@@ -19,9 +19,9 @@
 <span class="kicker">GAME SYSTEMS</span>
 <h1>Understand the game</h1>
 <p class="lede">
-  {data.guideCount} guides explain the rules behind the records. Every claim the game supplies is
-  source checked against the shipped logic. Selected formulas and facts also pass live-game checks.
-  Compendium headings and labels are marked separately, so you can see which words are the game's.
+  {data.guideCount} guides explain the rules behind the records. The compendium checks every game claim
+  against shipped logic. The game also checks selected formulas and facts live.
+  The compendium marks headings and labels separately, so you can see which words come from the game.
 </p>
 
 <div class="groups">
@@ -56,10 +56,8 @@
     margin-block-start: 1.8rem;
   }
 
-  /*
-   * A group is a ledger heading with its entries indented under it, not a panel. Four boxes each
-   * containing more boxes would bury the guides one nesting level deeper than they deserve.
-   */
+  /* A group is a ledger heading with indented entries, not a panel.
+     Nested boxes bury the guides one level too deep. */
   .group {
     display: grid;
     grid-template-columns: 9rem minmax(0, 1fr);

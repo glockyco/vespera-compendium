@@ -23,12 +23,11 @@ import type {
 import { manifest, readDataFile, type Row } from "./dataset";
 
 /**
- * The published mechanics artifact, validated before anything renders from it.
+ * Parses the published mechanics artifact before any page shows it.
  *
- * `mechanics.json` is the only file on the site that carries a verification claim, so it is parsed
- * strictly rather than trusted: a missing status, an unknown category, an empty section, or an
- * approval hash that does not recompute all stop the build. A guide that renders with a broken
- * approval is worse than one that does not render, because the label is the whole product.
+ * `mechanics.json` is the site's only approval claim.
+ * The parser rejects missing status, unknown category, empty section, or mismatched approval hash.
+ * A guide with a broken approval is worse than a guide that fails to show.
  */
 
 export type {
@@ -108,7 +107,7 @@ function text(host: Record<string, unknown>, key: string, at: string): string {
   return value;
 }
 
-/** A displayed string may legitimately be empty in the data, so it is checked separately. */
+/** A string that the site shows can be empty in the data, so this function checks it separately. */
 function displayText(host: Record<string, unknown>, key: string, at: string): string {
   const value = host[key];
   if (typeof value !== "string") fail(`${at}.${key} must be a string`);
@@ -134,7 +133,7 @@ function stringList(host: Record<string, unknown>, key: string, at: string): str
   });
 }
 
-/** Probe inputs and expectations are arbitrary JSON, so they are checked for encodability only. */
+/** Probe inputs and expectations use arbitrary JSON, so this function checks only encodability. */
 function canonical(value: unknown, at: string): CanonicalJson {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
@@ -268,11 +267,10 @@ function parseDocument(value: unknown, index: number): PublishedMechanicDocument
 }
 
 /**
- * The public probe contracts, validated but not re-modelled.
+ * Reads public probe contracts without building a second model.
  *
- * The site never executes a contract. It needs the exact fields the approval hash covers, and an
- * identity it can match a requirement against, so each entry is checked for shape and otherwise
- * carried through unread.
+ * The site does not run a contract. It needs the exact fields covered by the approval hash.
+ * It also needs an identity for each requirement. The parser checks each shape and carries the rest unchanged.
  */
 function parseProbeContracts(value: unknown[], where: string): PublishedMechanicsApproval["probeContracts"] {
   return value.map((entry, index) => {
@@ -381,10 +379,10 @@ function parseApproval(value: unknown): PublishedMechanicsApproval {
 /**
  * Parses and cross-checks the artifact.
  *
- * Three things must agree before a label may print: the approval object has to hash to the
- * published `approvalSha256`, the manifest has to name that same hash, and every published status
- * has to fall out of the claim's own requirements against the approved pass set. Any disagreement
- * means the approval describes a different build.
+ * The approval hash must match the approval object.
+ * The manifest must name that hash.
+ * Each published status must follow from its requirements and the approved pass set.
+ * A disagreement means that the approval describes another build.
  */
 export async function parsePublishedMechanics(
   value: unknown,
@@ -443,7 +441,7 @@ export async function parsePublishedMechanics(
 
 let loaded: PublishedMechanics | undefined;
 
-/** The validated artifact for this build. Parsed once, because every guide page reads it. */
+/** Returns the checked artifact for this build. Parse it once because every guide page reads it. */
 export async function publishedMechanics(): Promise<PublishedMechanics> {
   loaded ??= await parsePublishedMechanics(
     readDataFile<unknown>(MECHANICS_FILE),
@@ -463,12 +461,10 @@ export async function mechanicDocument(id: string): Promise<PublishedMechanicDoc
 }
 
 /**
- * Which guide explains a record.
+ * Returns the guide that explains a record.
  *
- * The map is exhaustive and static because every entry has to be earned by the guide text actually
- * covering that record type. Zones, quests and world bosses are absent on purpose: the Endgame
- * guide discusses their systems but names no canonical record, so a link from one zone would
- * promise an explanation the guide does not contain.
+ * The map is exhaustive and static. Each entry must match guide text that covers its record type.
+ * Zones, quests, and world bosses have no canonical record link because Endgame names no record.
  */
 const GUIDE_BY_TABLE: Record<string, string | undefined> = {
   classes: "combat-mathematics",
@@ -479,8 +475,8 @@ const GUIDE_BY_TABLE: Record<string, string | undefined> = {
   items: "equipment-and-value",
   gems: "equipment-and-value",
   affixes: "equipment-and-value",
-  // The published table is `shop_listings`; `shops` is the name the contract uses for it. Both
-  // resolve, so a caller that has the table name and one that has the contract name agree.
+  // The published table is `shop_listings`. The contract names it `shops`.
+  // Both names resolve, so callers can use either name.
   shop_listings: "equipment-and-value",
   shops: "equipment-and-value",
 };
@@ -488,11 +484,10 @@ const GUIDE_BY_TABLE: Record<string, string | undefined> = {
 export type MechanicLink = { id: string; title: string; summary: string; href: string };
 
 /**
- * The guide links a record page shows.
+ * Returns guide links for a record page.
  *
- * `row` is part of the signature and unread in this release: the mapping is per table, and fixing
- * the call shape now means a later row-dependent link — a legendary item pointing somewhere a
- * consumable does not — will not have to change every callsite.
+ * `row` remains in the signature but is unused in this release.
+ * The mapping is per table. A future row-dependent link can use the existing call shape.
  */
 export function mechanicLinksFor(
   tableName: string,

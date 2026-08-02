@@ -1,11 +1,11 @@
 /**
- * The palette, panel treatment and surface idiom are Vespera's own, read out of the shipped bundle
- * (`index-TpX1HTVU.css`, `GameView-V33hRMR7.css`, `mercenary-war-table.css`) rather than invented, so
- * the compendium reads as an extension of the game instead of a third-party table dump.
+ * Vespera owns this palette, panel treatment, and surface style.
  *
- * The game supplies weight, tracking, case, colour and surface treatment. It does not supply size:
- * its 9px kicker and 11px button labels are HUD sizes for a fixed desktop client, and a browser page
- * that is read rather than operated has to stay legible at arm's length and on a phone.
+ * The shipped bundle supplies the weight, tracking, case, color, and surface treatment.
+ * It does not supply page sizes. The 9px kicker and 11px button labels fit a fixed desktop client.
+ * Browser readers need larger sizes at arm's length and on phones.
+ *
+ * The bundle names are the source references: `index-TpX1HTVU.css`, `GameView-V33hRMR7.css`, and `mercenary-war-table.css`.
  */
 
 :root {
@@ -34,7 +34,6 @@
   --ember: #b86638;
 
   /* Panel idiom */
-  /* Panel idiom */
   --panel-top: #07131e;
   --panel-bottom: #030a11;
   --panel-inset: rgba(3, 10, 17, 0.72);
@@ -42,18 +41,18 @@
   --panel-hover: rgba(19, 38, 64, 0.7);
   --panel-hover-strong: rgba(19, 38, 64, 0.85);
   --panel-sunken: rgba(3, 8, 19, 0.8);
-  /* Art frame: a lit face over a dark floor, so a transparent picture still reads as an object. */
+  /* A lit face over a dark floor keeps a transparent picture readable as an object. */
   --art-top: rgba(19, 38, 64, 0.9);
   --art-bottom: rgba(3, 8, 19, 0.9);
-  /* The dotted separator between rows inside a panel, lighter than a panel edge. */
+  /* This dotted separator is lighter than a panel edge. */
   --hairline: rgba(146, 180, 176, 0.14);
   --hairline-faint: rgba(146, 180, 176, 0.12);
   --zebra: rgba(19, 38, 64, 0.35);
-  /* Control idiom: a brass hairline over a faint brass wash. */
+  /* A brass hairline sits over a faint brass wash. */
   --brass-edge: rgba(212, 173, 98, 0.4);
   --brass-wash-top: rgba(212, 173, 98, 0.11);
   --brass-wash-bottom: rgba(212, 173, 98, 0.04);
-  /* The game's confirm green and error red, reserved for those two meanings. */
+  /* The game's confirm green and error red keep their two meanings. */
   --confirm-edge: #80d7c2;
   --confirm-top: #9ae9d4;
   --confirm-bottom: #67c6ae;
@@ -61,7 +60,7 @@
   --error-edge: rgba(220, 128, 110, 0.52);
   --error-surface: rgba(113, 42, 37, 0.28);
   --error-ink: #f0c0b6;
-  /* The game's own vignette, which keeps a page from reading as a flat slab. */
+  /* The game's vignette keeps the page from reading as a flat slab. */
   --vignette: rgba(68, 127, 126, 0.12);
   --line: rgba(185, 151, 86, 0.34);
   --line-soft: rgba(146, 180, 176, 0.18);
@@ -71,9 +70,8 @@
   --red: #dc806e;
   --kicker: #91c9bf;
   /*
-   * Radius steps with the element's size, which is the game's own habit: a chip is a pill, a control
-   * is barely rounded, a panel is generously so. `--radius` keeps its short name because the panel
-   * is the idiom the whole site is built from.
+   * Radius steps follow the element size. The game uses pills for chips and light rounding for controls.
+   * It uses generous rounding for panels. `--radius` keeps the panel name for this shared style.
    */
   --radius-chip: 999px;
   --radius-control: 5px;
@@ -95,13 +93,14 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 
-  /* Type ramp.
-
-     Nine steps, because a compendium is read by scanning and every step has a distinct job: page
-     title, section title, opening sentence, body, secondary prose, metadata, chip labels, the
-     tracked kicker, and control labels. The last two are the game's own idioms in weight, tracking
-     and case, but not in size: the shipped 9px kicker and 11px button label are HUD sizes for a
-     fixed client viewport and are unreadable as page furniture, so both sit on the rem ramp. */
+  /*
+   * The ramp has nine steps for scanning.
+   * Each step has one job: title, section title, lead, body, or secondary prose.
+   * Other steps label metadata, chips, the kicker, and controls.
+   *
+   * The last two keep the game's weight, tracking, and case. Their 9px and 11px sizes fit a fixed client,
+   * not page furniture, so both use the rem ramp.
+   */
   --text-display: clamp(2rem, 4vw, 3rem);
   --text-title: 1.25rem;
   --text-lead: 1.125rem;
@@ -111,9 +110,7 @@
   --text-2xs: 0.75rem;
   --text-kicker: 0.75rem;
   --text-control: 0.875rem;
-  /* Panel headings. They were reading two steps below the body copy they introduce, which inverts the
-     hierarchy, and one semantic level rendered at three sizes on a single page. These two tokens give each
-     level exactly one size while keeping the tracked-uppercase ledger character. */
+  /* Panel headings now match the body hierarchy. Each semantic level has one size. */
   --text-panel-title: 1.125rem;
   --text-panel-sub: 1rem;
 }
@@ -180,7 +177,7 @@ p {
   color: var(--lavender-grey);
 }
 
-/* The game puts a small tracked label above every page title; this reproduces it. */
+/* The game puts a small tracked label above each page title. */
 .kicker {
   display: block;
   margin-bottom: 0.3rem;
@@ -252,7 +249,7 @@ p {
   font-size: var(--text-xs);
 }
 
-/* Wide join tables must scroll rather than break the mobile viewport. */
+  /* Wide join tables scroll instead of breaking the mobile viewport. */
 .scroll {
   overflow-x: auto;
   border-radius: var(--radius);
@@ -268,8 +265,7 @@ th {
   position: sticky;
   top: 0;
   z-index: 1;
-  /* The sort control fills the header cell, so the cell owns the 44px target rather than adding
-     padding around a 20px button that a thumb cannot hit. */
+  /* The sort control fills the header cell. The cell therefore owns the 44px target. */
   height: 2.75rem;
   padding: 0 0.7rem;
   background: var(--painted-elevated);
@@ -306,8 +302,7 @@ tbody tr:nth-child(even) {
   background: var(--zebra);
 }
 
-/* Long prose in a dense table: bound the column and clamp to a few lines so rows stay uniform.
-   The full text is always available on the record's own page. */
+/* Bound long table prose and show only a few lines. The record page shows the full text. */
 .cell-prose {
   min-width: 14rem;
   max-width: 30rem;
@@ -363,8 +358,7 @@ tbody tr:nth-child(even) {
   margin-bottom: 0.9rem;
 }
 
-/* The browser default placeholder is dimmer than any token here and misses the contrast floor. Placeholder
-   text names what the field accepts, so it has to be legible rather than decorative. */
+/* Placeholder text names the field input. Keep it above the contrast floor. */
 input[type="search"]::placeholder,
 input[type="text"]::placeholder,
 textarea::placeholder {
@@ -375,8 +369,7 @@ textarea::placeholder {
 input[type="search"],
 input[type="text"],
 textarea {
-  /* 44px minimum: these are the two controls a phone user hits most, and the shipped client's own
-     dense field height is a mouse target, not a thumb target. */
+  /* These controls need a 44px minimum. The shipped client field height targets a mouse, not a thumb. */
   min-block-size: 2.75rem;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--line);

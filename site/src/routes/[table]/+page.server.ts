@@ -5,11 +5,11 @@ import { browsableTables, primaryKeyColumn, table, tableBySlug } from "$lib/serv
 export const entries = () => browsableTables().map((entry) => ({ table: entry.slug }));
 
 /**
- * Only the columns the browser actually renders are sent.
+ * Sends only the columns that the browser shows.
  *
- * These pages are prerendered, so every row is inlined into the HTML. Shipping the full row put all
- * 949 item descriptions into `/items/`, which is several hundred kilobytes a reader never sees; the
- * complete row is one click away on the record page and always available through `/query/`.
+ * Prerendered pages inline every row. Sending the full row put 949 item descriptions into `/items/`.
+ * That data adds hundreds of kilobytes that readers do not see.
+ * The record page and `/query/` still provide the full row.
  */
 export const load = ({ params }: { params: { table: string } }) => {
   const spec = tableBySlug(params.table);
@@ -29,7 +29,7 @@ export const load = ({ params }: { params: { table: string } }) => {
   if (schema.has("name")) needed.add("name");
   if (schema.has("rarity")) needed.add("rarity");
   if (schema.has("image")) needed.add("image");
-  // Carried so the level filter can say how many rows it hides rather than dropping them silently.
+  // Keep this column so the level filter can state how many rows it hides.
   if (spec.name === "items") needed.add("level_source");
   if (levelColumn) needed.add(levelColumn);
 

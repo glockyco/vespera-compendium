@@ -23,7 +23,7 @@
   <title>{data.profile.name} — Vespera Compendium</title>
   <meta
     name="description"
-    content="Every {data.profile.name} ability and the gear restricted to the class, slot by slot."
+    content="Every {data.profile.name} ability and every item that the class can equip. The page lists items by slot."
   />
 </svelte:head>
 
@@ -109,7 +109,7 @@
         <section class="slot">
           <h3>{slotLabel(group.slot)}</h3>
           {#if group.items.length === 0}
-            <p class="muted">No class-restricted item for this slot.</p>
+            <p class="muted">This slot has no class-restricted item.</p>
           {:else}
             <ul class="slot-items">
               {#each group.items as item (item.id)}
@@ -144,9 +144,9 @@
 
 
   /*
-   * Prose gets its own measure. The page column is sized for the portrait, the chip rows and the
-   * gear lists, but running text set across all of it reaches 120 characters a line, so every
-   * prose block is held to a 68ch line instead.
+   * Prose uses a separate measure.
+   * The page column fits the portrait, chips, and gear lists, but 120-character lines are hard to read.
+   * Hold prose to 68ch.
    */
   .lede,
   .class-role,
@@ -158,9 +158,8 @@
   }
 
   /*
-   * The portrait is the class's identity, so it leads the page beside the facts the game states
-   * about it. It is capped rather than fluid: a 512px painting stretched across half a desktop
-   * column reads as a splash screen, not as a reference page.
+   * The portrait identifies the class, so it leads beside the game facts.
+   * Cap it at 512px. A stretched painting reads as a splash screen, not a reference page.
    */
   .class-intro {
     display: grid;
@@ -331,10 +330,7 @@
   }
 
   @media (max-width: 40rem) {
-    /*
-     * Stacked, not narrowed. Holding the two-column split at 390px left the trait tips on a
-     * 17-character measure beside an empty gutter under the portrait.
-     */
+    /* Stack instead of narrowing. At 390px, the split left trait tips on a 17-character line beside an empty gutter. */
     .class-intro {
       grid-template-columns: minmax(0, 1fr);
       gap: 0.9rem;

@@ -2,20 +2,16 @@
   import { artVariantUrl, type ArtKind, type ArtVariant } from "$lib/art";
 
   /**
-   * The game's own artwork, in a rarity-tinted frame.
+   * Shows the game's artwork in a rarity-tinted frame.
    *
-   * `kind` and `variant` are required and literal at every callsite: the file a box gets is a
-   * published contract checked by `check:art`, not a guess made from a CSS size. Boxes are fixed per
-   * frame so a grid of several hundred cards reserves its layout before any image arrives, because
-   * otherwise lazy loading reflows the page as the user scrolls. A row with no art renders lettered
-   * rather than blank, since an empty frame reads as a loading failure.
+   * Each call site passes literal `kind` and `variant` values.
+   * `check:art` checks the published contract instead of guessing from CSS sizes.
+   * Fixed frames reserve space before images arrive. This prevents lazy loading from moving the page.
+   * A row without art shows initials instead of a blank loading frame.
    *
-   * Every instance is lazy and auto priority. `HeroArt` is the one component allowed to be eager,
-   * and the home hero is the one place it appears.
-   *
-   * The image is decorative and carries an empty alt: every place this is used renders the record's
-   * name beside it, so describing the picture as well makes a screen reader announce the same name
-   * twice. `alt` is still required, because it supplies the letters of the fallback.
+   * Every instance is lazy with auto priority. `HeroArt` alone loads eagerly for the home hero.
+   * The image is decorative and has an empty alt. The record name already appears beside it.
+   * `alt` remains required because it supplies fallback initials.
    */
   type Box = "thumb" | "card" | "lg" | "portrait" | "wide" | "panorama";
 
@@ -31,14 +27,13 @@
     alt: string;
     kind: ArtKind;
     variant: ArtVariant;
-    /** Frame preset, when the layout needs a size the variant's own frame does not give it. */
+    /** Frame preset for a layout that needs a size the variant frame does not provide. */
     box?: Box | null;
     rarity?: string | null;
   } = $props();
 
   let href = $derived(src ? artVariantUrl(kind, variant, src) : null);
-  // A hero file has no same-named frame here: `HeroArt` owns the eager one, so the lazy frame that
-  // holds a 1280px panorama is the full-width one.
+  // `HeroArt` owns the eager hero file. Its lazy 1280px panorama uses the full-width frame.
   let frame = $derived(box ?? (variant === "hero" ? "panorama" : variant));
   let initials = $derived(
     alt
@@ -72,7 +67,7 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    /* The source art is pixel-scaled game UI; smoothing it turns crisp edges to mush. */
+    /* The source art uses pixel-scaled game UI. Smoothing blurs its crisp edges. */
     image-rendering: auto;
   }
 
@@ -92,10 +87,8 @@
   }
 
   /*
-   * The character-select portraits are the one painted, full-figure art the game ships, and they
-   * are composed as standing figures on their own scene. They fill their frame rather than sitting
-   * contained inside it, which is the only place on the site art is treated as a picture rather
-   * than as an icon.
+   * The game ships painted character-select portraits as standing figures on their own scenes.
+   * They fill the frame. This is the only site use that treats art as a picture instead of an icon.
    */
   .art-portrait {
     width: 100%;
@@ -109,10 +102,10 @@
   }
 
   /*
-   * Zone and dungeon art is painted landscape — 1024x576 and wider. Contained in a square it
-   * occupies barely half the frame and reads as a colour smear with dead bands above and below, so
-   * places get a box in their own aspect and fill it. `wide` is the inline strip that sits in a
-   * flex row beside a name; `panorama` is the full-column plate a chapter or a record page leads on.
+   * Zone and dungeon art uses painted landscapes at 1024x576 or wider.
+   * A square leaves most of the landscape empty and reads as a color smear.
+   * Each place keeps its own aspect ratio. `wide` is an inline strip beside a name.
+   * `panorama` is the full-column plate that opens a chapter or record page.
    */
   .art-wide {
     width: 5.5rem;
@@ -133,7 +126,7 @@
     object-fit: cover;
   }
 
-  /* Rarity tints the frame, never the only signal: the label always states it too. */
+    /* Rarity tints the frame, but the label remains the required signal. */
   .art-rarity[data-rarity="uncommon"] {
     border-color: color-mix(in srgb, var(--rarity-uncommon) 55%, transparent);
   }
@@ -155,9 +148,11 @@
 
   .art-empty {
     color: var(--text-muted);
-    /* The one deliberate exception to the type ramp, recorded as such in DESIGN.md. These initials
-       must scale with whichever art box holds them: a 2rem thumbnail and a full-width hero frame
-       are orders apart, so the size is relative rather than a step off the ramp. */
+    /*
+       DESIGN.md records this exception to the type ramp.
+       Initials scale with each art box, from a 2rem thumbnail to a full-width hero frame.
+       Relative sizing keeps both readable.
+    */
     font-size: 0.7em;
     font-weight: 800;
     letter-spacing: 0.06em;

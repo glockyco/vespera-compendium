@@ -10,7 +10,7 @@
   <title>Classes — Vespera Compendium</title>
   <meta
     name="description"
-    content="The four Vespera classes, each with its 27 abilities and the gear restricted to it, slot by slot."
+    content="The four Vespera classes, each with its 27 abilities and class-restricted gear, slot by slot."
   />
 </svelte:head>
 
@@ -19,8 +19,8 @@
 <span class="kicker">CLASSES</span>
 <h1>What does your class use?</h1>
 <p class="lede">
-  Four classes, 27 abilities each, and the gear the game restricts to them. Ability ladders are
-  ordered by the combat level that unlocks them.
+  The page covers four classes, with 27 abilities and class-restricted gear for each class. It orders ability
+  ladders by the Combat level that unlocks each ability.
 </p>
 
 <div class="class-grid">
@@ -41,7 +41,7 @@
     margin-block-start: 1.3rem;
   }
 
-  /* Four is a closed set: an auto-fit track would orphan one class on a row of its own. */
+  /* Four is a closed set. An auto-fit track can leave one class alone on a row. */
   @media (min-width: 52rem) {
     .class-grid {
       grid-template-columns: repeat(4, 1fr);

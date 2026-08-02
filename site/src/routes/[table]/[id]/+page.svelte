@@ -11,23 +11,23 @@
 
   let { data }: { data: PageData } = $props();
 
-  /** Chip values that are durations in the data but should read as time. */
+  /** Formats duration chips as time values. */
   const DURATION_CHIPS = new Set(["Takes", "Cooldown"]);
 
   const NUMERIC = /^-?\d+(\.\d+)?$/;
 
   /**
-   * Stat values arrive as strings because some are already display-formatted by the game (world
-   * boss gear reads "+12% haste"). A purely numeric one is passed through the stat formatter so
-   * percentages and flat amounts are never confused; anything else is printed verbatim.
+   * Receives strings because the game formats some values, such as world boss gear "+12% haste".
+   * Numeric values use the stat formatter so percentages and flat amounts stay distinct.
+   * Other values stay unchanged.
    */
   function statDisplay(label: string, value: string): string {
     return NUMERIC.test(value) ? statValue(label, Number(value)) : value;
   }
 
   /**
-   * A block is empty when it has no lines, no stats and no prose. The component cannot infer this,
-   * because a snippet that renders nothing is still a snippet, so the page states it.
+   * A block is empty when it has no lines, stats, or prose.
+   * The component cannot infer this because an empty snippet still exists.
    */
   function isEmpty(block: PageData["shape"]["blocks"][number]): boolean {
     return !block.prose && !(block.lines?.length ?? 0) && !(block.stats?.length ?? 0);
@@ -220,9 +220,9 @@
   }
 
   /*
-   * Prose gets its own measure. The 76rem page column is right for chip rows, stat grids and record
-   * lists, but running text set across it reaches 98 characters a line and stops being comfortable,
-   * so every prose block is held to a 68ch line.
+   * Prose uses a separate measure.
+   * The 76rem column fits chips, stats, and record lists, but 98-character lines are hard to read.
+   * Hold prose to 68ch.
    */
   .record-description,
   .guides-summary,
@@ -243,15 +243,15 @@
 
   .record-blocks {
     display: grid;
-    /* `min()` so the 20rem track collapses on a 320 px phone instead of overflowing the viewport. */
+    /* `min()` lets the 20rem track collapse on a 320px phone instead of overflowing. */
     grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
     gap: 0.9rem;
     align-items: start;
   }
 
   /*
-   * The rule before the record. A sell value or a mitigation number means little on its own, so the
-   * guide that explains it comes before the record's own fields rather than after them.
+   * Put the system rule before record fields.
+   * A sell value or mitigation number needs its explanation first.
    */
   .guides {
     margin-block-end: 1.2rem;
@@ -305,8 +305,7 @@
 
   .stat-list {
     display: grid;
-    /* A wide column gap so a value never sits flush against the next column's label, which reads as
-       one run-on pair. */
+    /* A wide gap keeps each value apart from the next column label. */
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     gap: 0.25rem 2.2rem;
     margin: 0;

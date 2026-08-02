@@ -1,10 +1,9 @@
 /**
- * The four classes, and the nine equipment slots the game defines.
+ * Defines the four classes and nine equipment slots from the game.
  *
- * Both lists are closed sets in the shipped data — 27 abilities per class, exactly nine slots — so
- * they are declared rather than derived. A class page renders all nine slots even where a class has
- * no restricted item for one, because the nine-slot shape is what a player is comparing against and
- * a silently shorter list reads as missing data.
+ * Both lists are closed sets in the shipped data. Each class has 27 abilities and nine slots.
+ * The class page shows all nine slots, including slots without restricted items.
+ * A shorter list can look like missing data.
  */
 export const CLASSES = ["barbarian", "arcanist", "warden", "nightblade"] as const;
 export type ClassId = (typeof CLASSES)[number];
@@ -26,7 +25,7 @@ export const SLOTS = [
 ] as const;
 
 /**
- * Ability categories in the order a player meets them: the normal rotation first, then the sustain,
- * then the payoff, then the subclass specialisation.
+ * Orders ability categories as a player meets them.
+ * The normal rotation comes first, then sustain, payoff, and subclass specialization.
  */
 export const ABILITY_CATEGORY_ORDER = ["normal", "heal", "ultimate", "subclass"] as const;

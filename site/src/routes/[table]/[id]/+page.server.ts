@@ -6,9 +6,9 @@ import { headingFor, shapeFor } from "$lib/server/related";
 export const entries = () => entityKeys();
 
 /**
- * The page receives a shaped record rather than the raw row plus a pile of related tables. Shaping
- * happens here because it is a build-time join across up to six tables, and doing it in the
- * component would ship those tables to the browser to answer a question already settled.
+ * Loads a shaped record instead of a raw row and related tables.
+ * Shaping runs at build time across up to six tables.
+ * Doing it in the component sends those tables to the browser for a settled question.
  */
 export const load = async ({ params }: { params: { table: string; id: string } }) => {
   const spec = tableBySlug(params.table);
@@ -29,8 +29,7 @@ export const load = async ({ params }: { params: { table: string; id: string } }
     heading: heading.title,
     headingSub: heading.sub,
     level,
-    // The rule behind the record, before the record's own fields. A reader who does not know how
-    // sell value is computed cannot use a sell value.
+    // Put the rule before the record fields. Readers need the sell-value rule to use the value.
     guides: mechanicLinksFor(spec.name, row, await mechanicDocuments()),
     shape: shapeFor(spec.name, row),
   };

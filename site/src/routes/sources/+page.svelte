@@ -11,21 +11,21 @@
 </script>
 
 <svelte:head>
-  <title>Where items come from — Vespera Compendium</title>
+  <title>Item sources — Vespera Compendium</title>
   <meta
     name="description"
-    content="Every modelled way to obtain an item in Vespera, and an honest account of the items whose source this model does not cover."
+    content="Every modelled way to obtain an item in Vespera, plus an honest account of items whose source this model does not cover."
   />
 </svelte:head>
 
 <nav class="crumbs" aria-label="Breadcrumb"><a href={resolve("/")}>Home</a> / Sources</nav>
 
 <span class="kicker">ACQUISITION</span>
-<h1>Where items come from</h1>
+<h1>Item sources</h1>
 <p class="lede">
   {data.sourcedTotal} of {data.itemTotal} items have at least one modelled source, or {coverage}%.
-  The rest are listed below by name rather than hidden, because a missing source is a boundary of
-  this model and never evidence that an item cannot be obtained.
+  The page lists the rest by name instead of hiding them. A missing source marks a boundary of this
+  model, not evidence that an item cannot be obtained.
 </p>
 
 <div class="source-grid">

@@ -2,11 +2,9 @@
   import type { Snippet } from "svelte";
 
   /**
-   * The genuinely tabular case: stat lists, drop tables, and the four entity browsers whose records
-   * have no art to identify them. Sorting is kept here rather than duplicated per page.
-   *
-   * Cells are rendered by the caller through the `cell` snippet, because a compendium cell is
-   * usually a link, a bar or a formatted figure rather than a string.
+   * Handles true tables: stat lists, drop tables, and entity browsers without art.
+   * Sorting stays here instead of repeating on each page.
+   * Callers provide the `cell` snippet because a cell can be a link, bar, or formatted figure.
    */
   type Column = { key: string; label: string; align?: "num" };
 
@@ -38,8 +36,7 @@
   let sorted = $derived.by(() => {
     if (!sortKey) return rows;
     const key = sortKey;
-    // Nulls sort last in both directions: they mean "not modelled", which is never the answer a
-    // reader is looking for at the top of a sorted column.
+    // Nulls sort last in both directions. They mean "not modelled", not a top answer.
     return [...rows].sort((left, right) => {
       const a = left[key];
       const b = right[key];

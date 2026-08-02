@@ -1,16 +1,15 @@
 import { table } from "$lib/server/dataset";
 
 /**
- * The level spine: what a player can reach, band by band, from the first zone to the last.
+ * Builds the level spine from the first zone to the last.
  *
- * Bands come from the twelve base zones' own combat levels, because the game gates zones and that
- * makes them the real chapter markers. A band runs from its zone's level to just below the next
- * zone's, and the last band runs to the highest level anything in the data requires.
+ * Twelve base zones define combat bands because the game gates them by Combat level.
+ * Each band starts at its zone level and ends before the next zone.
+ * The last band ends at the highest level in the data.
  *
- * The three scales are kept apart. A band is a combat range, and the gathering nodes and recipes
- * shown beside it are the ones whose *own* scale falls in the same numeric range — which is a
- * different claim, and the page labels it as one. Merging them is the exact error the game's own
- * quest guidance avoids when it says to mine at Gathering 10 and smelt at Crafting 10.
+ * Keep Combat, Gathering, and Crafting scales separate.
+ * A band uses a Combat range. Nodes and recipes use their own scales within that numeric range.
+ * The page labels this distinction. The game's quest guidance makes the same distinction at Gathering 10 and Crafting 10.
  */
 export const load = () => {
   const zones = table("zones_dungeons");
@@ -49,9 +48,9 @@ export const load = () => {
         image: (zone.image as string | null) ?? null,
         act: level(zone.act),
       },
-      // Every other place whose own combat level falls in this band. The heroic zones and nightmare
-      // dungeons are separate places with their own levels rather than variants of a named base
-      // zone, so they are placed by level like everything else and flagged, not folded into a base.
+      // Place each other location by its own Combat level.
+      // Heroic zones and nightmare dungeons are separate places, not base-zone variants.
+      // Keep their flags instead of folding them into a base zone.
       places: zones
         .filter((entry) => entry.id !== zone.id && inCombatBand(entry.combat_level))
         .map((entry) => ({
@@ -72,7 +71,7 @@ export const load = () => {
           category: String(quest.category ?? "side"),
           level: level(quest.combat_level),
         }))
-        // Main before side before tutorial: the main chain is the spine a player follows.
+        // Main quests come before side quests, then tutorials. The main chain is the player spine.
         .sort((left, right) => {
           const rank = (category: string): number =>
             category === "main" ? 0 : category === "side" ? 1 : 2;

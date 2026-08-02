@@ -1,13 +1,10 @@
 /**
- * The one owner of the published search index in the browser.
+ * Owns the published search index in the browser.
  *
- * The index is 367 KiB, so it is fetched on first focus rather than on mount: a visitor who never
- * searches never pays for it. Two fields are on screen at once on every route that carries its own
- * instrument, and both must resolve to the same transfer, so the in-flight promise and the decoded
- * rows live here at module scope rather than in a component instance.
- *
- * A rejected promise is cleared, and only a rejected one. Keeping a fulfilled promise is the point,
- * and keeping a rejected one would make one dropped request permanent for the rest of the session.
+ * The index is 367 KiB. Load it on first focus instead of mount.
+ * A visitor who never searches then pays no transfer cost.
+ * Routes with two fields share the in-flight promise and decoded rows at module scope.
+ * A rejected promise clears. A fulfilled promise stays, so one dropped request does not persist.
  */
 
 export type SearchEntry = {
@@ -23,8 +20,8 @@ export type SearchEntry = {
 };
 
 /**
- * Keys in the published JSON are abbreviated to keep it small. The mapping is expanded here and
- * published in the manifest, so it is not a private convention.
+ * The published JSON uses short keys to reduce size.
+ * This mapping expands them here and publishes it in the manifest.
  */
 type PackedRow = {
   t: string;
@@ -82,10 +79,7 @@ function decode(payload: unknown): SearchEntry[] {
   });
 }
 
-/**
- * Start or join the single transfer. Every mounted field calls this on first focus and on input, so
- * it must be cheap to call repeatedly.
- */
+/** Starts or joins the single transfer. Mounted fields call this on focus and input, so repeated calls stay cheap. */
 export function loadSearchIndex(): Promise<SearchEntry[]> {
   if (decoded) return Promise.resolve(decoded);
   pending ??= fetch(INDEX_URL)
@@ -96,7 +90,7 @@ export function loadSearchIndex(): Promise<SearchEntry[]> {
       return entries;
     })
     .catch((error: unknown) => {
-      // Only a failed attempt is forgotten, so the next focus can retry it.
+      // Forget only a failed attempt. The next focus can try again.
       pending = null;
       throw error;
     });
@@ -104,29 +98,25 @@ export function loadSearchIndex(): Promise<SearchEntry[]> {
 }
 
 /**
- * Where a search result goes.
+ * Returns the destination for a search result.
  *
- * Mechanic guides are published into the same index as records so one field finds both, but they are
- * not a relational table and have no record route, so the synthetic `mechanics` table maps to the
- * guide URL instead of `/<slug>/<id>/`.
+ * Mechanic guides share the index with records, but they have no record route.
+ * The synthetic `mechanics` table therefore maps to the guide URL.
  */
 export function searchHref(entry: SearchEntry): string {
   return entry.table === "mechanics" ? `/mechanics/${entry.id}/` : `/${entry.slug}/${entry.id}/`;
 }
 
 /**
- * Exact name, then name prefix, then name substring, then id substring, then subtitle substring;
- * shorter names win ties. Ranked rather than filtered because a substring match over the whole
- * index otherwise buries the record whose name the player actually typed.
+ * Ranks exact names first, then prefixes, substrings, ids, and subtitles.
+ * Shorter names win ties. Ranking keeps a matching name above a broad substring result.
  *
- * The subtitle rank sits last on purpose. It is what makes `defense`, `craft` and `tower` reach the
- * guide that explains them, and it must never outrank a record that carries the typed word in its
- * own name.
+ * Subtitle matches stay last. They let `defense`, `craft`, and `tower` reach their guides.
+ * They never outrank a record whose name contains the typed word.
  *
- * One exception, and only one: the best matching system guide leads. Five guides sit against a few
- * thousand records, and a bare system word asks what the system is rather than which item is named
- * after it. It costs the reader one row, and every record keeps its order behind it. A scoped
- * browser filters guides out entirely, so this never touches an entity browser.
+ * One exception moves the best system guide to the front.
+ * Five guides share a few thousand records. A system word asks for the system, not a named item.
+ * Scoped browsers remove guides before this function ranks records.
  */
 export function rankSearchEntries(
   entries: SearchEntry[],

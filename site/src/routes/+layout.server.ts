@@ -1,9 +1,8 @@
 import { manifest } from "$lib/server/dataset";
 
 /**
- * The build stamp belongs in the footer of every page rather than in the home page's opening line.
- * It is provenance, which matters, but a player arriving with a question should not have to read
- * schema metadata before reaching the answer.
+ * Puts the build stamp in every page footer instead of the home page opening.
+ * The stamp gives provenance, but readers can reach answers before schema metadata.
  */
 export const load = () => {
   const data = manifest();

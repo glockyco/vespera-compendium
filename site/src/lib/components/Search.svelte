@@ -10,34 +10,29 @@
   import Art from "./Art.svelte";
 
   /**
-   * Client-side search over the published index, as a WAI-ARIA combobox.
+   * Provides client-side search over the published index as a WAI-ARIA combobox.
    *
-   * The index itself is owned by `$lib/client/search-index`, not by this component: the shell field
-   * and a page's own field are both mounted on most routes, and they must share one transfer and one
-   * decode. This file owns the interaction only.
-   *
-   * The field is never focused programmatically on mount. Initial focus belongs to the document, so
-   * the skip link is the first stop for a keyboard user and a phone does not open its keyboard over
-   * the page a visitor came to read. `/` reaches the field from anywhere.
+   * `$lib/client/search-index` owns the index. The shell field and page field share one transfer and decode.
+   * This component owns interaction only.
+   * The field never receives focus on mount. The skip link stays first for keyboard users.
+   * A phone does not open its keyboard over the page. `/` focuses the field from anywhere.
    */
   let {
     idBase,
     placeholder = "Search items, enemies, quests, recipes…",
-    /**
-     * Shown instead of `placeholder` on a narrow viewport.
-     *
-     * The home field's full prompt overran a 390px box and clipped to "…recipe or zor", which read
-     * as a broken control on the one instrument the page points at.
+    /** Shows on a narrow viewport instead of `placeholder`.
+     * The full home prompt exceeded a 390px box and clipped to "…recipe or zor".
+     * The clipped text looked like a broken control.
      */
     narrowPlaceholder = null,
     scopeTable = null,
     size = "md",
   }: {
-    /** Unique per mounted instance, because two fields are on screen and every id here derives from it. */
+    /** One id per mounted instance. Two fields can share the screen. */
     idBase: string;
     placeholder?: string;
     narrowPlaceholder?: string | null;
-    /** Restricts results to one published table, for the entity browsers. */
+    /** Limits results to one published table for entity browsers. */
     scopeTable?: string | null;
     size?: "md" | "lg";
   } = $props();
@@ -80,13 +75,12 @@
     entries ? rankSearchEntries(entries, query.trim().toLowerCase(), scopeTable) : [],
   );
   let shown = $derived(results.slice(0, LIMIT));
-  /* The popup is showing something, which is what `aria-expanded` reports: a "no match" note is a
-     displayed popup too, and reporting it collapsed would contradict what is on screen. */
+  /* The popup has content when `aria-expanded` is true. A "no match" note also uses the popup. */
   let expanded = $derived(open && query.trim().length > 0);
   let activeId = $derived(expanded && shown.length > 0 ? `${idBase}-option-${active}` : undefined);
 
   $effect(() => {
-    // Re-anchor the active option whenever the query changes, so Enter never fires a stale row.
+    // Reset the active option when the query changes. Enter then cannot use a stale row.
     query;
     active = 0;
   });
@@ -99,8 +93,7 @@
 
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
-      // Cleared and closed, but focus stays put: blurring here loses the place a keyboard user
-      // reached the field from, and Escape is the one key they use to change their mind.
+      // Clear and close the field, but keep focus. Blurring loses the keyboard user's place.
       event.preventDefault();
       query = "";
       open = false;
@@ -122,7 +115,7 @@
     }
   }
 
-  /** `/` focuses search from anywhere, unless the user is already typing into something. */
+  /** `/` focuses search unless the user is already typing. */
   function onWindowKeydown(event: KeyboardEvent): void {
     if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
     const target = document.activeElement;
@@ -189,9 +182,8 @@
           aria-selected={index === active}
         >
           <!--
-            The row is an anchor so a middle click and a copied link both work, but pointer
-            selection goes through the same handler as Enter: the visitor and the keyboard must not
-            reach two different URLs from the same active row.
+            The row is an anchor, so middle clicks and copied links work.
+            Pointer selection uses the Enter handler, so pointer and keyboard users reach one URL.
           -->
           <a
             href={resolve(searchHref(entry))}
@@ -253,10 +245,7 @@
     padding: 0.3rem;
   }
 
-  /*
-   * Hidden rather than unmounted, because `aria-controls` must resolve to a real element for the
-   * combobox relationship to be valid even while the popup is closed.
-   */
+  /* Keep the popup mounted. `aria-controls` needs a real element while the popup is closed. */
   .search-hidden {
     display: none;
   }
@@ -305,10 +294,7 @@
     white-space: nowrap;
   }
 
-  /*
-   * On the raised active row the muted grey drops under 4.5:1, so the subtitle steps up one ink
-   * rather than the row losing its highlight.
-   */
+  /* The active row lifts muted gray above the 4.5:1 contrast floor. */
   .active .search-sub {
     color: var(--lavender-grey);
   }

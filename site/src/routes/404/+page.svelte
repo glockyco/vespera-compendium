@@ -3,18 +3,16 @@
   import Search from "$lib/components/Search.svelte";
 
   /**
-   * An unknown URL is a way back in rather than a dead end, so this carries the same search field
-   * the home page leads with plus the destinations most likely to hold what was being looked for.
-   *
-   * It renders no question cards for the same reason the home page does not: no answerable question
-   * shape carried enough measured demand to earn one.
+   * Makes an unknown URL a way back into the site.
+   * It keeps the home search field and likely destinations.
+   * It shows no question cards because measured demand did not support one.
    */
   const WAYS_IN = [
-    { href: "/mechanics/", label: "Mechanics", blurb: "The rules and formulas the game runs on" },
-    { href: "/progression/", label: "Progression", blurb: "What to do at your level, 1 to 140" },
-    { href: "/classes/", label: "Classes", blurb: "Abilities and gear for each of the four" },
-    { href: "/items/", label: "Items", blurb: "Every item and where it comes from" },
-    { href: "/zones-dungeons/", label: "Zones and dungeons", blurb: "What each place holds" },
+    { href: "/mechanics/", label: "Mechanics", blurb: "Read the rules and formulas that govern the game." },
+    { href: "/progression/", label: "Progression", blurb: "Find tasks for levels 1 to 140." },
+    { href: "/classes/", label: "Classes", blurb: "See abilities and gear for all four classes." },
+    { href: "/items/", label: "Items", blurb: "See every item and its source." },
+    { href: "/zones-dungeons/", label: "Zones and dungeons", blurb: "See what each place holds." },
   ];
 </script>
 
@@ -25,7 +23,7 @@
 <span class="kicker">NOT FOUND</span>
 <h1>No record at this address</h1>
 <p class="lede">
-  The page you asked for is not part of the compendium. Search for what you were after, or start
+  The page you asked for is not part of the compendium. Search for the missing record, or start
   from one of these.
 </p>
 

@@ -9,10 +9,9 @@
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 
   /**
-   * Seven destinations, ordered by what a visitor needs first: the guides explain the systems, the
-   * two hubs answer the most-asked progression and class questions, three indexes carry the bulk of
-   * the records, and the two tools sit last because they serve the much smaller data-literate
-   * audience.
+   * Lists seven destinations in visitor order.
+   * Guides explain systems first. Progression and class hubs follow.
+   * Three indexes hold most records. Query and Sheets serve data-literate readers.
    */
   const DESTINATIONS = [
     { href: "/mechanics/", label: "Mechanics" },
@@ -27,13 +26,10 @@
   let generated = $derived(data.generatedAt.slice(0, 10));
 
   /**
-   * Routes that carry their own full-width field as the page's primary instrument. Rendering the
-   * shell's as well would put two identical, identically-named search boxes on screen, and two live
-   * handlers racing for the `/` shortcut, so the shell yields on those routes.
-   *
-   * Keyed on the route id rather than the pathname: the pathname has to be compared against a
-   * `resolve()`d string, which does not match during prerender, so the duplicate shipped in the
-   * static HTML and was only removed once the client hydrated.
+   * Lists routes with their own full-width primary search field.
+   * The shell field also appears on those routes, so it duplicates the control and its `/` handler.
+   * Key the set by route id, not pathname. A resolved pathname differs during prerender.
+   * Without this set, static HTML contains a duplicate until client hydration.
    */
   const OWN_SEARCH = new Set(["/", "/404"]);
   let showShellSearch = $derived(!OWN_SEARCH.has(page.route.id ?? ""));
@@ -66,7 +62,7 @@
 
 <footer class="sitefoot">
   <div class="sitefoot-inner">
-    <span>Reconstructed from the shipped game bundles and verified against the running game.</span>
+    <span>The compendium uses shipped game bundles. The game checks the result.</span>
     <span class="sitefoot-meta">
       <span>build {data.buildId}</span>
       <span>schema {data.schemaVersion}</span>
@@ -193,13 +189,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /*
-   * Below the search field's usable width the bar stacks. The nav takes its own full-width row
-   * rather than sharing one with the wordmark, because seven 44px destinations squeezed into half a
-   * 320px viewport wrapped to four lines and made a sticky header eat a fifth of the screen. The bar
-   * also stops sticking there: a stacked header that follows the reader down costs more than it
-   * gives back on a phone.
-   */
+  /* Below the usable search width, stack the bar.
+     The nav gets a full-width row because seven 44px destinations do not fit half a 320px viewport.
+     Stop sticking the bar there because a stacked header costs more than it gives on a phone. */
   @media (max-width: 54rem) {
     .topbar {
       position: static;

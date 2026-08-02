@@ -5,12 +5,10 @@ import path from "node:path";
 import { afterAll, describe, expect, test } from "bun:test";
 
 /**
- * The published-snapshot capability, exercised for real.
+ * Exercises the published-snapshot capability.
  *
- * A build renders from one verified tree, and the capability is what makes that checkable rather
- * than asserted. Each case runs in its own process: the module accepts one capability per process
- * on purpose, so a single test file sharing module state could not tell a rejection from a cached
- * acceptance.
+ * A build reads one checked tree. Each case runs in its own process.
+ * The module accepts one capability per process, so shared module state cannot hide a rejection.
  */
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
@@ -72,8 +70,8 @@ async function run(
   body: string,
   env: Record<string, string | undefined>,
 ): Promise<{ ok: boolean; out: string }> {
-  // A dynamic import inside the child, because the point of the child is a fresh module registry:
-  // the module accepts one capability per process, so a static import here would share state.
+  // Use a dynamic import in the child to create a fresh module registry.
+  // A static import shares the one-capability process state.
   const source = `
     const dataset = await import(${JSON.stringify(DATASET)});
     const out = await (async () => { ${body} })();

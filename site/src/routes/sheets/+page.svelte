@@ -40,9 +40,9 @@
   <span>Spreadsheets</span>
 </nav>
 
-<p>Google Sheets caches IMPORTDATA for about an hour. The same URLs open in Excel through Data then From Web.</p>
+<p>Google Sheets caches IMPORTDATA for about an hour. In Excel, choose Data, then From Web, to open the same URLs.</p>
 <p>
-  An item absent from <code>item_sources</code> has no modelled source yet. That is a gap in what this
+  If <code>item_sources</code> lacks an item, this model has no source for it yet. That is a gap in what this
   dataset models, not evidence that the item cannot be obtained.
 </p>
 

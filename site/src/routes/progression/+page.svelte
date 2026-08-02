@@ -12,7 +12,7 @@
   <title>Progression — Vespera Compendium</title>
   <meta
     name="description"
-    content="What to do at every level of Vespera: the zone, dungeons, quests, gathering nodes and recipes reachable in each band from level 1 to 140."
+    content="What to do at every level of Vespera: the zones, dungeons, quests, gathering nodes, and recipes in each band from level 1 to 140."
   />
 </svelte:head>
 
@@ -21,9 +21,9 @@
 <span class="kicker">PROGRESSION</span>
 <h1>What to do at your level</h1>
 <p class="lede">
-  Every band from level 1 to {data.ceiling}, anchored on the zone the game opens at that point. The
-  three level scales are tracked separately, because they are three different skills: a band's
-  combat range is not its gathering range and neither is its crafting range.
+  Each band covers levels 1 to {data.ceiling}. The zone that opens at that point anchors each band.
+  The page tracks the three level scales separately because they use different skills.
+  A Combat range is not a Gathering range or a Crafting range.
 </p>
 
 <div class="legend">
@@ -152,10 +152,7 @@
     margin-block: 1rem 0.9rem;
   }
 
-  /*
-   * The route ends where the endgame begins, so the handoff sits at the top rather than after 32
-   * bands of scrolling.
-   */
+  /* The route ends where endgame starts. Put the handoff at the top, not after 32 bands. */
   .endgame {
     max-inline-size: 50rem;
     margin-block-end: 1.5rem;
@@ -187,7 +184,7 @@
     gap: 0.8rem;
   }
 
-  /* The rail: a continuous line through every band, so the page reads as one route. */
+  /* A continuous rail through every band makes the page read as one route. */
   .band-mark {
     position: relative;
     display: flex;
@@ -230,7 +227,7 @@
 
   .gutters {
     display: grid;
-    /* `min()` so the 15rem track collapses on a 320 px phone instead of overflowing the viewport. */
+    /* `min()` lets the 15rem track collapse on a 320px phone instead of overflowing. */
     grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
     gap: 1rem;
     align-items: start;
@@ -282,7 +279,7 @@
     font-size: var(--text-sm);
   }
 
-  /* Quest and recipe rows are bare links, so they need the touch floor the shared row already has. */
+  /* Bare quest and recipe links need the shared row's touch floor. */
   .entries li > a,
   .gutter p a {
     display: inline-flex;

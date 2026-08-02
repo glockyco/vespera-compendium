@@ -2,15 +2,12 @@
   import { artVariantUrl } from "$lib/art";
 
   /**
-   * The one eagerly loaded image on the site.
+   * Loads the site's one eager image.
    *
-   * It exists as its own component rather than as a prop on `Art` so that "which image is the LCP
-   * candidate" is answerable by grepping for the import, and so `check:art` can assert there is
-   * exactly one instance. `Art` is unconditionally lazy and auto priority, which is what keeps the
-   * initial image transfer inside its budget on every other route.
-   *
-   * `kind` and `variant` are fixed rather than props: the only sanctioned use is the home hero
-   * panorama, and a second call shape would reopen exactly the question this component closes.
+   * This component owns the image instead of accepting a prop on `Art`.
+   * A single import lets `check:art` count the LCP candidate.
+   * `Art` stays lazy with auto priority on every other route.
+   * Fixed `kind` and `variant` allow only the home hero panorama.
    */
   let { src, alt }: { src: string | null; alt: string } = $props();
 

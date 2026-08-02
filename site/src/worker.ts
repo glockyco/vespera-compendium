@@ -1,7 +1,8 @@
 /**
- * A custom domain needs a Worker to invoke, but this site is entirely static. Assets are matched at
- * the edge before the Worker runs, so only a request matching no asset arrives here, and handing it
- * straight back to the assets binding lets `not_found_handling` serve the prerendered 404 page.
+ * The custom domain invokes a Worker, but the site is static.
+ * The edge matches assets before the Worker runs.
+ * Only requests without an asset arrive here.
+ * Pass those requests to the assets binding so `not_found_handling` serves the prerendered 404 page.
  */
 type AssetFetcher = { fetch(request: Request): Promise<Response> };
 

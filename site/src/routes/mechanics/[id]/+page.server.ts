@@ -11,12 +11,12 @@ import { publishedMechanics } from "$lib/server/mechanics";
 import type { PageServerLoad } from "./$types";
 
 /**
- * One guide page.
+ * Loads one guide page.
  *
- * The page renders a projection rather than the artifact: each string keeps its semantic id, its
- * text, and the status this loader derived for it. Probe hashes, source-target ids and contract
- * identifiers stay on the server, because a reader has no use for them and these pages must never
- * put an implementation name on screen.
+ * The page uses a projection, not the artifact.
+ * Each string keeps its semantic ID, text, and derived status.
+ * Probe hashes, source IDs, and contract IDs stay on the server.
+ * Readers do not need implementation names.
  */
 
 export type Claim = { id: string; text: string; status: MechanicVerificationStatus };
@@ -24,13 +24,12 @@ export type Claim = { id: string; text: string; status: MechanicVerificationStat
 export type ClaimFormula = { id: string; label: Claim; expression: Claim; note: Claim | null };
 
 /**
- * A fact value the compendium lays out for itself.
+ * Stores a fact value that the compendium lays out.
  *
- * Some derived values are published as a serialized array of records. That is a transport shape,
- * not a reading shape: printed as one string it puts schema keys and JSON punctuation in front of
- * a player. How a derived value looks is the compendium's choice, so a value of that shape is
- * projected into rows here. The test is the shape and never the fact id, so any value published in
- * the same form reads the same way, and any other value is left exactly as it was published.
+ * Some values use a serialized array of records.
+ * That transport shape puts schema keys and JSON punctuation before a reader.
+ * This projection turns that shape into rows.
+ * The test uses the shape, not a fact ID, so any matching value gets the same layout.
  */
 export type ClaimFactColumn = { key: string; heading: string; numeric: boolean };
 
@@ -55,13 +54,12 @@ export type ClaimRelated = { label: Claim; href: { id: string; text: string } };
 type FactRecord = Record<string, number | string>;
 
 /**
- * The column vocabulary a fact table draws on, and the order its columns read in.
+ * Defines fact-table columns and their order.
  *
- * A bare `Level` is the one ambiguity this site exists to remove, because the game runs Combat,
- * Gathering and Crafting on separate scales, so the heading names the scale. The order lives here
- * rather than coming from the payload because the payload is canonical JSON, which sorts its keys
- * alphabetically and so puts a measure before the level it was measured at. A key outside this
- * list keeps the position the value published it in and takes the shared stat wording.
+ * A bare `Level` is ambiguous because Combat, Gathering, and Crafting use separate scales.
+ * The heading names the scale.
+ * Canonical JSON sorts payload keys alphabetically, so this list keeps a measure after its level.
+ * Unknown keys keep their published position and use shared stat wording.
  */
 const FACT_TABLE_COLUMNS: readonly { key: string; heading: string }[] = [
   { key: "level", heading: `${LEVEL_SCALES.combat} level` },
@@ -70,12 +68,11 @@ const FACT_TABLE_COLUMNS: readonly { key: string; heading: string }[] = [
 ];
 
 /**
- * The records behind a table-shaped value, or `null` for every other value.
+ * Returns records from a table-shaped value, or `null` for another value.
  *
- * Table-shaped means a non-empty JSON array of objects that all carry the same keys and only
- * values a cell can print. A nested object, a missing key or a value of any other type would need
- * a layout decision this projection has no basis for, so those keep the published one-line
- * rendering instead of being flattened into something the data does not say.
+ * A table-shaped value is a non-empty JSON array of objects with equal keys.
+ * Each value must fit a printable cell.
+ * Nested objects, missing keys, and other types keep their one-line published form.
  */
 function factRecords(text: string): { keys: string[]; records: FactRecord[] } | null {
   if (!text.startsWith("[")) return null;
@@ -132,13 +129,10 @@ function factTable(text: string): ClaimFactTable | null {
     const cells: ClaimFactCell[] = [];
     for (const column of columns) {
       const value = record[column.key];
-      // `factRecords` proved the key set is uniform, so a gap here is a broken invariant.
+      /* `factRecords` checks that all rows use one key set. A missing key breaks that invariant. */
       if (value === undefined) throw new Error(`a fact table row has no ${column.key}`);
-      /*
-       * `raw` is the published value untouched and `text` is the reading of it. Keeping both means
-       * the cell can be grouped and aligned for a player without the page losing the exact figure
-       * it was given, which is what any recheck has to compare against.
-       */
+      /* `raw` keeps the published value. `text` gives its reading.
+       * Both let the cell group and align values without losing the exact input for a later check. */
       cells.push({
         key: column.key,
         raw: String(value),
@@ -151,7 +145,7 @@ function factTable(text: string): ClaimFactTable | null {
   return { columns, rows };
 }
 
-/** The prerender list. A missing or repeated id fails the build rather than emitting a broken URL. */
+/** The prerender list. A missing or repeated ID fails the build instead of making a broken URL. */
 export const entries = async (): Promise<{ id: string }[]> => {
   const documents = (await publishedMechanics()).documents;
   if (documents.length === 0) throw new Error("no mechanic guides were published");
@@ -173,7 +167,7 @@ export const load: PageServerLoad = async ({ params }) => {
   if (!approvedDocument) throw new Error(`the approval does not cover ${document.id}`);
   const approved = approvedProbeKeys(approvedDocument.verifiedProbes);
 
-  /** Derived here rather than read back, so the page never repeats a claim it did not recheck. */
+  /** Derive status here so the page never repeats an unchecked claim. */
   const claim = (text: PublishedMechanicText): Claim => ({
     id: text.id,
     text: text.text,

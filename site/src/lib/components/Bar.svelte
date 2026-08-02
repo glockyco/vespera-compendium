@@ -1,9 +1,8 @@
 <script lang="ts">
-  /**
-   * A proportion shown as both a bar and a printed figure.
+  /** Shows a proportion as a bar and a printed figure.
    *
-   * The number is never encoded in width alone: a 3% and a 6% drop chance are visually almost
-   * identical at this size, and the figure is the thing a player is actually reading.
+   * Width alone cannot show the difference between a 3% and 6% drop chance.
+   * The printed figure gives the value that a player reads.
    */
   let {
     value,

@@ -1,12 +1,9 @@
 /**
- * The published manifest, in one place.
+ * Defines the published manifest in one place.
  *
- * `index.json` is the contract between the pipeline and every surface the site renders, and it is
- * read from three different runtimes: the prerender server, the SQL playground in the browser, and
- * the emitted-data verifier. When each of those carried its own structural type they drifted, and a
- * schema bump was discoverable only by whichever one happened to break first. So the type, the
- * schema-version literal, the validator, and the sole client fetch all live here, and nothing else
- * in the site is allowed to describe a manifest.
+ * `index.json` is the contract between the pipeline and every site surface.
+ * The prerender server, browser SQL playground, and emitted-data checker read it.
+ * One shared type, schema literal, parser, and client request prevent drift.
  */
 
 /** The only schema-version literal in the site. */
@@ -187,12 +184,11 @@ function parseImages(value: unknown, source: string): ManifestImages {
   };
 }
 
-/**
- * Validates a parsed `index.json` and returns it typed.
+/** Checks a parsed `index.json` and returns its typed form.
  *
- * The site refuses to render an older manifest rather than degrading, because every schema-2 field
- * this build depends on has a schema-3 replacement: silently tolerating the old shape would publish
- * pages whose mechanics labels have no approval behind them.
+ * The site rejects an older manifest instead of degrading.
+ * Every schema-2 field that this build needs has a schema-3 replacement.
+ * Tolerating the old shape shows pages without approved mechanics labels.
  */
 export function parseManifest(value: unknown, source: string = MANIFEST_FILE): Manifest {
   const manifest = record(value, source, "manifest");
@@ -214,11 +210,11 @@ export function parseManifest(value: unknown, source: string = MANIFEST_FILE): M
 }
 
 /**
- * The site's only client-side manifest request.
+ * Makes the site's only client-side manifest request.
  *
- * `/query/` needs the full manifest to validate the build it is about to run SQL against, then
- * projects the table list for its own UI. Routing that through here keeps one fetch, one validator,
- * and one place where a schema bump has to be handled.
+ * `/query/` needs the full manifest before it runs SQL.
+ * This function checks the build, then gives the query page its table list.
+ * One request and one parser keep schema changes in one place.
  */
 export async function fetchManifest(fetchImpl: typeof fetch = fetch): Promise<Manifest> {
   const response = await fetchImpl(MANIFEST_URL);

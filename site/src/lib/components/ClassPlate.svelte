@@ -3,11 +3,9 @@
   import Art from "./Art.svelte";
 
   /**
-   * One of the four classes, as a painted plate.
-   *
-   * Shared by the home hall and the class index so the same four objects are not rendered at two
-   * densities one click apart. Every field is the game's own: the portrait is its character-select
-   * art, and `title`, `worldRole` and `traits` are the copy it ships beside them.
+   * Shows one of the four classes as a painted plate.
+   * The home hall and class index share this component, so each class has one visual form.
+   * The portrait, `title`, `worldRole`, and `traits` come from the game.
    */
   let {
     id,
@@ -37,9 +35,9 @@
   <span class="plate-role">{worldRole}</span>
   {#if traits.length > 0}
     <!--
-      Labelled, because three of the four classes list "Combat" first and the same word names a
-      level scale further down every page. Without the label a grey "Combat" pill reads as a
-      combat level, which is the one ambiguity the site exists to prevent.
+      Add a label because three classes list "Combat" first.
+      The same word names a level scale on every page.
+      Without the label, a grey "Combat" pill can look like a combat level.
     -->
     <span class="plate-traits">
       <span class="plate-traits-label">Built around</span>
@@ -74,8 +72,9 @@
   }
 
   /*
-   * Each class has its own hue in the game's art. Tinting the ground with it makes the four legible
-   * apart at a glance; the name is always present, so the hue never carries the meaning alone.
+   * Each class has a hue in the game's art.
+   * Tinting the ground separates the four at a glance.
+   * The name stays present, so hue never carries meaning alone.
    */
   .plate[data-class="barbarian"] {
     background-image: linear-gradient(160deg, color-mix(in srgb, var(--ember) 13%, var(--panel-top)), var(--panel-bottom) 74%);
@@ -120,9 +119,11 @@
 
   .plate-traits {
     display: grid;
-    /* The plate's traits row is 1fr, so without this the nested rows stretch and the pills inside
-       them grow to whatever height that class's trait list happens to need. Four plates in a row
-       then print pills at four different heights. */
+    /*
+       The traits row uses 1fr.
+       Without this setting, nested rows grow to each class's trait-list height.
+       Four plates then show pills at four different heights.
+    */
     align-content: start;
     justify-items: start;
     gap: 0.2rem;

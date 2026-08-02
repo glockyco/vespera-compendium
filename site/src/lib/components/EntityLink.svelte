@@ -3,9 +3,8 @@
   import Art from "./Art.svelte";
 
   /**
-   * The one way a record points at another record. Every cross-reference on the site goes through
-   * this, so a link to an item looks the same whether it is reached from a recipe, a drop table or
-   * a search result — and so the art, rarity colour and sub-line are never rendered inconsistently.
+   * Links one record to another.
+   * Every cross-reference uses this component, so art, rarity color, and the sub-line stay consistent.
    */
   let {
     slug,
@@ -22,14 +21,14 @@
     image?: string | null;
     rarity?: string | null;
     sub?: string | null;
-    /** Frame size for the art, which selects the generated variant behind it. */
+    /** Frame size for the art. It selects the generated variant. */
     size?: "sm" | "md";
   } = $props();
 </script>
 
 <a class="entity" href={resolve(`/${slug}/${id}/`)}>
-  <!-- Branched rather than passed through, because every Art callsite states its kind and variant
-       literally and `check:art` reads them from the markup. -->
+  <!-- Branch here so each Art call site states literal kind and variant values.
+       `check:art` reads those values from the markup. -->
   {#if size === "md"}
     <Art src={image} alt={name} kind="general" variant="card" {rarity} />
   {:else}
@@ -46,8 +45,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
-    /* Every cross-reference on the site is this element, so it carries the thumb target rather than
-       each page adding its own. */
+    /* This element owns the thumb target for every cross-reference. */
     min-block-size: 2.75rem;
     min-inline-size: 0;
     padding: 0.2rem 0.35rem 0.2rem 0.2rem;
@@ -72,8 +70,8 @@
   }
 
   .entity-name {
-    /* Names wrap rather than truncate. In a narrow column an ellipsis turns "Crownless Hood of
-       Storm Regret" into "Crownless Hood of Storm R", which is not a name a player can match. */
+    /* Names wrap instead of truncating. An ellipsis turns "Crownless Hood of Storm Regret" into
+       "Crownless Hood of Storm R". A player then cannot match the name. */
     overflow-wrap: anywhere;
     color: var(--cyan);
     font-weight: 600;

@@ -11,30 +11,29 @@ import type {
 } from "$lib/mechanics-verification";
 
 /**
- * The home page explains the shipped systems before it exposes the database, so the load assembles
- * four real things in that order: the five system guides, the four classes as the game presents
- * them, the normal Combat route in three chapters, and the complete record index.
+ * Builds the home page in reading order.
+ * The page first shows five system guides, then four game classes.
+ * It next shows the normal Combat route in three chapters.
+ * It ends with the complete record index.
  *
- * No example rows and no counts standing in for content. A row count describes a schema; the guides
- * and the route describe the game.
+ * The page uses no example rows or schema counts as content.
+ * Guides and route chapters describe the game.
  */
 
-/** The one extracted formula the home shows, named by its semantic ID rather than by position. */
+/** Shows the one extracted formula. The function selects it by semantic ID instead of position. */
 const FEATURED_FORMULA_TEXT_ID = "combat.defense.normal-mitigation.expression";
 
-/** The two guides the home gives their own treatment. The remaining three are field-manual rows. */
+/** Gives two guides special treatment. The other three use field-manual rows. */
 const LEAD_GUIDE = "combat-mathematics";
 const ROUTE_GUIDE = "endgame-systems";
 
-/** How many stops each route chapter names. Three is enough to show a chapter's range. */
+/** Sets the number of stops that each route chapter shows. Three stops show the chapter range. */
 const STOPS_PER_CHAPTER = 3;
 
 /**
- * One rendered claim, reduced to what the page needs.
- *
- * The published text carries its evidence closure and probe contract hashes. None of that belongs
- * in a prerendered home page: it costs transfer on the site's busiest route, and the guide pages are
- * where a reader inspects provenance in full.
+ * Stores one claim in the form the page needs.
+ * The published text includes evidence closure and probe contract hashes.
+ * The home page omits them to save transfer. Guide pages show full provenance.
  */
 type HomeText = { id: string; text: string; status: MechanicVerificationStatus };
 
@@ -53,8 +52,8 @@ export const load = async () => {
   const routeDocument = pick(documents, ROUTE_GUIDE);
   const routeGuide = {
     ...guideCard(routeDocument),
-    /* The endgame guide is rendered as the route it describes, so its section titles travel with it.
-       They are game-authored, and each keeps its own ID and status. */
+    /* The endgame guide appears as its route. Its section titles travel with the route.
+       The titles are game-authored. Each keeps its ID and status. */
     steps: routeDocument.sections.map((section) => homeText(section.title)),
   };
   const fieldGuides = documents
@@ -91,15 +90,14 @@ export const load = async () => {
   });
 
   /*
-   * Every place a player passes through, in level order: zones and dungeons interleaved, because
-   * the game interleaves them. Filtering to `type === "zone"` silently dropped six dungeons sitting
-   * inside the range — Blackvein Warrens at 18, Null Meridian at 92 — which made "in the order you
-   * meet them" false for a quarter of the route.
+   * Lists every non-heroic and non-nightmare place in level order.
+   * Zones and dungeons stay interleaved because the game interleaves them.
+   * Filtering to `type === "zone"` dropped six dungeons, including Blackvein Warrens at 18 and Null Meridian at 92.
+   * That made the stated meeting order false for one quarter of the route.
    *
-   * Two exclusions, both stated on the page rather than silent. Heroic and nightmare variants are
-   * counted, not listed, since repeating each name three times would stop this reading as a route.
-   * And `unnamed_abyss` is "a retired legacy route preserved only for old saves", so it is not a
-   * place anyone meets on the way up; it stays reachable through the zones browser.
+   * The page states two exclusions. It counts heroic and nightmare variants instead of repeating each name.
+   * It also excludes `unnamed_abyss`, which is "a retired legacy route preserved only for old saves".
+   * The zones browser still reaches that place.
    */
   const allPlaces = table("zones_dungeons");
   const route: Place[] = allPlaces
@@ -138,9 +136,10 @@ export const load = async () => {
   }).filter((chapter) => chapter !== null);
 
   /*
-   * The hero panorama. A dungeon is preferred because the dungeon art is the most composed
-   * landscape the game ships, and a place with no art would put two initials in the one frame the
-   * page leads on — so the search falls back through any illustrated place before it accepts that.
+   * Select the hero panorama.
+   * Prefer a dungeon because its art is the most composed landscape in the game.
+   * A place without art shows two initials in the leading frame.
+   * Fall back to any illustrated place before accepting that result.
    */
   const heroPlace =
     route.find((place) => place.kind === "dungeon" && place.image !== null) ??
@@ -164,8 +163,7 @@ export const load = async () => {
     heroPlace,
     indexTables,
     mechanicCount: documents.length,
-    // Only what the index actually lists, so the headline figure and the counts beneath it agree
-    // when a reader adds them up.
+    // Use only indexed tables, so the headline and listed counts agree.
     recordCount: indexTables.reduce((sum, entry) => sum + entry.rows, 0),
     unmodelledItems: items.filter((item) => item.has_modelled_source !== true).length,
     endgamePlaces: allPlaces.filter((place) => place.heroic || place.nightmare).length,
@@ -189,18 +187,17 @@ function guideCard(document: PublishedMechanicDocument) {
     category: document.category,
     title: document.title.text,
     summary: document.summary.text,
-    /* The same scoped stamp the guide index prints. It states what the guide's own contents are
-       checked against, and never that the whole guide is live verified. */
+    /* The guide index uses the same scoped stamp.
+       It names the checked guide contents, not a live check of the whole guide. */
     contentLabel: guideContentLabel(document),
   };
 }
 
 /**
- * The Defense mitigation formula, found by the semantic ID of its expression.
+ * Finds the Defense mitigation formula by semantic ID.
  *
- * Section order and array position are extraction details that can move between builds without any
- * claim changing, so neither is used to locate it. A miss fails the build naming the ID, because a
- * home page that quietly drops its one worked example is worse than one that does not build.
+ * Section order and array position can change between builds without changing a claim.
+ * A missing ID fails the build because the home page must keep its worked example.
  */
 function findFeaturedFormula(documents: PublishedMechanicDocument[]): {
   label: HomeText;
@@ -221,11 +218,10 @@ function findFeaturedFormula(documents: PublishedMechanicDocument[]): {
 }
 
 /**
- * Which chapter a place belongs to.
+ * Assigns a place to a chapter.
  *
- * A place the game never gave a Combat level sorts to the front of the route and joins the opening
- * chapter rather than disappearing from it. That keeps the route complete, and it keeps the
- * "chapter with no Combat level" failure reachable instead of hiding the case by construction.
+ * A place without a Combat level sorts first and joins the opening chapter.
+ * This keeps the route complete and keeps the no-level failure reachable.
  */
 function chapterIdOf(place: Place): string {
   const chapter = ROUTE_CHAPTERS.find(
@@ -238,11 +234,9 @@ function chapterIdOf(place: Place): string {
 }
 
 /**
- * Three stops that stand for a chapter: its first place, its middle, and its last.
- *
- * Adjacent rows would show the sort order rather than the chapter, and the sort order here is the
- * level, so the first three would always be the lowest three and never reach the dungeon the
- * chapter closes on.
+ * Selects three stops for a chapter: first, middle, and last.
+ * Adjacent rows show only sort order. The level sort then selects the three lowest places.
+ * The selected stops reach the dungeon that closes the chapter.
  */
 function representative(places: Place[]): Place[] {
   if (places.length <= STOPS_PER_CHAPTER) return places;

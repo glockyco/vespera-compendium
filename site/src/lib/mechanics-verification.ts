@@ -1,14 +1,13 @@
 /**
- * What the site is entitled to claim about a mechanic, and how it rechecks that claim.
+ * Defines what the site can claim about a mechanic and how it checks each claim.
  *
- * The published pages carry a provenance label beside every sentence the game supplied. A label is
- * only worth printing if the page can arrive at it on its own, so nothing here reads the published
- * `verification` field: the status is re-derived from each claim's own probe requirements and the
- * approved pass set, and the loader refuses to render a document whose published status disagrees.
+ * Published pages place a provenance label beside each game-supplied sentence.
+ * A label is valid only when the page can derive it independently.
+ * This module ignores the published `verification` field and derives status from probe requirements.
+ * It rejects a document when the published status disagrees.
  *
- * Hashing goes through the same canonical bytes the pipeline hashed. That module is deliberately
- * Node-free and is imported by its path rather than by package specifier, so exactly one file in
- * the site crosses the workspace boundary and the browser bundle picks up no build tooling.
+ * Hashing uses the same canonical bytes as the pipeline.
+ * The imported module has no Node dependencies, so the browser bundle gets no build tooling.
  */
 import {
   bindingToken,
@@ -80,11 +79,9 @@ export type MechanicVerification = {
 };
 
 /**
- * One displayed string with its own provenance.
- *
- * Provenance is per string rather than per block on purpose: a game-authored formula can sit under
- * a compendium-written label, and merging the two would let editorial wording inherit a claim the
- * game never made.
+ * Stores one string that the site shows, with its provenance.
+ * Provenance stays per string because a game formula can sit under an editorial label.
+ * Merging them lets the label inherit a claim that the game never made.
  */
 export type PublishedMechanicText = {
   id: string;
@@ -122,11 +119,10 @@ export type PublishedMechanicRelated = {
 export type MechanicCategory = "combat" | "skills" | "equipment" | "progression";
 
 /**
- * A guide as the site renders it.
+ * Defines a guide as the site shows it.
  *
- * `mechanics.json` also carries source targets and derivation traces. They are deliberately absent
- * here: the site must never put a locator, a minified name or a bundle offset in front of a reader,
- * and a shape that cannot express them cannot leak them.
+ * `mechanics.json` also carries source targets and derivation traces.
+ * This type omits them so locators, minified names, and bundle offsets never reach a reader.
  */
 export type PublishedMechanicDocument = {
   id: string;
@@ -188,16 +184,16 @@ export const GUIDE_LABEL_SOURCE = "Game claims: Source checked";
 /**
  * The scoped label for a guide with live-checked content.
  *
- * It says "selected content" because a guide is never live-verified as a whole: probes cover four
- * formulas, and a card that implied more would be claiming evidence that does not exist.
+ * It says "selected content" because a guide is never live-verified as a whole.
+ * Probes cover four formulas. A card that implies more claims evidence that does not exist.
  */
 export const GUIDE_LABEL_SELECTED_LIVE = "Game claims: Source checked \u00b7 selected content live checked";
 
 /**
- * The identity of one executed contract.
+ * Names one executed contract.
  *
- * The category is normalized before comparison because a report writes an absent category as either
- * omitted or null, and two spellings of the same requirement must not read as two requirements.
+ * Normalize the category before comparison.
+ * A report can omit the category or set it to null, but both mean the same requirement.
  */
 export function probeTupleKey(ref: {
   suite: string;
@@ -216,11 +212,11 @@ export function approvedProbeKeys(verifiedProbes: readonly MechanicProbeRef[]): 
 }
 
 /**
- * The status one claim has earned.
+ * Returns the status that a claim has earned.
  *
- * A nonempty requirement list is never on its own enough. Promotion needs a requirement that is
- * eligible for it — the Defense probes corroborate an instrumented module and are deliberately not —
- * and every one of the claim's own requirements must have passed for the approved build.
+ * A nonempty requirement list alone cannot promote a claim.
+ * The Defense probes support an instrumented module and are not promotion-eligible.
+ * Every requirement must pass for the approved build.
  */
 export function deriveVerificationStatus(
   evidence: MechanicEvidence,
@@ -233,7 +229,7 @@ export function deriveVerificationStatus(
   return allPassed ? "live-verified" : "source-verified";
 }
 
-/** Every displayed string of a document, in the order the pages render them. */
+/** Returns every string that a document shows, in page order. */
 export function documentTexts(document: PublishedMechanicDocument): PublishedMechanicText[] {
   const texts: PublishedMechanicText[] = [document.title, document.summary];
   for (const section of document.sections) {
@@ -271,12 +267,10 @@ export function guideContentLabel(document: PublishedMechanicDocument): string {
   return hasLiveCheckedContent(document) ? GUIDE_LABEL_SELECTED_LIVE : GUIDE_LABEL_SOURCE;
 }
 
-/**
- * Rechecks every published status against the approved pass set.
+/** Rechecks every published status against the approved pass set.
  *
- * This runs during prerender and throws rather than downgrading, because a disagreement means the
- * artifact and the approval describe different builds, and there is no honest label to fall back
- * to in that case.
+ * This runs during prerender and throws instead of downgrading.
+ * A disagreement means that the artifact and approval describe different builds.
  */
 export function assertVerificationAgrees(
   document: PublishedMechanicDocument,
@@ -300,8 +294,8 @@ export function assertVerificationAgrees(
 
 /** Lowercase hex SHA-256, computed with the platform digest both runtimes agree on. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  // A `Uint8Array` may be backed by a `SharedArrayBuffer`, which `crypto.subtle` refuses. The
-  // ordinary case re-views the same memory instead of copying it.
+  // `Uint8Array` can use a `SharedArrayBuffer`, which `crypto.subtle` rejects.
+  // The normal case reuses the same memory instead of copying it.
   const buffer = bytes.buffer;
   const input =
     buffer instanceof ArrayBuffer

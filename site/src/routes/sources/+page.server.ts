@@ -1,26 +1,26 @@
 import { table } from "$lib/server/dataset";
 
 /**
- * Where items come from, and — just as importantly — where the model stops.
+ * Lists item sources and the boundary of this model.
  *
- * This page exists to make the boundary visible. A reader who browses the item tables and never
- * meets a statement of what is missing will infer completeness, and 153 items have no modelled
- * source at all. That is a property of this pipeline, never evidence an item cannot be obtained.
+ * Readers can infer completeness if the item tables omit this boundary.
+ * 153 items have no modelled source.
+ * That is a pipeline property, not evidence that an item cannot be obtained.
  */
 
-/** The rarity order the game itself uses, so a grouped list reads low to high rather than alphabetically. */
+/** Uses the game's rarity order so grouped lists run low to high. */
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "living"];
 
 const SOURCE_TITLES: Record<string, { title: string; blurb: string }> = {
-  recipe: { title: "Crafted", blurb: "Made at a station, gated by the Crafting skill." },
-  enemy: { title: "Dropped", blurb: "Rolled from an enemy's drop table when it dies." },
-  gathering: { title: "Gathered", blurb: "Taken from a world node, gated by the Gathering skill." },
-  shop: { title: "Bought", blurb: "Stocked by the shop, gated by combat level." },
-  quest: { title: "Quest reward", blurb: "Handed over on completing a quest." },
-  world_boss: { title: "World boss", blurb: "The gear a world boss awards." },
+  recipe: { title: "Crafted", blurb: "A station makes it when the Crafting skill allows it." },
+  enemy: { title: "Dropped", blurb: "The game rolls the enemy drop table when it dies." },
+  gathering: { title: "Gathered", blurb: "A world node provides it when the Gathering skill allows it." },
+  shop: { title: "Bought", blurb: "The shop stocks it when the Combat level allows it." },
+  quest: { title: "Quest reward", blurb: "The quest gives it when the player completes it." },
+  world_boss: { title: "World boss", blurb: "A world boss awards this gear." },
 };
 
-/** Systems the pipeline does not model, named so the gap is specific rather than vague. */
+/** Names systems that the pipeline does not model, so each gap stays specific. */
 const UNMODELLED_SYSTEMS = [
   "Talents",
   "Elements",

@@ -20,16 +20,16 @@
   let isCardGrid = $derived(CARD_GRID_TABLES.has(data.name));
   let isPlaceGrid = $derived(data.name === "zones_dungeons");
 
-  /** "Jump to an item", not "Jump to a item". Four of the twelve table nouns start with a vowel. */
+  /** "Jump to an item", not "Jump to a item". Four table nouns start with a vowel. */
   let jumpPlaceholder = $derived.by(() => {
     const singular = TABLE_SINGULAR[data.name] ?? tableLabel(data.name).toLowerCase();
     return `Jump to ${/^[aeiou]/.test(singular) ? "an" : "a"} ${singular}…`;
   });
 
-  /** The game's own rarity ladder. Alphabetical order puts epic before common and reads as noise. */
+  /** Uses the game's rarity order. Alphabetical order makes the ladder hard to read. */
   const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "living"];
 
-  /** A facet chip shows the same words the record pages use, not the raw stored token. */
+  /** A facet chip uses the same words as record pages, not the raw token. */
   function facetLabel(column: string, value: string): string {
     if (column === "slot" || column === "gear_slot") return slotLabel(value);
     if (column === "type" && data.name === "gathering_nodes") return nodeKind(value);
@@ -37,9 +37,9 @@
   }
 
   /**
-   * Facet values are whatever the data actually contains, so no page offers a filter that matches
-   * nothing. Chips are keyed by their *label*, because `ring1` and `ring2` are one slot to a player
-   * and two chips both reading "Ring" would be indistinguishable; selecting one matches either.
+   * Uses the data's facet values, so each filter matches a record.
+   * Key chips by label. `ring1` and `ring2` are one player slot, so both use the label "Ring".
+   * Selecting that label matches either value.
    */
   let facets = $derived.by(() =>
     data.facetColumns.map((column) => {
@@ -97,8 +97,8 @@
       }
       if (levelNarrowed && data.levelColumn) {
         const level = row[data.levelColumn];
-        // A row with no modelled level is not "level 0"; it is excluded while the range is narrowed,
-        // and the count of what that hides is stated below.
+        // Rows without modelled levels are not level 0. Exclude them while narrowing the range.
+        // State their hidden count below.
         if (typeof level !== "number") return false;
         if (level < lowerBound || level > upperBound) return false;
       }
@@ -128,7 +128,7 @@
     activeFacets = { ...activeFacets, [column]: activeFacets[column] === label ? "" : label };
   }
 
-  /** Text columns render through the formatter that matches their meaning, not through String(). */
+  /** Shows text columns with the formatter for their meaning, not String(). */
   function display(row: Row, column: string): string {
     const value = row[column];
     if (value === null || value === "") return "—";
@@ -240,7 +240,7 @@
 <div class="result-line">
   <span>{matched.length.toLocaleString("en-US")} of {data.rows.length.toLocaleString("en-US")}</span>
   {#if hiddenUnlevelled > 0}
-    <span class="muted">{hiddenUnlevelled} with no modelled level are hidden while the range is narrowed</span>
+    <span class="muted">The page hides {hiddenUnlevelled} items with no modelled level while you narrow the range.</span>
   {/if}
   {#if anyFilter}
     <button type="button" class="btn" onclick={clearFilters}>Clear filters</button>
@@ -253,8 +253,7 @@
   <div class="card-grid">
     {#each matched as row (row[data.keyColumn])}
       <a class="panel record-card" href={resolve(`/${data.slug}/${row[data.keyColumn]}/`)}>
-        <!-- Places are painted landscapes; contained in a square they read as a colour smear, so
-             the one card grid that lists them gets a frame in the art's own aspect. -->
+        <!-- Places use landscape art. A square shows a color smear, so this grid keeps the art aspect. -->
         {#if isPlaceGrid}
           <Art
             src={row.image as string | null}
@@ -360,7 +359,7 @@
 
   .range input {
     flex: 1 1 0;
-    /* A 16px native slider is not a thumb target; the track stays thin, the hit area does not. */
+    /* A 16px native slider is not a thumb target. Keep the track thin but the hit area large. */
     min-block-size: 2.75rem;
     accent-color: var(--brass);
   }

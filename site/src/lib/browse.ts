@@ -1,19 +1,19 @@
 /**
- * What each entity browser shows, and the order the record types are presented in.
+ * Defines each entity browser and its record order.
  *
- * Columns are named per table rather than taken from the schema, because "every column" is what
- * made these pages unreadable: descriptions, dialogue, accent colours and display keys are all real
- * columns and none of them belongs in a scannable grid. The complete row stays available through
- * `/query/` and the CSVs.
+ * Each table names its columns instead of using the schema.
+ * The schema includes descriptions, dialogue, accent colors, and display keys.
+ * Those columns make a grid hard to scan. The full row stays in `/query/` and the CSV files.
  */
 
 /**
- * The compendium index: every entity table, in one flat reading order.
+ * Lists every entity table in one reading order.
  *
- * Flat rather than grouped by a player question. The question grouping made the home a directory of
- * riddles, and the twelve counts underneath it were the real content. Order runs from what a player
- * is before they own anything (class, abilities, gems) through where they go and what they fight, to
- * what they carry, make, and sell.
+ * The home page uses a flat order instead of player questions.
+ * Question groups made the home page a directory of riddles.
+ * The twelve counts were the useful content.
+ * The order starts with classes, abilities, and gems.
+ * It then covers places and enemies, followed by records to carry, make, or sell.
  */
 export const COMPENDIUM_INDEX: string[] = [
   "classes",
@@ -31,11 +31,11 @@ export const COMPENDIUM_INDEX: string[] = [
 ];
 
 /**
- * The three chapters of the normal Combat route.
+ * Defines the three chapters of the normal Combat route.
  *
- * Bounds are the game's own gates, not even thirds: each chapter opens on a zone and closes on the
- * dungeon that stands before the next zone. `to` is null on the last chapter because the route runs
- * to whatever the highest shipped place requires.
+ * The bounds use the game's gates, not equal thirds.
+ * Each chapter opens on a zone and closes at the dungeon before the next zone.
+ * The last chapter has no `to` value because the route ends at the highest shipped place.
  */
 export type RouteChapter = {
   id: string;
@@ -49,31 +49,32 @@ export const ROUTE_CHAPTERS: RouteChapter[] = [
   {
     id: "frontier",
     label: "The Frontier",
-    blurb: "The opening zones. Learn one class, gather the first materials, and clear one dungeon.",
+    blurb: "Begin in these zones. Learn one class, gather the first materials, and clear one dungeon.",
     from: 1,
     to: 34,
   },
   {
     id: "contested-lands",
     label: "Contested Lands",
-    blurb: "The middle route. Gear decides the pace here, and a dungeon closes each stretch.",
+    blurb: "This middle route lets gear set the pace. A dungeon closes each stretch.",
     from: 35,
     to: 68,
   },
   {
     id: "endgame",
     label: "Endgame",
-    blurb: "The last normal places. Nightmare, the Tower, the Spire, and the Frontier follow them.",
+    blurb: "These are the last normal places. Nightmare, the Tower, the Spire, and the Frontier follow them.",
     from: 69,
     to: null,
   },
 ];
 
 /**
- * What one row of each table is called.
+ * Names one row from each table.
  *
- * Declared rather than derived: stripping a trailing `s` turns Abilities into "abilitie", Enemies
- * into "enemie" and Affixes into "affixe", and the twelve are a closed set anyway.
+ * The map is explicit because a trailing `s` produces wrong forms.
+ * Examples include "abilitie", "enemie", and "affixe".
+ * The twelve names form a closed set.
  */
 export const TABLE_SINGULAR: Record<string, string> = {
   items: "item",
@@ -91,7 +92,7 @@ export const TABLE_SINGULAR: Record<string, string> = {
   classes: "class",
 };
 
-/** Columns each browser renders. `image` is drawn as art rather than as a text column. */
+/** Columns each browser shows. `image` is art, not a text column. */
 export const BROWSE_COLUMNS: Record<string, string[]> = {
   items: ["image", "name", "type", "slot", "class_requirement", "rarity", "level", "sell_value"],
   enemies: ["image", "name", "level", "max_hp", "damage", "element", "attack_style", "is_boss"],
@@ -101,8 +102,7 @@ export const BROWSE_COLUMNS: Record<string, string[]> = {
   abilities: ["image", "name", "required_class", "category", "combat_level", "mana_cost", "cooldown"],
   affixes: ["name", "kind", "category", "min_value", "max_value", "value_is_percent"],
   gems: ["image", "name", "family", "tier"],
-  // `name` rather than `item_id`: a listing is the item it sells, and the raw id was the only thing
-  // identifying it here before the pipeline joined the name.
+  // Use `name` instead of `item_id`. The listing sells the item, and the pipeline joined its name before this page used it.
   shop_listings: ["name", "price", "combat_level", "category", "stock"],
   zones_dungeons: ["image", "name", "type", "combat_level", "act", "heroic", "nightmare"],
   achievements: ["image", "name", "category", "requirement_type", "requirement_target", "reward_gold"],
@@ -110,8 +110,10 @@ export const BROWSE_COLUMNS: Record<string, string[]> = {
 };
 
 /**
- * Prose headers. The three level gates need no entry: they are named for their scale in the schema,
- * so `crafting_level` renders `Crafting` by the general rule below rather than by a per-table case.
+ * Defines prose headers.
+ *
+ * The three level gates need no entry because their schema names give their scales.
+ * For example, `crafting_level` becomes `Crafting` under the general rule.
  */
 export const COLUMN_LABELS: Record<string, string> = {
   max_hp: "Max HP",
@@ -142,7 +144,7 @@ export function columnLabel(column: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
-/** Which tables identify their records by art, and so render as a card grid rather than a table. */
+/** Which tables show records as a card grid instead of a table. */
 export const CARD_GRID_TABLES = new Set([
   "items",
   "enemies",
