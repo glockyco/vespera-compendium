@@ -1,43 +1,27 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import {
+    loadSearchIndex,
+    rankSearchEntries,
+    searchHref,
+    type SearchEntry,
+  } from "$lib/client/search-index";
   import Art from "./Art.svelte";
 
   /**
-   * Client-side search over the published search index.
+   * Client-side search over the published index, as a WAI-ARIA combobox.
    *
-   * The index is fetched on first focus rather than on mount, so a visitor who never searches never
-   * pays its 367 KiB. It is fetched once per page load and shared by every instance through a
-   * module-level promise, because the shell's field and a page's own field are both on screen.
+   * The index itself is owned by `$lib/client/search-index`, not by this component: the shell field
+   * and a page's own field are both mounted on most routes, and they must share one transfer and one
+   * decode. This file owns the interaction only.
    *
-   * Keys in the published JSON are abbreviated to keep it small; the mapping is expanded here and
-   * published in the manifest so it is not a private convention.
+   * The field is never focused programmatically on mount. Initial focus belongs to the document, so
+   * the skip link is the first stop for a keyboard user and a phone does not open its keyboard over
+   * the page a visitor came to read. `/` reaches the field from anywhere.
    */
-  type Entry = {
-    table: string;
-    id: string;
-    slug: string;
-    name: string;
-    kind: string;
-    subtitle: string | null;
-    level: number | null;
-    rarity: string | null;
-    image: string | null;
-  };
-
-  type Packed = {
-    t: string;
-    i: string;
-    s: string;
-    n: string;
-    k: string;
-    b: string | null;
-    l: number | null;
-    r: string | null;
-    g: string | null;
-  };
-
   let {
+    idBase,
     placeholder = "Search items, enemies, quests, recipes…",
     /**
      * Shown instead of `placeholder` on a narrow viewport.
@@ -46,26 +30,22 @@
      * as a broken control on the one instrument the page points at.
      */
     narrowPlaceholder = null,
-    focusOnDesktop = false,
     scopeTable = null,
     size = "md",
   }: {
+    /** Unique per mounted instance, because two fields are on screen and every id here derives from it. */
+    idBase: string;
     placeholder?: string;
     narrowPlaceholder?: string | null;
-    /**
-     * Focus the field on mount, but only on a wide viewport with a real pointer.
-     *
-     * Not the `autofocus` attribute: that fires everywhere, and on a phone it opens the keyboard
-     * over the content the visitor came to read. It also moves focus without announcing it, which
-     * is why Svelte warns on it. Pressing `/` reaches this field from anywhere regardless.
-     */
-    focusOnDesktop?: boolean;
     /** Restricts results to one published table, for the entity browsers. */
     scopeTable?: string | null;
     size?: "md" | "lg";
   } = $props();
 
   const LIMIT = 12;
+
+  let listboxId = $derived(`${idBase}-listbox`);
+  let statusId = $derived(`${idBase}-status`);
 
   let narrow = $state(false);
   $effect(() => {
@@ -79,106 +59,65 @@
   let shownPlaceholder = $derived(narrow && narrowPlaceholder ? narrowPlaceholder : placeholder);
 
   let query = $state("");
-  let entries = $state<Entry[] | null>(null);
+  let entries = $state<SearchEntry[] | null>(null);
   let loading = $state(false);
-  let highlighted = $state(0);
+  let failed = $state(false);
+  let active = $state(0);
   let open = $state(false);
   let input = $state<HTMLInputElement | null>(null);
-  let focused = false;
-  /**
-   * True while the field was focused by us rather than by the visitor.
-   *
-   * The index is deferred to first focus so a visitor who never searches never pays its 367 KiB.
-   * Focusing the home field on desktop would defeat exactly that on the site's busiest route, so a
-   * programmatic focus opens the field without fetching; the first keystroke pays.
-   */
-  let selfFocusing = false;
 
-  $effect(() => {
-    if (!focusOnDesktop || focused || !input) return;
-    // A wide viewport with a real pointer: a desk, not a phone or a tablet held in one hand.
-    if (!window.matchMedia("(min-width: 64rem) and (pointer: fine)").matches) return;
-    focused = true;
-    selfFocusing = true;
-    // preventScroll, because the field may sit below the shell's own copy and focusing it should
-    // never yank the page down past the sentence explaining what the site is.
-    input.focus({ preventScroll: true });
-    selfFocusing = false;
-  });
-
-  async function load(): Promise<void> {
+  function load(): void {
     if (entries || loading) return;
     loading = true;
-    try {
-      const response = await fetch("/data/search_index.json");
-      const packed = (await response.json()) as Packed[];
-      entries = packed.map((row) => ({
-        table: row.t,
-        id: row.i,
-        slug: row.s,
-        name: row.n,
-        kind: row.k,
-        subtitle: row.b,
-        level: row.l,
-        rarity: row.r,
-        image: row.g,
-      }));
-    } catch {
-      entries = [];
-    } finally {
-      loading = false;
-    }
+    failed = false;
+    loadSearchIndex()
+      .then((rows) => (entries = rows))
+      .catch(() => (failed = true))
+      .finally(() => (loading = false));
   }
 
-  /**
-   * Exact name, then name prefix, then name substring, then id substring; shorter names win ties.
-   * Ranked rather than filtered because a substring match over 2267 records otherwise buries the
-   * record whose name the player actually typed.
-   */
-  let results = $derived.by(() => {
-    const needle = query.trim().toLowerCase();
-    if (needle.length === 0 || !entries) return [] as Entry[];
-    const pool = scopeTable ? entries.filter((entry) => entry.table === scopeTable) : entries;
-    const scored: { entry: Entry; rank: number }[] = [];
-    for (const entry of pool) {
-      const name = entry.name.toLowerCase();
-      const rank = name === needle ? 0 : name.startsWith(needle) ? 1 : name.includes(needle) ? 2 : entry.id.toLowerCase().includes(needle) ? 3 : -1;
-      if (rank >= 0) scored.push({ entry, rank });
-    }
-    scored.sort((left, right) => left.rank - right.rank || left.entry.name.length - right.entry.name.length);
-    return scored.map((item) => item.entry);
-  });
-
+  let results = $derived(
+    entries ? rankSearchEntries(entries, query.trim().toLowerCase(), scopeTable) : [],
+  );
   let shown = $derived(results.slice(0, LIMIT));
+  /* The popup is showing something, which is what `aria-expanded` reports: a "no match" note is a
+     displayed popup too, and reporting it collapsed would contradict what is on screen. */
+  let expanded = $derived(open && query.trim().length > 0);
+  let activeId = $derived(expanded && shown.length > 0 ? `${idBase}-option-${active}` : undefined);
 
   $effect(() => {
-    // Re-anchor the highlight whenever the result set changes, so Enter never fires a stale row.
+    // Re-anchor the active option whenever the query changes, so Enter never fires a stale row.
     query;
-    highlighted = 0;
+    active = 0;
   });
+
+  function follow(entry: SearchEntry): void {
+    query = "";
+    open = false;
+    void goto(resolve(searchHref(entry)));
+  }
 
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
+      // Cleared and closed, but focus stays put: blurring here loses the place a keyboard user
+      // reached the field from, and Escape is the one key they use to change their mind.
+      event.preventDefault();
       query = "";
       open = false;
-      input?.blur();
       return;
     }
     if (shown.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      highlighted = (highlighted + 1) % shown.length;
+      active = (active + 1) % shown.length;
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      highlighted = (highlighted - 1 + shown.length) % shown.length;
+      active = (active - 1 + shown.length) % shown.length;
     } else if (event.key === "Enter") {
-      const entry = shown[highlighted];
+      const entry = shown[active];
       if (entry) {
         event.preventDefault();
-        query = "";
-        open = false;
-        input?.blur();
-        void goto(resolve(`/${entry.slug}/${entry.id}/`));
+        follow(entry);
       }
     }
   }
@@ -186,11 +125,11 @@
   /** `/` focuses search from anywhere, unless the user is already typing into something. */
   function onWindowKeydown(event: KeyboardEvent): void {
     if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
-    const active = document.activeElement;
+    const target = document.activeElement;
     const typing =
-      active instanceof HTMLInputElement ||
-      active instanceof HTMLTextAreaElement ||
-      (active instanceof HTMLElement && active.isContentEditable);
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable);
     if (typing) return;
     event.preventDefault();
     input?.focus();
@@ -203,58 +142,89 @@
   <input
     bind:this={input}
     bind:value={query}
+    id="{idBase}-input"
     type="search"
     class="search-input"
+    role="combobox"
     placeholder={shownPlaceholder}
     autocomplete="off"
     spellcheck="false"
     aria-label={scopeTable ? `Search ${scopeTable.replace(/_/g, " ")}` : "Search the compendium"}
+    aria-expanded={expanded}
+    aria-controls={listboxId}
+    aria-activedescendant={activeId}
+    aria-describedby={statusId}
+    aria-autocomplete="list"
     onfocus={() => {
       open = true;
-      if (!selfFocusing) void load();
+      load();
     }}
-    oninput={() => void load()}
+    oninput={() => {
+      open = true;
+      load();
+    }}
     onblur={() => setTimeout(() => (open = false), 140)}
     onkeydown={onKeydown}
   />
 
-  <p class="sr-only" aria-live="polite">
-    {#if query.trim().length === 0}{:else if loading}Loading the index.{:else}{results.length} matches for {query}.{/if}
+  <p id={statusId} class="sr-only" aria-live="polite">
+    {#if query.trim().length === 0}{:else if loading}The search index loads.{:else if failed}The
+      search index did not load.{:else}The search found {results.length} matches for {query}.{/if}
   </p>
 
-  {#if open && query.trim().length > 0}
-    <div class="search-results panel">
-      {#if loading}
-        <p class="search-note">Loading…</p>
-      {:else if shown.length === 0}
-        <p class="search-note">No record matches "{query}".</p>
-      {:else}
-        <ul>
-          {#each shown as entry, index (entry.table + entry.id)}
-            <li class:highlighted={index === highlighted}>
-              <a
-                href={resolve(`/${entry.slug}/${entry.id}/`)}
-                onmouseenter={() => (highlighted = index)}
-              >
-                <Art src={entry.image} alt={entry.name} size="sm" rarity={entry.rarity} />
-                <span class="search-text">
-                  <span class="search-name">{entry.name}</span>
-                  {#if entry.subtitle}<span class="search-sub">{entry.subtitle}</span>{/if}
-                </span>
-                <span class="search-meta">
-                  <span class="search-kind">{entry.kind}</span>
-                  {#if entry.level !== null}<span class="search-level">{entry.level}</span>{/if}
-                </span>
-              </a>
-            </li>
-          {/each}
-        </ul>
-        {#if results.length > shown.length}
-          <p class="search-note">+{results.length - shown.length} more</p>
-        {/if}
-      {/if}
-    </div>
-  {/if}
+  <div class="search-results panel" class:search-hidden={!expanded} aria-hidden={!expanded}>
+    {#if loading}
+      <p class="search-note">The search index loads.</p>
+    {:else if failed}
+      <p class="search-note">The search index did not load. Focus the field again to retry.</p>
+    {:else if shown.length === 0}
+      <p class="search-note">No record matches "{query}".</p>
+    {/if}
+    <ul id={listboxId} role="listbox" aria-label="Search results">
+      {#each shown as entry, index (entry.table + entry.id)}
+        <li
+          id="{idBase}-option-{index}"
+          role="option"
+          class:active={index === active}
+          aria-selected={index === active}
+        >
+          <!--
+            The row is an anchor so a middle click and a copied link both work, but pointer
+            selection goes through the same handler as Enter: the visitor and the keyboard must not
+            reach two different URLs from the same active row.
+          -->
+          <a
+            href={resolve(searchHref(entry))}
+            tabindex="-1"
+            onmouseenter={() => (active = index)}
+            onclick={(event) => {
+              event.preventDefault();
+              follow(entry);
+            }}
+          >
+            <Art
+              src={entry.image}
+              alt={entry.name}
+              kind="general"
+              variant="thumb"
+              rarity={entry.rarity}
+            />
+            <span class="search-text">
+              <span class="search-name">{entry.name}</span>
+              {#if entry.subtitle}<span class="search-sub">{entry.subtitle}</span>{/if}
+            </span>
+            <span class="search-meta">
+              <span class="search-kind">{entry.kind}</span>
+              {#if entry.level !== null}<span class="search-level">{entry.level}</span>{/if}
+            </span>
+          </a>
+        </li>
+      {/each}
+    </ul>
+    {#if results.length > shown.length}
+      <p class="search-note">The search has {results.length - shown.length} more results.</p>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -268,7 +238,8 @@
   }
 
   .search-lg .search-input {
-    padding: 0.75rem 1rem;
+    min-block-size: 3.25rem;
+    padding: 0.85rem 1rem;
     font-size: var(--text-lead);
   }
 
@@ -282,6 +253,14 @@
     padding: 0.3rem;
   }
 
+  /*
+   * Hidden rather than unmounted, because `aria-controls` must resolve to a real element for the
+   * combobox relationship to be valid even while the popup is closed.
+   */
+  .search-hidden {
+    display: none;
+  }
+
   .search-results ul {
     margin: 0;
     padding: 0;
@@ -292,13 +271,14 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    min-block-size: 2.75rem;
     padding: 0.35rem 0.45rem;
     border-radius: var(--radius-art);
     color: inherit;
     text-decoration: none;
   }
 
-  .highlighted a {
+  .active a {
     background: var(--panel-hover-strong);
   }
 
@@ -318,8 +298,19 @@
   }
 
   .search-sub {
+    overflow: hidden;
     color: var(--text-muted);
     font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * On the raised active row the muted grey drops under 4.5:1, so the subtitle steps up one ink
+   * rather than the row losing its highlight.
+   */
+  .active .search-sub {
+    color: var(--lavender-grey);
   }
 
   .search-meta {
@@ -343,10 +334,14 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .active .search-level {
+    color: var(--lavender-grey);
+  }
+
   .search-note {
     margin: 0;
     padding: 0.5rem;
-    color: var(--text-muted);
+    color: var(--lavender-grey);
     font-size: var(--text-sm);
   }
 
