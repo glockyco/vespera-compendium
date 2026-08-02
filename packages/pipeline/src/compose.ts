@@ -366,17 +366,25 @@ export function composeAll(dir = "extracted"): ComposedTables {
   const gems = evalComposition(gemsDeclaration.text) as DataRecord;
 
   /*
-   * The index bundle imports `TOWER_REBIRTH_GEM_DEFINITIONS` from `tower-rebirth-system.js`.
-   * It assigns those definitions to the gem table and the item table without a condition.
-   * `TOWER_REBIRTH_ENABLED` controls the Tower system, not these records.
-   * Reading only the literal declaration missed all six gems: three Eclipsed and three Apex gems at tier 5.
-   * The live game has these gems, but the composed table did not.
-   * The filename has no content hash, so naming the file is safe.
+   * The index bundle imports tower gem and ascension definitions from an auxiliary module.
+   * Find each table by its exported shape, not its filename.
+   * The tower flag controls the system, not these records.
    */
-  const towerSource = readFileSync(path.join(dir, "assets", "tower-rebirth-system.js"), "utf8");
+  const assetSources = bundles.all.map((filename) => readFileSync(path.join(dir, "assets", filename), "utf8"));
+  const towerSource = assetSources.find((source) =>
+    /TOWER_REBIRTH_GEM_DEFINITIONS\s*=\s*Object\.freeze\s*\(/.test(source),
+  );
+  const towerAscensionSource = assetSources.find((source) =>
+    /TOWER_ASCENSION_ITEM_DEFINITIONS\s*=\s*Object\.freeze\s*\(/.test(source),
+  );
+  if (!towerSource || !towerAscensionSource) throw new Error("missing tower definition module");
   const towerGems = frozenObjectAfterAnchor(
     towerSource,
     /TOWER_REBIRTH_GEM_DEFINITIONS\s*=\s*Object\.freeze/,
+  );
+  const towerAscensionItems = frozenObjectAfterAnchor(
+    towerAscensionSource,
+    /TOWER_ASCENSION_ITEM_DEFINITIONS\s*=\s*Object\.freeze/,
   );
   Object.assign(gems, towerGems);
   const gemDescriptions: Record<string, string> = {
@@ -441,6 +449,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
       imagePath: definition.imagePath,
     };
   }
+  Object.assign(items, towerAscensionItems);
   for (const item of Object.values(items) as DataRecord[]) {
     if (item?.type === "consumable" && Number.isFinite(item.healAmount)) {
       item.healAmount = Math.max(1, Math.floor(item.healAmount * 7));
