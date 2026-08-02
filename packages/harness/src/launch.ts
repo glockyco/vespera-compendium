@@ -24,6 +24,9 @@ export class HarnessUnavailableError extends Error {
   }
 }
 
+export function runtimeArtifactPaths(): { gameRuntime: string; crossoverLauncher: string } {
+  return { gameRuntime: path.join(GAME_DIR, "Vespera.exe"), crossoverLauncher: WINE };
+}
 export function findGameDir(): string | null {
   return existsSync(path.join(GAME_DIR, "Vespera.exe")) ? GAME_DIR : null;
 }
@@ -145,6 +148,12 @@ export async function launchGame(opts: LaunchOptions = {}): Promise<Session> {
   try {
     const expectedUrl = opts.devUrl ?? "unnamed://app";
     client = await connect(port, expectedUrl);
+    await client.send("Network.enable");
+    await client.send("Runtime.enable");
+    await client.send("Debugger.enable");
+    await client.send("Network.setCacheDisabled", { cacheDisabled: true });
+    await client.send("Page.enable");
+    await client.send("Page.navigate", { url: expectedUrl });
     await waitForRenderer(client, expectedUrl);
   } catch (cause) {
     await terminateProcess(child, port);

@@ -1,4 +1,4 @@
-import { composeAll, type ComposedTables } from "@vespera/pipeline";
+import { composeAll, type ComposedTables } from "../../../pipeline/src/compose.ts";
 import type { RuntimeTable } from "../identify.ts";
 import type { ProbeResult } from "../types.ts";
 

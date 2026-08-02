@@ -1,18 +1,21 @@
+import { sha256Hex } from "@vespera/core";
+import { extractMechanics, prepareMechanicsInputs, requiredProbes } from "@vespera/pipeline";
 import { HarnessUnavailableError, readBuildId } from "./launch.ts";
-import { writeReports } from "./report.ts";
-import { runAll, type ProbeSuite } from "./run.ts";
+import { runEvidenceCommand, type ProbeSuite } from "./run.ts";
+import type { PreparedHarnessRun } from "./types.ts";
 
 const VALID_SUITES = new Set<ProbeSuite>(["parity", "records", "formulas", "save"]);
 
 function usage(message?: string): never {
   if (message) console.error(message);
-  console.error("usage: bun run harness [--dir extracted] [--port 9222] [--only parity|records|formulas|save]");
+  console.error("usage: bun run harness [--dir extracted] [--port 9222] [--only parity|records|formulas|save] [--output-root root]");
   process.exit(2);
 }
 
 const args = process.argv.slice(2);
 let extractedDir = "extracted";
 let port = 9222;
+let outputRoot: string | undefined;
 const only: ProbeSuite[] = [];
 for (let index = 0; index < args.length; index++) {
   const argument = args[index]!;
@@ -30,28 +33,36 @@ for (let index = 0; index < args.length; index++) {
     if (!value || !VALID_SUITES.has(value as ProbeSuite)) usage(`invalid suite: ${value ?? ""}`);
     only.push(value as ProbeSuite);
     index++;
-  } else {
-    usage(`unknown argument: ${argument}`);
+  } else if (argument === "--output-root") {
+    if (!value) usage("--output-root requires a value");
+    outputRoot = value;
+    index++;
+  } else usage(`unknown argument: ${argument}`);
+}
+
+const prepared = prepareMechanicsInputs(extractedDir, "harness");
+const documents = extractMechanics(prepared);
+let buildId = prepared.resolvedBuildId;
+if (!buildId) {
+  try {
+    buildId = readBuildId();
+  } catch (error) {
+    if (!(error instanceof HarnessUnavailableError)) throw error;
+    throw new Error("harness preparation did not resolve an installed build ID", { cause: error });
   }
 }
-
-let buildId: string;
-try {
-  buildId = readBuildId();
-} catch (error) {
-  if (!(error instanceof HarnessUnavailableError)) throw error;
-  buildId = "unknown";
-}
-
-const results = await runAll({
-  extractedDir,
+const extractedSnapshotPath = prepared.extractedSnapshotPath;
+const input: PreparedHarnessRun = {
   buildId,
-  port,
-  only: only.length > 0 ? only : undefined,
-});
-const paths = writeReports(buildId, results);
-for (const result of results) console.log(`${result.status} ${result.suite}.${result.id}: ${result.detail}`);
-console.log(`Reports: ${paths.jsonPath}, ${paths.markdownPath}`);
-if (results.some((result) => result.status === "FAIL" || result.status === "UNRESOLVED")) {
-  process.exitCode = 1;
-}
+  extractedSnapshotPath,
+  extractedBundles: prepared.bundleFingerprints,
+  // The approval's own canonical hash, not the file hash: every other reader recomputes the canonical
+  // projection, and a formatting-only difference must not read as a different approval.
+  mechanicsSourceApprovalSha256: prepared.mechanicsSourceApprovalSha256,
+  documents,
+  mechanics: documents.map((document) => ({ id: document.id, requiredProbes: requiredProbes(document) })),
+  outputRoot,
+};
+const result = await runEvidenceCommand(input, { port, only: only.length > 0 ? only : undefined, outputRoot });
+console.log(`${result.status}: ${result.jsonPath}, ${result.markdownPath}`);
+if (result.status === "SKIPPED") process.exitCode = 0;
