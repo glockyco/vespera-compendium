@@ -2,7 +2,7 @@
 
 A searchable compendium for Vespera’s items, enemies, quests, recipes, and more.
 
-The project reconstructs the game's runtime data tables from the shipped Electron bundles, verifies that reconstruction against the running game through the Chrome DevTools Protocol, then publishes build-versioned JSON, CSV, and SQLite datasets and a static site that browses them.
+The project reconstructs the game's runtime data tables from the shipped Electron bundles, extracts the game's own mechanics guides and formulas from the same bundles, verifies both against the running game through the Chrome DevTools Protocol, then publishes build-versioned JSON, CSV, and SQLite datasets, five source-locked system guides, and a static site that browses them.
 
 Live at [vespera.compendiums.org](https://vespera.compendiums.org).
 
@@ -31,7 +31,66 @@ Run the opt-in live verification harness when the game and CrossOver are availab
 bun run harness --dir extracted
 ```
 
-The harness uses an isolated `Vespera Harness` user-data profile. It writes build-stamped evidence to `data/<buildId>/runtime-evidence.json` and `docs/RUNTIME-EVIDENCE-<buildId>.md`.
+The harness uses an isolated `Vespera Harness` user-data profile. It writes build-stamped evidence to `evidence/<buildId>/runtime-evidence.json` and `docs/RUNTIME-EVIDENCE-<buildId>.md`.
+
+## The mechanics review workflow
+
+Records are checked against the running game. Explanations need a second guarantee, because an extractor can
+keep producing plausible prose after the code it describes has changed. Two tracked locks provide it.
+
+`mechanics-source.lock.json` approves the *code* that decides an approval: five source closures covering the
+review inspector, the approval gate, the derivation executor, the probe executor, and the harness runtime
+transport. `mechanics.lock.json` approves the *data*: each guide's normalized model, the exact bytes of every
+cited source range, the bundle byte identities, and the live evidence that corroborates it.
+
+Nothing publishes unless both agree with the working tree.
+
+```bash
+# 1. Approve the code, whenever a reviewed closure changes.
+bun run inspector-source:diff   --out inspector-source-review.json
+bun run approval-gate:diff      --out approval-gate-review.json
+bun run derivation-source:diff  --out derivation-source-review.json
+bun run probe-executor:diff     --out probe-executor-review.json
+bun run probe-runtime:diff      --out probe-runtime-review.json
+# Read every changed slice, set the four constants in
+# packages/core/src/execution-source-hashes/, regenerate, then:
+bun run mechanics-sources:inspect --reviews <five paths> --attest-out mechanics-source-attestation.json
+bun run mechanics-sources:sync    --reviews <five paths> --attestation mechanics-source-attestation.json --reviewed <five hashes>
+
+# 2. Produce live evidence and bind the platform it ran on.
+bun run harness --dir extracted
+bun run external-leaves:test-node --out evidence/external-leaves-node.json
+bun run external-leaves:verify --node evidence/external-leaves-node.json \
+  --harness evidence/<buildId>/runtime-evidence.json \
+  --out evidence/<buildId>/external-leaves-approved.json
+
+# 3. Approve the data.
+bun run mechanics:diff    extracted --out mechanics-review.json
+bun run mechanics:inspect --assert mechanics-review.json --attest-out mechanics-inspect-attestation.json
+bun run mechanics:prove   extracted mechanics-review.json --attestation mechanics-inspect-attestation.json --out mechanics-proof.json
+bun run mechanics:sync    extracted --proof mechanics-proof.json --reviewed <reviewSha256>
+
+# 4. Confirm and publish.
+bun run mechanics:check extracted
+bun run publish extracted
+bun run verify-published data/latest mechanics.lock.json
+```
+
+`mechanics:diff` writes a bounded review artifact holding every displayed claim, its provenance, the exact
+canonical bytes of every cited range, and its live-probe obligations. `mechanics:inspect` renders that
+artifact and nothing else, so what a reviewer reads is exactly what the proof binds. `mechanics:prove` reruns
+every locator, slice, dependency closure, derivation, and formatter through the production APIs and compares
+the result with the artifact and with the separately reviewed contract in
+`packages/pipeline/testdata/mechanics-contract-v1.json`.
+
+The automated gate proves byte binding, repeatability, and agreement between the code and a contract reviewed
+apart from it. It does not prove that a shared specification defect is impossible, and an attestation records
+which approved inspector rendered a review rather than that a human read it. Semantic review stays a human
+responsibility.
+
+A source change blocks publication even when the rendered page is identical, because an extractor can miss a
+semantic effect. When the game updates, regenerate the evidence: a filename is not a content hash, and
+Vespera reuses one across builds.
 
 ## Refreshing `extracted/`
 
@@ -53,6 +112,14 @@ When a parity probe reports a count mismatch, `bun tools/diff-live-tables.mjs ex
 |---|---|
 | `bunx tsc --noEmit` | Typecheck every workspace package |
 | `bun run verify extracted` | Verify composed tables and consume existing runtime evidence |
+| `bun run mechanics:check extracted` | Report one approval status per mechanics guide |
+| `bun run mechanics:sequence-gate extracted` | Run the real CLI sequence against scratch inputs, including its negatives |
+| `bun run verify-published data/latest mechanics.lock.json` | Re-verify emitted artifacts against the approved lock |
+| `bun run check:inputs` | Prove every protected read and write enters through the prepared-input contract |
+| `bun run check:lock-order` | Prove no path acquires a lease out of rank order |
+| `bun run check:manifest` | Inventory every site manifest reader and raw I/O callsite |
+| `bun run check:art` | Prove every Art and HeroArt callsite uses an allowed kind and variant |
+| `bun run site:browser-check --url <base>` | Run the browser assertion suite against a served build |
 | `bun run publish extracted` | Emit `data/<buildId>/` and `data/latest/` after checking every invariant |
 | `bun run data:sync` | Copy `data/latest/` and the sql.js wasm into the site's static directory |
 | `bun run site:dev` | Run the site against the synced dataset |
@@ -69,7 +136,7 @@ When a parity probe reports a count mismatch, `bun tools/diff-live-tables.mjs ex
 ## Architecture
 
 - `packages/core` resolves build-specific bundles, reads the installed build id, balances JavaScript literals, and provides separate discovery and strict composition evaluators.
-- `packages/pipeline` reconstructs post-declaration mutations, runs the game's own gear-balance passes, projects the result into the published schema, checks invariants, and emits the artifacts.
+- `packages/pipeline` reconstructs post-declaration mutations, runs the game's own gear-balance passes, extracts and locks the five mechanics guides, projects the result into the published schema, checks invariants, and emits the artifacts.
 - `packages/harness` launches Vespera through CrossOver, identifies runtime tables by shape, probes live state, and emits evidence reports.
 - `site` is a prerendered SvelteKit app organised by the questions players ask rather than by the schema: a searchable shell, twelve entity browsers, one answer-first page per published record, a level-by-level progression spine, per-class ability and gear hubs, an acquisition overview, an in-browser SQL playground over the published SQLite file, and copy-ready spreadsheet formulas.
 - `tools` contains build-diff, community-evidence and focused research utilities that have not yet moved into the typed publishing pipeline.
@@ -91,14 +158,31 @@ The datasets are stamped with the Steam build id, and `data/latest/` always mirr
 
 ## Project status
 
-Build `24503450` passes all 38 runtime probes. See [the evidence report](docs/RUNTIME-EVIDENCE-24503450.md)
-for the exact table, record, formula, and save checks.
+Build `24510288` passes all 37 runtime probes, including the four live formula contracts that corroborate
+the published Defense, XP, and sell claims across 34 cases. All three bundle roles matched byte for byte
+between the extraction and the running game. See [the evidence report](docs/RUNTIME-EVIDENCE-24510288.md).
 
-Getting there took two composition fixes worth knowing about, because both were invisible to static
-verification and only the live harness could see them. The game reuses its bundle filenames across
-builds, so `index-D6527GFL.js` is not content-addressed and an extraction can be stale while looking
-current; compare bytes, not names. And `locateTable` stops at a table's closing bracket, so a
-transform chained onto the literal is silently dropped.
+The site is verified separately: 80 browser assertions pass against the prerendered build, and
+`bun run mechanics:sequence-gate extracted` proves the approval chain refuses all eight out-of-order
+mutations.
+
+Four findings from this build are worth keeping.
+
+The game reuses its bundle filenames across builds. Build `24503450` and build `24510288` both ship
+`index-D6527GFL.js` and `GameView-Bdbw4Cpc.js`, and in both cases the bytes differ. A filename is not a
+content hash here, and treating one as evidence would have approved stale explanations.
+
+Byte parity caught a real extraction bug that produced files of exactly the right length and the wrong
+content, because an asar header is padded to a four byte boundary and the extractor skipped the padding.
+Nothing downstream would have noticed: the files parsed, the locators resolved, and the guides rendered.
+
+A bridged session can serve one asset twice, so role resolution collapses byte-identical candidates and
+fails only when two different byte sequences claim one role. Treating a repeated response as ambiguous
+rejected a role that was in fact perfectly determined.
+
+Defense corroboration is deliberately not promoted to `Live checked`. The bridged session serves the clean
+index module plus one canonical assignment, so the bytes that ran are not the shipped bytes. The report
+records the corroboration and the pages still say `Source checked`.
 
 ## Plans
 
