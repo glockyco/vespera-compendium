@@ -36,7 +36,7 @@
 <p class="lede">{data.profile.description}</p>
 
 <div class="class-intro">
-  <Art src={data.profile.image} alt={data.profile.name} size="portrait" />
+  <Art src={data.profile.image} alt={data.profile.name} kind="class" variant="portrait" />
   <div class="class-facts">
     <p class="class-role">{data.profile.worldRole}</p>
     <dl class="class-focus">
@@ -57,12 +57,27 @@
   </div>
 </div>
 
-<div class="class-layout">
+{#if data.guides.length > 0}
+  <section class="guides" data-mechanic-links aria-labelledby="class-guides-head">
+    <h2 id="class-guides-head" class="guides-head">Understand the system</h2>
+    <ul>
+      {#each data.guides as guide (guide.id)}
+        <li>
+          <a href={resolve(`/mechanics/${guide.id}/`)}>{guide.title}</a>
+          <span class="guides-summary">{guide.summary}</span>
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
+
+<div class="class-layout" data-detail-fields>
   <AnswerBlock title="Ability ladder" count={data.abilities.length}>
     <ol class="ladder">
       {#each data.abilities as ability (ability.id)}
         <li class="rung">
-          <Art src={ability.image} alt={ability.name} size="md" />
+          <Art src={ability.image} alt={ability.name} kind="general" variant="card" />
           <div class="rung-body">
             <div class="rung-head">
               <a class="rung-name" href={resolve(`/abilities/${ability.id}/`)}>{ability.name}</a>
@@ -118,8 +133,28 @@
 </div>
 
 <style>
-  .lede {
-    max-inline-size: 46rem;
+  .guides-head {
+    color: var(--brass);
+    font-size: var(--text-panel-title);
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+
+
+  /*
+   * Prose gets its own measure. The page column is sized for the portrait, the chip rows and the
+   * gear lists, but running text set across all of it reaches 120 characters a line, so every
+   * prose block is held to a 68ch line instead.
+   */
+  .lede,
+  .class-role,
+  .class-focus dd,
+  .trait-tip,
+  .guides-summary,
+  .rung-text {
+    max-inline-size: 68ch;
   }
 
   /*
@@ -273,7 +308,7 @@
   .slot h3 {
     margin-block-end: 0.3rem;
     color: var(--kicker);
-    font-size: var(--text-2xs);
+    font-size: var(--text-panel-sub);
     font-weight: 800;
     letter-spacing: 0.11em;
     text-transform: uppercase;

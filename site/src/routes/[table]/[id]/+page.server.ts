@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { entityKeys, primaryKeyColumn, rowByKey, tableBySlug } from "$lib/server/dataset";
+import { mechanicDocuments, mechanicLinksFor } from "$lib/server/mechanics";
 import { headingFor, shapeFor } from "$lib/server/related";
 
 export const entries = () => entityKeys();
@@ -9,7 +10,7 @@ export const entries = () => entityKeys();
  * happens here because it is a build-time join across up to six tables, and doing it in the
  * component would ship those tables to the browser to answer a question already settled.
  */
-export const load = ({ params }: { params: { table: string; id: string } }) => {
+export const load = async ({ params }: { params: { table: string; id: string } }) => {
   const spec = tableBySlug(params.table);
   if (!spec || spec.kind !== "entity") {
     throw error(404, `Dataset not found: ${params.table}`);
@@ -28,6 +29,9 @@ export const load = ({ params }: { params: { table: string; id: string } }) => {
     heading: heading.title,
     headingSub: heading.sub,
     level,
+    // The rule behind the record, before the record's own fields. A reader who does not know how
+    // sell value is computed cannot use a sell value.
+    guides: mechanicLinksFor(spec.name, row, await mechanicDocuments()),
     shape: shapeFor(spec.name, row),
   };
 };

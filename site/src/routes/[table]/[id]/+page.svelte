@@ -53,10 +53,14 @@
   {data.heading}
 </nav>
 
-<header class="record-hero" class:hero-wide={data.shape.heroSize === "hero"}>
+<header class="record-hero" class:hero-wide={data.slug === "zones-dungeons" && data.shape.heroSize === "hero"}>
   {#if data.shape.image}
     <div class="record-art">
-      <Art src={data.shape.image} alt={data.heading} size={data.shape.heroSize} rarity={data.shape.rarity} />
+      {#if data.slug === "zones-dungeons"}
+        <Art src={data.shape.image} alt={data.heading} kind="zone" variant="wide" box="panorama" rarity={data.shape.rarity} />
+      {:else}
+        <Art src={data.shape.image} alt={data.heading} kind="general" variant="card" box="lg" rarity={data.shape.rarity} />
+      {/if}
     </div>
   {/if}
 
@@ -92,7 +96,21 @@
   </div>
 </header>
 
-<div class="record-blocks">
+{#if data.guides.length > 0}
+  <section class="guides" data-mechanic-links aria-labelledby="guides-head">
+    <h2 id="guides-head" class="guides-head">Understand the system</h2>
+    <ul>
+      {#each data.guides as guide (guide.id)}
+        <li>
+          <a href={resolve(`/mechanics/${guide.id}/`)}>{guide.title}</a>
+          <span class="guides-summary">{guide.summary}</span>
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
+<div class="record-blocks" data-detail-fields>
   {#each data.shape.blocks as block (block.title)}
     <AnswerBlock title={block.title} empty={block.empty} isEmpty={isEmpty(block)}>
       {#if (block.lines && block.lines.length > 0) || (block.stats && block.stats.length > 0) || block.prose}
@@ -201,8 +219,19 @@
     font-size: var(--text-xs);
   }
 
+  /*
+   * Prose gets its own measure. The 76rem page column is right for chip rows, stat grids and record
+   * lists, but running text set across it reaches 98 characters a line and stops being comfortable,
+   * so every prose block is held to a 68ch line.
+   */
+  .record-description,
+  .guides-summary,
+  .block-prose,
+  .block-more {
+    max-inline-size: 68ch;
+  }
+
   .record-description {
-    max-inline-size: 52rem;
     margin-block-start: 0.7rem;
   }
 
@@ -214,9 +243,53 @@
 
   .record-blocks {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    /* `min()` so the 20rem track collapses on a 320 px phone instead of overflowing the viewport. */
+    grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
     gap: 0.9rem;
     align-items: start;
+  }
+
+  /*
+   * The rule before the record. A sell value or a mitigation number means little on its own, so the
+   * guide that explains it comes before the record's own fields rather than after them.
+   */
+  .guides {
+    margin-block-end: 1.2rem;
+    padding-block: 0.6rem;
+    border-block: 1px solid var(--line);
+  }
+
+  .guides-head {
+    color: var(--brass);
+    font-size: var(--text-panel-title);
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .guides ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .guides li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.7rem;
+  }
+
+  .guides a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    font-weight: 700;
+  }
+
+  .guides-summary {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
   }
 
   .block-prose {

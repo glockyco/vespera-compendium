@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { ABILITY_CATEGORY_ORDER, CLASSES, isClassId, SLOTS } from "$lib/classes";
 import { rowsWhere, table } from "$lib/server/dataset";
+import { mechanicDocuments, mechanicLinksFor } from "$lib/server/mechanics";
 
 export const entries = () => CLASSES.map((id) => ({ class: id }));
 
@@ -11,7 +12,7 @@ export const entries = () => CLASSES.map((id) => ({ class: id }));
  * `ring2` and `relic1` are empty for every class, and omitting them would make the page look like
  * the game has seven slots.
  */
-export const load = ({ params }: { params: { class: string } }) => {
+export const load = async ({ params }: { params: { class: string } }) => {
   if (!isClassId(params.class)) throw error(404, `Unknown class: ${params.class}`);
   const classId = params.class;
 
@@ -77,5 +78,9 @@ export const load = ({ params }: { params: { class: string } }) => {
       .sort((left, right) => (left.level ?? 0) - (right.level ?? 0)),
   }));
 
-  return { classId, profile, abilities, slots, itemCount: classItems.length };
+  // The class page is a bespoke route rather than the generic record detail, so it has to ask for its guide
+  // links explicitly. The map is the same exhaustive one every mapped table uses.
+  const guides = mechanicLinksFor("classes", { id: classId }, await mechanicDocuments());
+
+  return { classId, profile, abilities, slots, itemCount: classItems.length, guides };
 };
