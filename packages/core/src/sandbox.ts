@@ -154,7 +154,7 @@ export function locateTable(source: string, probes: RegExp[], minBytes = 0): Loc
         candidates.push({ symbol: match[1]!, text });
       }
     } catch {
-      // Ignore malformed candidates and keep searching.
+      // Ignore a malformed candidate and continue the search.
     }
     declaration.lastIndex = open + 1;
   }

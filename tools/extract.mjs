@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Vespera bundle extractor.
 //
-// Locates data tables by CONTENT ANCHOR (never by line number or filename hash — both move
-// between builds), balances the literal, and evaluates it in a VM sandbox. Emits normalized
-// JSON keyed by Steam buildid.
+// Locate data tables by CONTENT ANCHOR.
+// Do not use a line number or a bundle filename as a content hash.
+// The game reuses filenames across builds, so the filename does not identify the bytes.
+// Balance the literal and evaluate it in a VM sandbox. Emit normalized JSON keyed by Steam buildid.
 //
 //   node tools/extract.mjs <extractedDir> [buildid]
 
@@ -22,12 +23,12 @@ export function resolveBundles(dir) {
   const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
   const grab = (s) => [...s.matchAll(/(?:src|href|from\s+)["'](?:\.\/)?(?:assets\/)?([A-Za-z0-9._-]+\.js)/g)].map((m) => m[1]);
   let hrefs = grab(html);
-  // index-*.js is not referenced by index.html; it is imported by the bootstrap module.
+  // `index-*.js` is not referenced by index.html. The bootstrap module imports it.
   for (const entry of hrefs.filter((h) => /bootstrap/.test(h))) {
     const p = path.join(assets, entry);
     if (fs.existsSync(p)) hrefs = hrefs.concat(grab(fs.readFileSync(p, "utf8")));
   }
-  // last resort: scan the assets dir for the canonical entry shapes
+  // If the references do not name the bundles, scan the assets directory for the canonical entry shapes.
   const dirFiles = fs.readdirSync(assets);
   const pick = (re) => hrefs.find((h) => re.test(h)) || dirFiles.find((h) => re.test(h));
   const index = pick(/^index-.*\.js$/);
@@ -40,8 +41,9 @@ const OPEN = { "{": "}", "[": "]", "(": ")" };
 const CLOSE = new Set(["}", "]", ")"]);
 
 /**
- * Balance a literal starting at `from`, skipping strings, template literals,
- * regex literals and comments. Returns [start, endExclusive].
+ * Balance a literal that starts at `from`.
+ * Skip strings, template literals, regex literals, and comments.
+ * Return [start, endExclusive].
  */
 export function balance(src, from) {
   let i = from;
@@ -74,8 +76,8 @@ export function evalLiteral(code) {
     Object, Array, Math, JSON, Number, String, Boolean, Date, Map, Set, RegExp, Symbol,
     isNaN, parseInt, parseFloat, Infinity, NaN, undefined,
   };
-  // Any identifier the literal references but we do not provide resolves to a permissive
-  // stub, so tables that call helper functions still evaluate.
+  // Any identifier that the literal references but this module does not provide resolves to a permissive
+  // stub. Tables that call helper functions can then evaluate.
   const stub = new Proxy(function () {}, {
     get: () => stub, apply: () => stub, construct: () => stub,
     has: () => true,

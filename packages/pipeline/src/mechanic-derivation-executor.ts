@@ -1,14 +1,15 @@
 /**
- * Executes shipped code to produce a published value.
+ * Run shipped code to produce a published value.
  *
- * The compendium publishes numbers about a game it does not own, so a number it computed itself would
- * be a guess with good manners. Every source-derived value here comes from running the game's own
- * function or reading the game's own constant, over source slices the model cites by hash.
+ * The compendium publishes numbers about a game that it does not own.
+ * A number computed by the compendium is only a guess.
+ * Each source-derived value comes from the game's function or constant.
+ * The executor runs it over source slices that the model cites by hash.
  *
- * The module deliberately owns no parser. `mechanics.ts` resolves locators, hashes slices, and hands
- * over a fully materialized request; this file only builds a program from those slices, evaluates it
- * twice under the strict sandbox, and formats the results. Keeping the two apart is what lets the
- * derivation closure be hashed without dragging TypeScript and the whole extractor into it.
+ * This module has no parser.
+ * `mechanics.ts` resolves locators, hashes slices, and passes a materialized request.
+ * This file builds a program from those slices, evaluates it twice in the strict sandbox, and formats results.
+ * Separate modules let the derivation closure exclude TypeScript and the full extractor from its hash.
  */
 
 import {
@@ -58,9 +59,9 @@ export type MechanicDerivationRequest = {
   /** Applying zero arguments to a non-function declaration reads its value. */
   calls: { sourceTargetId: string; args: MechanicJson[] }[];
   outputs: { id: string; textId: string; format: MechanicValueFormat; template: string | null }[];
-  /** Only the `gear-balance` branch uses this, and it is never published. */
+  /** Only the `gear-balance` branch uses this. It is never published. */
   gearInput?: GearBalanceInput;
-  /** The item id the gear branch reports, when that branch runs. */
+  /** The item id that the gear branch reports when it runs. */
   gearItemId?: string;
 };
 
@@ -71,7 +72,7 @@ const NAMED_FUNCTION = /^\s*(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\
 const NAMED_CLASS = /^\s*class\s+([A-Za-z_$][\w$]*)\b/;
 const KEYWORD_DECLARATOR = /^\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/;
 
-/** The synthetic owner for shipped static methods, which cannot be evaluated as bare statements. */
+/** The synthetic owner for shipped static methods. Bare statements cannot evaluate these methods. */
 const METHOD_OWNER = "__VesperaShippedMethods";
 
 type SliceForm =
@@ -80,11 +81,12 @@ type SliceForm =
   | { kind: "method"; symbol: string; text: string };
 
 /**
- * Classifies one slice so the program builder knows how to make it evaluable.
+ * Classify one slice so the program builder can make it evaluable.
  *
- * A locator can legitimately return a bare declarator (`CAP = 256`, one of several in a single `const`)
- * or a bare class method (`static calculateXpGain(r) { … }`). Neither is a statement. Wrapping them is
- * the executor's job precisely so the cited bytes stay exactly what the source contains.
+ * A locator can return a bare declarator such as (`CAP = 256`) from a multi-declarator `const`.
+ * It can also return a bare class method such as (`static calculateXpGain(r) { … }`).
+ * Neither form is a statement.
+ * The executor wraps these forms while preserving the cited bytes exactly.
  */
 function classify(source: DerivationSource): SliceForm {
   const method = CLASS_METHOD.exec(source.text);
@@ -139,17 +141,18 @@ function buildProgram(request: MechanicDerivationRequest): string {
   return `(()=>{\n${parts.join("\n")}\n})()`;
 }
 
-/** Deep equality by canonical serialization, used for the repeatability check. */
+/** Deep equality by canonical serialization for the repeatability check. */
 function sameValue(left: MechanicJson, right: MechanicJson): boolean {
   return canonicalJson(left) === canonicalJson(right);
 }
 
 /**
- * Converts an evaluated value into canonical JSON, refusing anything a published model cannot carry.
+ * Convert an evaluated value into canonical JSON.
+ * Reject values that a published model cannot carry.
  *
- * `Object.freeze` wrappers and sandbox-created arrays and objects survive; a function, a symbol, a
- * non-finite number, or a cyclic structure does not, because none of those can be reviewed as a number
- * a player reads on a page.
+ * `Object.freeze` wrappers and sandbox-created arrays and objects are supported.
+ * A function, symbol, non-finite number, or cyclic structure is rejected.
+ * A player cannot review any of these values as a page number.
  */
 function toMechanicJson(value: unknown, path: string): MechanicJson {
   if (value === null) return null;
@@ -173,7 +176,7 @@ function toMechanicJson(value: unknown, path: string): MechanicJson {
   throw new Error(`derivation produced a ${typeof value} at ${path}, which cannot be published`);
 }
 
-/** Renders one raw value as the exact text a page shows. */
+/** Show one raw value as the exact text that a page shows. */
 export function formatDerivedValue(
   raw: MechanicJson,
   format: MechanicValueFormat,
@@ -216,10 +219,11 @@ export function formatDerivedValue(
 /**
  * The gear-balance branch.
  *
- * It runs the shipped class-gear and gear-balance passes unchanged and reports the balanced numbers for
- * one named item, so a claim about equipment normalization is the game's own output rather than a
- * restatement of its curve. The composed input is never published: it is the whole item table, and a
- * model that carried it would be unreviewable.
+ * It runs the shipped class-gear and gear-balance passes without changes.
+ * It reports balanced numbers for one named item.
+ * A claim about equipment normalization then uses the game's output instead of a copied curve.
+ * The composed input is not published.
+ * It is the whole item table, and a model that carried it cannot be reviewed.
  */
 function runGearBalance(request: MechanicDerivationRequest): MechanicJson[] {
   const gearInput = request.gearInput;
@@ -249,11 +253,11 @@ function runGearBalance(request: MechanicDerivationRequest): MechanicJson[] {
 }
 
 /**
- * Runs one derivation and returns the publishable record.
+ * Run one derivation and return the publishable record.
  *
- * Twice, always, with a deep comparison. A value that differs between two runs of the same shipped code
- * over the same inputs is not a fact about the game, and the cheapest place to notice that is before it
- * reaches a page.
+ * Always run it twice and compare the values deeply.
+ * A value that differs between runs of the same shipped code and inputs is not a game fact.
+ * The pipeline finds this error before the value reaches a page.
  */
 export function evaluateMechanicDerivation(request: MechanicDerivationRequest): MechanicDerivation {
   if (request.sources.length === 0) throw new Error(`derivation ${request.id} cites no source`);

@@ -4,9 +4,11 @@ import type { Dataset } from "./project.ts";
 import { TABLES, type ColumnType } from "./schema.ts";
 
 /**
- * Writes the published dataset as a single SQLite file. The file is downloaded whole by the browser
- * playground, so it ships with journalling off and vacuumed: a `-wal` sidecar would be invisible to
- * a static host and the database would open without the newest rows.
+ * Write the published dataset as one SQLite file.
+ * The browser playground downloads the whole file.
+ * Journaling is off and the file is vacuumed.
+ * A `-wal` sidecar is invisible to a static host.
+ * Without vacuuming, the database can open without its newest rows.
  */
 
 const AFFINITY: Record<ColumnType, string> = {
@@ -16,7 +18,7 @@ const AFFINITY: Record<ColumnType, string> = {
   boolean: "INTEGER",
 };
 
-/** Columns worth an index: every foreign key a compendium query joins or filters on. */
+/** Columns worth indexing: foreign keys that compendium queries join or filter. */
 const INDEXED: [string, string][] = [
   ["item_stats", "item_id"],
   ["item_sources", "item_id"],
@@ -49,8 +51,10 @@ const INDEXED: [string, string][] = [
 ];
 
 /**
- * Quotes an identifier. `search_index.table` is a reserved word, and any future column could be
- * too, so identifiers are quoted everywhere rather than only where a clash is already known.
+ * Quote an identifier.
+ * `search_index.table` is a reserved word.
+ * A future column can also be reserved.
+ * Quote every identifier instead of only known clashes.
  */
 const quote = (name: string): string => `"${name.replaceAll('"', '""')}"`;
 

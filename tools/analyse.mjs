@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Derives the distributions and tables that were previously unverified.
+// Derives distributions and tables that were not checked.
 //   node tools/analyse.mjs <extractedDir>
 
 import fs from "node:fs";

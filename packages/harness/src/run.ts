@@ -73,15 +73,12 @@ function responseBody(value: unknown): { body: string; base64Encoded: boolean } 
 }
 
 /**
- * Captures every final response body and resolves the same semantic roles the disk inputs use.
+ * Captures every final response body and assigns the same semantic roles as the disk inputs.
  *
- * The harness attaches after the game has already loaded, and Chromium retains a response body only for a
- * bounded window, so asking for the initial load's bodies fails with "No resource with given identifier
- * found". The fix is to observe a load rather than to ask about one that is over: cache is disabled, the
- * page is navigated to its own URL, and each body is fetched the moment its request finishes.
+ * The harness attaches listeners before navigation. Chromium evicts response bodies after load, so the harness must fetch each body when its request finishes.
+ * Cache is disabled, and the page navigates to its own URL.
  *
- * Fetching inside the completion handler matters. Collecting every request first and then fetching would
- * reintroduce exactly the eviction window this exists to avoid.
+ * Fetching inside the completion handler avoids the eviction window. If the harness fetches after it collects requests, Chromium can evict the body.
  */
 export async function captureRuntimeBundleSources(client: CdpClient): Promise<BundleFingerprints> {
   const pending = new Map<string, { url: string; redirect: boolean }>();
@@ -95,8 +92,7 @@ export async function captureRuntimeBundleSources(client: CdpClient): Promise<Bu
       const bytes = cdpResponseBytes(body.body, body.base64Encoded);
       captured.set(requestId, { url, bytes, sha256: sha256Hex(bytes) });
     } catch {
-      // A body Chromium has already evicted cannot become a role. Missing bytes are handled by the role
-      // resolver below, which fails when a role has no candidate, rather than by guessing here.
+      // A body that Chromium evicted cannot become a role. The resolver fails when a role has no candidate. It does not guess.
     }
   };
 
@@ -118,8 +114,7 @@ export async function captureRuntimeBundleSources(client: CdpClient): Promise<Bu
     const href = await client.evaluate<string>("location.href", 30_000);
     await client.send("Page.navigate", { url: href });
 
-    // The game initializes several megabytes of module before it settles, so the wait is generous and ends
-    // as soon as all three roles resolve rather than after a fixed delay.
+    // The game initializes several megabytes of modules before it settles. The wait ends when all three roles resolve, not after a fixed delay.
     const deadline = Date.now() + 180_000;
     let resolved: BundleFingerprints | null = null;
     let lastError = "no finished Network responses yet";
@@ -162,7 +157,7 @@ export async function runAll(opts: RunOptions): Promise<HarnessRunResult> {
   const results: ProbeResult[] = [];
   const cleanSuites = new Set([...suites].filter((suite) => suite === "parity" || suite === "records" || suite === "formulas"));
   let runtimeBundles: BundleFingerprints | null = null;
-  // Collected before each session stops, because a closed transport can no longer report what it ran.
+  // Collect these IDs before each session stops. A closed transport cannot report the operations that it ran.
   const executed = new Set<string>();
   let cleanIndexResourceUrl: string | null = null;
 
@@ -185,9 +180,8 @@ export async function runAll(opts: RunOptions): Promise<HarnessRunResult> {
         results.push(...(await runRecordProbes(opts.buildId, session.client, bundles.index, tables, composed)));
       }
       if (suites.has("formulas")) {
-        // The captured URL, not a reconstructed `./assets/<file>` path: importing a second spelling of the
-        // same module creates a second script that no Network response ever answered, and the scriptId
-        // would then map to nothing.
+        // The captured URL differs from a reconstructed `./assets/<file>` path. A second spelling creates a second script.
+        // No Network response answered that script, so its scriptId maps to nothing.
         const context = resolverContext(session.client, {
           indexBundle: bundles.index,
           indexResourceUrl: cleanIndexResourceUrl ?? undefined,

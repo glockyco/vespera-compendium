@@ -7,17 +7,19 @@ import { canonicalJson } from "@vespera/core";
 import type { ComposedTables } from "./compose.ts";
 
 /**
- * The game ships its own art, and the compendium republishes it rather than inventing placeholders.
+ * The game ships its own art. The compendium republishes it instead of using placeholders.
  *
- * Two things make this awkward enough to deserve a module. The field carrying a path is not the same
- * on every table — `items` and three others call it `imagePath`, `enemies` and `zones_dungeons` call
- * it `icon`, world bosses call it `gearIcon`, and achievements have no field at all and are probed
- * by id. And `icon` is polymorphic in the shipped data: a real path on two tables and a literal `?`
- * placeholder on four, left behind by the game's own art reskin. Publishing one normalised `image`
- * column is what lets every surface read one field instead of encoding that mess.
+ * Tables use different path fields.
+ * `items` and three other tables use `imagePath`.
+ * `enemies` and `zones_dungeons` use `icon`.
+ * World bosses use `gearIcon`.
+ * Achievements have no field and use an id lookup.
+ * The shipped `icon` field also has two forms: a real path on two tables and `?` on four tables.
+ * The game's art reskin left those placeholders.
+ * The published `image` column gives every surface one field.
  *
- * Paths are read from the composed tables, not the projected dataset, because projection is where
- * the source columns are dropped.
+ * Read paths from composed tables, not the projected dataset.
+ * Projection drops the source columns.
  */
 
 const IMAGE_DIR = "images";
@@ -75,20 +77,20 @@ export type VariantIndex = {
 export type ImageRef = {
   /** Published table name. */
   table: string;
-  /** Row primary key, so `projectAll` can index refs by `(table, id)`. */
+  /** Row primary key. `projectAll` indexes refs by `(table, id)`. */
   id: string;
-  /** Path inside the extracted build, without any query suffix. */
+  /** Path inside the extracted build, without a query suffix. */
   source: string;
-  /** Path inside the published dataset, content-hashed, which is what the `image` column carries. */
+  /** Path inside the published dataset. The `image` column carries this content-hashed path. */
   published: string;
   /** Art contract for this table. */
   kind?: ArtKind;
 };
 
-/**
- * Composed table, published table name, the field on it that carries a path, and the field carrying
- * its primary key where that is not `id`.
- */
+  /**
+   * A composed table, its published table name, and its path field.
+   * The last field gives the primary-key field when it is not `id`.
+   */
 const PATH_FIELDS: [composed: string, table: string, field: string, idField?: string][] = [
   ["items", "items", "imagePath"],
   ["enemies", "enemies", "icon"],
@@ -96,14 +98,15 @@ const PATH_FIELDS: [composed: string, table: string, field: string, idField?: st
   ["abilities", "abilities", "imagePath"],
   ["gems", "gems", "imagePath"],
   ["zonesDungeons", "zones_dungeons", "icon"],
-  // The character-select portraits, which are the only full-figure art the game ships. Class rows
-  // key on `classId` rather than `id`.
+  // Character-select portraits are the only full-figure art that the game ships. Class rows use `classId`, not `id`.
   ["classes", "classes", "image", "classId"],
 ];
 
 /**
- * Achievements carry no art field. The game stores their Steam icons by id under a fixed directory,
- * in achieved and unachieved variants; the achieved one is the identifying image.
+ * Achievements have no art field.
+ * The game stores Steam icons by id in a fixed directory.
+ * It stores achieved and unachieved variants.
+ * The achieved variant identifies the image.
  */
 const ACHIEVEMENT_DIR = "assets/achievements/phase1/steam-64/achieved";
 
@@ -115,30 +118,30 @@ function rows(value: unknown): Source[] {
 }
 
 /**
- * Strips the cache-busting suffix the game appends to reskinned art, for example
- * `...wood_oak.webp?v=bright-items-20260715`. The file on disk carries no suffix.
+ * Strip the cache-busting suffix that the game adds to reskinned art.
+ * For example, `...wood_oak.webp?v=bright-items-20260715` has no suffix on disk.
  */
 function cleanPath(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.split("?")[0]!.trim();
-  // The reskin left literal `?` and `??(Ab)` placeholders in `icon` on four tables. Anything that
-  // is not a path into the asset tree is one of those, not art.
+  // The reskin left `?` and `??(Ab)` in `icon` on four tables. A value outside the asset tree is a placeholder, not art.
   if (!trimmed.startsWith("assets/")) return null;
   return trimmed;
 }
 
 /**
- * Published art paths carry a content hash, which is what lets the CDN serve them immutable for a
- * year without ever stranding a stale picture.
+ * Published art paths carry a content hash.
+ * A CDN can serve them as immutable files for one year.
  *
- * The game's own filenames are not safe to cache that way. It reuses a name and busts the cache with
- * a query string instead — `wood_oak.webp?v=bright-items-20260715` is a reskin of a path that
- * already existed — so a client told to keep `wood_oak.webp` for a year would keep the wrong art
- * through the next reskin. Hashing the bytes moves that versioning into the filename, where a CDN
- * and a browser can both act on it.
+ * The game's filenames are not safe for this cache policy.
+ * The game reuses names and adds a query string for cache busting.
+ * `wood_oak.webp?v=bright-items-20260715` is a reskin of an existing path.
+ * A client that keeps `wood_oak.webp` for one year keeps the wrong art after the next reskin.
+ * Hashing the bytes puts the version in the filename.
+ * Both a CDN and a browser can then use the version.
  *
- * A side benefit worth having in this repository: an art change becomes visible as a diff in the
- * published dataset rather than an invisible byte swap behind a stable name.
+ * An art change also becomes visible in the published dataset.
+ * It is not an invisible byte change behind a stable name.
  */
 const hashes = new Map<string, string>();
 
@@ -151,10 +154,10 @@ function contentHash(file: string): string {
 }
 
 /**
- * Every image the published dataset references, resolved against the extracted build.
+ * Collect every image that the published dataset references from the extracted build.
  *
- * A ref whose file is absent is skipped and appended to `missing` rather than throwing: a future
- * build may drop an asset, and one missing picture must not block a publish.
+ * If a file is absent, skip the ref and append it to `missing` instead of throwing.
+ * A future build can drop an asset, and one missing picture must not block publication.
  */
 export function collectImages(
   composed: ComposedTables,
@@ -190,7 +193,7 @@ export function collectImages(
     }
   }
 
-  // A world boss's art is its reward gear's art, which is why the field is named for the gear.
+  // A world boss uses its reward gear's art. This is why the field name refers to gear.
   for (const boss of rows(composed.worldBosses?.value)) {
     add("world_bosses", String(boss.id ?? ""), cleanPath(boss.gearIcon));
   }
@@ -228,9 +231,10 @@ async function sourceMetadata(file: string, source: string): Promise<sharp.Metad
 }
 
 /**
- * Copies canonical art and writes one deterministic WebP set for every table that references it.
- * A shared canonical path is decoded once, while its variant set is the union of all referencing
- * table kinds, so a class portrait cannot accidentally suppress a general thumbnail.
+ * Copy canonical art and write one deterministic WebP set for every referencing table.
+ * Decode a shared canonical path once.
+ * The variant set is the union of all referencing table kinds.
+ * A class portrait cannot then suppress a general thumbnail.
  */
 export async function writeImages(
   refs: readonly ImageRef[],
@@ -339,7 +343,7 @@ export async function writeImages(
 }
 
 
-/** Refs indexed by `(table, id)`, which is how projection fills the `image` column. */
+/** Refs indexed by `(table, id)`. Projection uses this index to fill the `image` column. */
 export function indexRefs(refs: readonly ImageRef[]): Map<string, string> {
   const index = new Map<string, string>();
   for (const ref of refs) index.set(`${ref.table}\u0000${ref.id}`, ref.published);

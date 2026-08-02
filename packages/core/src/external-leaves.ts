@@ -1,23 +1,21 @@
 /**
- * The boundary of every reviewed source closure.
+ * Boundary for every reviewed source closure.
  *
- * A closure hash is only a real approval if it stops somewhere honest. Traversal stops at exactly
- * three kinds of leaf, and each kind is declared here rather than discovered:
+ * A closure hash is an approval only when traversal stops at an honest leaf. Traversal stops at three leaf kinds.
+ * This module declares each kind.
  *
- * - ECMAScript intrinsics, which are the language rather than a platform and carry no test
- *   obligation of their own;
- * - platform symbols (Node, Bun, WebSocket, and named CDP protocol operations), each of which must
- *   name at least one executable test that demonstrates the semantics the closure relies on;
- * - reviewed third-party packages, declared in `source-package-leaves.ts`.
+ * - ECMAScript intrinsics are language features, not platform dependencies. They have no test obligation.
+ * - Platform symbols include Node, Bun, WebSocket, and named CDP operations. Each symbol needs an executable test for its required semantics.
+ * - Reviewed third-party packages are declared in `source-package-leaves.ts`.
  *
- * Anything else — an unlisted specifier, an unresolved identifier, a dynamic import, a module
- * outside the workspace — fails source hashing. That is the point: a closure cannot quietly grow a
- * dependency that no one reviewed.
+ * Any other dependency fails source hashing. This includes an unlisted specifier, unresolved identifier, dynamic import, or module outside the workspace.
+ * This rule prevents a closure from adding an unreviewed dependency.
  */
 
 /**
- * Language built-ins. These are not platform surface, so they need no coverage row: a change to
- * `Math.min` is a change of JavaScript, not of this repository's dependencies.
+ * Language built-ins.
+ *
+ * These are not platform values, so they need no coverage row. A change to `Math.min` changes JavaScript, not this repository's dependencies.
  */
 export const ECMASCRIPT_INTRINSICS: ReadonlySet<string> = new Set([
   "AggregateError",
@@ -78,10 +76,10 @@ export const ECMASCRIPT_INTRINSICS: ReadonlySet<string> = new Set([
 /**
  * Permitted platform symbols, keyed by specifier.
  *
- * `global` covers ambient platform values that are not imported; `bun` covers the Bun namespace;
- * `cdp` covers the exact Chrome DevTools Protocol operations the harness is allowed to send. Every
- * entry becomes a `<specifier>#<symbol>` token in the closure preimage when it is reached, so
- * adding a platform capability changes the hash and forces a review.
+ * `global` covers ambient values that are not imported. `bun` covers the Bun namespace.
+ * `cdp` covers the Chrome DevTools Protocol operations that the harness can send.
+ * Each reached entry becomes a `<specifier>#<symbol>` token in the closure preimage.
+ * Adding a platform capability changes the hash and requires a review.
  */
 export const SOURCE_CLOSURE_EXTERNAL_LEAVES: Readonly<Record<string, readonly string[]>> =
   Object.freeze({
@@ -175,13 +173,12 @@ export function allExternalLeafTokens(): string[] {
 }
 
 /**
- * The named executable test that covers each platform leaf.
+ * The executable test named for each platform leaf.
  *
- * A leaf without a test is an unexamined assumption about the platform, so the key sets of this map
- * and {@link SOURCE_CLOSURE_EXTERNAL_LEAVES} must match exactly; `assertExternalLeafTestsComplete`
- * is a source-hash invariant rather than a lint. Node and Bun primitives are covered by byte-vector
- * tests in `tools/external-leaves.test.ts`; WebSocket and CDP operations are covered by the harness,
- * because only a real browser can demonstrate them.
+ * A leaf without a test is an unexamined platform assumption. The map keys and leaf table keys must match exactly.
+ * `assertExternalLeafTestsComplete` checks this source-hash invariant, not a lint rule.
+ * Node and Bun primitives use byte-vector tests in `tools/external-leaves.test.ts`.
+ * WebSocket and CDP operations use the harness because only a real browser can show them.
  */
 export const SOURCE_CLOSURE_EXTERNAL_LEAF_TESTS: Readonly<Record<string, readonly string[]>> =
   Object.freeze({
@@ -259,8 +256,10 @@ export const SOURCE_CLOSURE_EXTERNAL_LEAF_TESTS: Readonly<Record<string, readonl
   });
 
 /**
- * Which suite owns each coverage ID. The Node command cannot demonstrate a browser realm and the
- * harness cannot run without the installed game, so the aggregate needs both to be complete.
+ * The suite that owns each coverage ID.
+ *
+ * The Node command cannot show a browser realm. The harness cannot run without the installed game.
+ * The aggregate therefore needs both suites.
  */
 export function externalLeafSuite(coverageId: string): "node" | "harness" {
   return coverageId.startsWith("harness.") ? "harness" : "node";
@@ -278,8 +277,8 @@ export function allExternalLeafCoverageIds(): string[] {
 /**
  * Exact key equality between the leaf table and the test assignment map.
  *
- * Called from source hashing, not from a test, so a leaf can never be added without its coverage
- * row: the closure simply refuses to hash.
+ * Source hashing calls this function, not a test. A leaf therefore cannot be added without a coverage row.
+ * The closure refuses to hash when the row is absent.
  */
 export function assertExternalLeafTestsComplete(): void {
   const declared = allExternalLeafTokens();

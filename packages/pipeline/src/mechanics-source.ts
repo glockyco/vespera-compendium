@@ -1,21 +1,23 @@
 /**
  * The reviewed source-closure approval.
  *
- * `mechanics.lock.json` records which *data* a human approved. This file records which *code* they
- * approved to decide that. Both are needed: an extractor that changed can produce identical-looking
- * output from different reasoning, and a gate that changed can approve what the old gate would have
- * refused.
+ * `mechanics.lock.json` records the data that a person approved.
+ * This file records the code used to approve that data.
+ * Both are needed.
+ * A changed extractor can produce equal-looking output by different reasoning.
+ * A changed gate can approve data that the old gate rejected.
  *
- * Five closures are tracked. Four have a constant in `packages/core/src/execution-source-hashes/`, and a
- * sync requires the fresh candidate, that constant, and this approval to agree — so editing a constant
- * alone never makes the gate pass. The fifth, the inspector, deliberately has no constant: it is the
- * trust root that renders review artifacts, so its only approved value lives here and changing it
- * requires an explicit rotation.
+ * Five closures are tracked.
+ * Four have a constant in `packages/core/src/execution-source-hashes/`.
+ * Sync requires the fresh candidate, that constant, and this approval to agree.
+ * Editing a constant alone cannot pass the gate.
+ * The inspector has no constant because it is the trust root for review artifacts.
+ * Its approved value lives here and needs explicit rotation.
  *
- * Two narrow exceptions are stated as operator trust rather than dressed up as proof. Bootstrap creates
- * the first approval after a full manual review, because no earlier approval exists to authorize it.
- * Gate rotation updates the gate's own field when the gate closure itself changes, because a gate cannot
- * authorize a change to itself without a fixed point that does not exist.
+ * Two narrow exceptions use operator trust, not proof.
+ * Bootstrap creates the first approval after a full manual review because no earlier approval exists.
+ * Gate rotation updates the gate field when the gate closure changes.
+ * A gate cannot authorize its own change without a fixed point.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -37,7 +39,7 @@ import {
   type SourceClosureName,
 } from "@vespera/core";
 
-/** The five approved hashes, in the fixed field order the approval file uses. */
+/** The five approved hashes in the fixed field order used by the approval file. */
 export type SourceApprovalHashes = {
   inspector: string;
   approvalGate: string;
@@ -46,7 +48,7 @@ export type SourceApprovalHashes = {
   runtime: string;
 };
 
-/** One closure as it is stored: the hashed content, with the hash beside it rather than inside it. */
+/** One stored closure. The hash is beside the hashed content, not inside it. */
 export type StoredClosure = {
   sha256: string;
   modules: SourceClosure["modules"];
@@ -89,8 +91,8 @@ function storedClosure(closure: SourceClosure): StoredClosure {
 /**
  * The exact hash preimage of the approval file.
  *
- * Readers reject unknown structural fields and recompute this same projection, so a field added by a
- * future writer cannot ride along unhashed.
+ * Readers reject unknown structural fields and recompute this projection.
+ * A future writer cannot add a field without hashing it.
  */
 export function approvalPreimage(approval: MechanicsSourceApproval): CanonicalJson {
   return withoutMember(
@@ -124,7 +126,7 @@ function parseStoredClosure(value: unknown, field: string): StoredClosure {
   return record as unknown as StoredClosure;
 }
 
-/** Parses and self-verifies the approval file, or throws with the exact recovery path. */
+/** Parse and check the approval file, or throw with the exact recovery path. */
 export function readMechanicsSourceApproval(file: string): ReadApproval {
   const resolved = path.resolve(file);
   if (!existsSync(resolved)) {
@@ -172,11 +174,11 @@ export function readMechanicsSourceApproval(file: string): ReadApproval {
 }
 
 /**
- * Reads the approval bytes directly rather than through the stable-file helper.
+ * Read approval bytes directly, not through the stable-file helper.
  *
- * `inputs.ts` imports this module, so importing it back would be a cycle. Every caller hashes the bytes
- * it received and compares that hash, so a concurrent write shows up as a mismatch rather than as a
- * silent half-read.
+ * `inputs.ts` imports this module, so importing it here creates a cycle.
+ * Each caller hashes the bytes it received and compares that hash.
+ * A concurrent write then appears as a mismatch, not a silent partial read.
  */
 function readApprovalBytes(file: string): Uint8Array {
   return new Uint8Array(readFileSync(file));
@@ -190,10 +192,11 @@ export type ComputedClosures = {
 const closureCache = new Map<string, ComputedClosures>();
 
 /**
- * Computes all five candidate closures for a working tree.
+ * Compute all five candidate closures for a working tree.
  *
- * Cached per workspace root because a single command prepares once but several checks compare against
- * the same candidates, and each closure builds its own TypeScript program.
+ * Cache results by workspace root.
+ * One command prepares once, and several checks compare the same candidates.
+ * Each closure builds its own TypeScript program.
  */
 export function computeSourceClosures(workspaceRoot: string): ComputedClosures {
   const root = path.resolve(workspaceRoot);
@@ -221,7 +224,7 @@ export function computeSourceClosures(workspaceRoot: string): ComputedClosures {
   return computed;
 }
 
-/* review artifacts */
+/* Review artifacts */
 
 export type SourceReviewArtifact = {
   version: 1;
@@ -235,12 +238,13 @@ export type SourceReviewArtifact = {
 };
 
 /**
- * Builds one closure's review artifact.
+ * Build one closure's review artifact.
  *
- * The hash covers the prior approved closure, the fresh candidate, and the field diff, and excludes both
- * the tracked constant values and its own hash. That exclusion is deliberate: a reviewer approves a
- * *change in code*, and editing the constant to the reviewed candidate afterwards must not invalidate the
- * review they already performed.
+ * The hash covers the prior approval, fresh candidate, and field diff.
+ * It excludes tracked constant values and its own hash.
+ * This is deliberate.
+ * A reviewer approves a change in code.
+ * Editing the constant to the reviewed candidate must not invalidate that review.
  */
 export function buildSourceReviewArtifact(
   closureName: SourceClosureName,
@@ -260,7 +264,7 @@ export function buildSourceReviewArtifact(
   return { ...artifact, reviewSha256: canonicalSha256(artifact as unknown as CanonicalJson) };
 }
 
-/** Parses and self-verifies one review artifact. */
+/** Parse and check one review artifact. */
 export function parseSourceReviewArtifact(bytes: Uint8Array): SourceReviewArtifact {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   const record = asRecord(parsed, "source review artifact");
@@ -276,7 +280,7 @@ export function parseSourceReviewArtifact(bytes: Uint8Array): SourceReviewArtifa
   return artifact;
 }
 
-/** Canonical bytes of a review artifact, so writer and reader agree byte for byte. */
+/** Canonical bytes of a review artifact. Writer and reader use the same bytes. */
 export function serializeReviewArtifact(artifact: SourceReviewArtifact): Uint8Array {
   return new TextEncoder().encode(`${canonicalJson(artifact as unknown as CanonicalJson)}\n`);
 }
@@ -291,7 +295,7 @@ export type InspectAttestation = {
   attestationSha256: string;
 };
 
-/** Parses and self-verifies an attestation receipt. */
+/** Parse and check an attestation receipt. */
 export function parseInspectAttestation(bytes: Uint8Array): InspectAttestation {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   const record = asRecord(parsed, "inspect attestation");
@@ -309,7 +313,7 @@ export function parseInspectAttestation(bytes: Uint8Array): InspectAttestation {
   return attestation;
 }
 
-/* writers */
+/* Writers */
 
 export type SourceApprovalWriteResult = {
   approvalSha256: string;
@@ -343,12 +347,12 @@ export function serializeApproval(approval: MechanicsSourceApproval): Uint8Array
 export type ReviewedHashes = Record<SourceClosureName, string>;
 
 /**
- * Validates that every prepared review artifact matches the fresh candidates and the operator's
- * `--reviewed` hashes.
+ * Check that each prepared review artifact matches fresh candidates and the operator's `--reviewed` hashes.
  *
- * The reviewed hashes alone would prove nothing: they are printed by the same command that produced the
- * artifact. What they add is a statement that the operator looked at *this* diff rather than a different
- * one, which is why the artifact bytes are required too.
+ * Reviewed hashes alone prove nothing.
+ * The same command prints the hashes and creates the artifact.
+ * They show that the operator read this diff, not another diff.
+ * The artifact bytes are therefore also required.
  */
 export function validateSourceReviews(
   reviews: Record<SourceClosureName, SourceReviewArtifact>,
@@ -388,12 +392,14 @@ export function validateSourceReviews(
 export type ApprovalCommit = (bytes: Uint8Array) => void;
 
 /**
- * Creates the first approval.
+ * Create the first approval.
  *
- * The one command that may write without an earlier approval to authorize it. It requires all five
- * diffs to be against `ABSENT`, the four constants to equal the candidates, and the exclusive
- * mechanics-source lease. No attestation can precede the inspector trust root, so none is required
- * here — this is operator trust, stated plainly rather than dressed up as proof.
+ * This command can write without an earlier approval.
+ * All five diffs must be against `ABSENT`.
+ * The four constants must equal the candidates.
+ * The command must hold the exclusive mechanics-source lease.
+ * No attestation can precede the inspector trust root, so none is required here.
+ * This is operator trust, not proof.
  */
 export function bootstrapMechanicsSourceApproval(input: {
   approvalPath: string;
@@ -417,12 +423,14 @@ export function bootstrapMechanicsSourceApproval(input: {
 }
 
 /**
- * Replaces the approval after a reviewed change.
+ * Replace the approval after a reviewed change.
  *
- * The sole sync path. It reruns every assertion over the prepared review artifacts and the attestation,
- * so skipping the separate inspect command cannot bypass machine validation. It rejects a missing or
- * malformed receipt, but it does not claim to authenticate operator attention: semantic review stays an
- * explicit human responsibility.
+ * This is the only sync path.
+ * It reruns every assertion on prepared review artifacts and the attestation.
+ * Skipping the inspect command cannot bypass machine checks.
+ * It rejects a missing or malformed receipt.
+ * It does not authenticate operator attention.
+ * Semantic review remains a human responsibility.
  */
 export function syncMechanicsSourceApproval(input: {
   approvalPath: string;
@@ -456,11 +464,12 @@ export function syncMechanicsSourceApproval(input: {
 }
 
 /**
- * Updates only the inspector field.
+ * Update only the inspector field.
  *
- * The inspector renders the artifacts every other review depends on, so a change to it fails every
- * normal inspect and sync first. This command is the explicit way through, and it may write nothing
- * except the inspector closure and the recomputed top-level hash.
+ * The inspector shows artifacts that every other review uses.
+ * A change to it first fails normal inspect and sync commands.
+ * This command is the explicit path through that change.
+ * It can write only the inspector closure and the new top-level hash.
  */
 export function rotateInspectorApproval(input: {
   reviews: Record<SourceClosureName, SourceReviewArtifact>;
@@ -479,12 +488,13 @@ export function rotateInspectorApproval(input: {
 }
 
 /**
- * Updates only the approval-gate field.
+ * Update only the approval-gate field.
  *
- * When the gate closure itself changes, the old gate cannot authorize the new one without a fixed point
- * that does not exist. This command bypasses exactly that one equality check while holding the source
- * lease, and nothing else: stable generic source hashing still has to prove the candidate and review
- * hashes, and the writer may touch only `approvalGate` and the top-level hash.
+ * When the gate closure changes, the old gate cannot authorize the new one.
+ * No fixed point exists for that change.
+ * This command bypasses only that equality check while holding the source lease.
+ * Generic source hashing still checks candidate and review hashes.
+ * The writer can touch only `approvalGate` and the top-level hash.
  */
 export function rotateGateApproval(input: {
   reviews: Record<SourceClosureName, SourceReviewArtifact>;
@@ -570,7 +580,7 @@ function assertConstantsMatchCandidates(
   if (failures.length > 0) throw new Error(failures.join("\n"));
 }
 
-/** Hex of a review artifact's canonical bytes, used when a caller only has the file. */
+/** Hex of canonical review-artifact bytes for a caller that has only the file. */
 export function reviewArtifactSha256(bytes: Uint8Array): string {
   return sha256Hex(bytes);
 }

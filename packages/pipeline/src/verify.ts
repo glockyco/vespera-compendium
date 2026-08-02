@@ -271,10 +271,7 @@ export function verifyPublishedMechanics(prepared: PreparedPublishedInputs): Ver
       if (actualIds.length !== expectedIds.length || expectedIds.some((id, index) => actualIds[index] !== id)) problems.push("mechanics search rows do not match documents");
     }
   }
-  // The two combat guides must consume each codex entry exactly once between them. Other documents may cite
-  // a codex literal as well — the Endgame guide quotes the Defense expression — so the inventory is checked
-  // over those two documents rather than over every citation, and as a multiset rather than in list order,
-  // because a document's targets are stored sorted by id.
+  // The two combat guides must use each codex entry once between them. Other documents can cite a codex literal, such as the Endgame Defense expression. Check inventory only in those guides and compare it as a multiset because targets are sorted by id.
   const codexOwners = new Set(["combat-mathematics", "ability-calculations"]);
   const codexTargetKeys = artifact.documents
     .filter((document) => codexOwners.has(document.id))
@@ -298,8 +295,7 @@ export function verifyPublishedMechanics(prepared: PreparedPublishedInputs): Ver
   const externalPath = path.join(root, "external-leaf-evidence.json");
   if (!existsSync(externalPath)) problems.push("external leaf evidence is absent");
   else if (sha256Hex(readFileSync(externalPath)) !== lock.snapshot.externalLeafEvidenceSha256) {
-    // The copied aggregate is compared against the lock rather than against a source-domain field: the
-    // emitted verifier reads only its snapshot, and the lock is the approval baseline it is checking.
+    // Compare the copied aggregate with the lock, not a source-domain field. The emitted checker reads only its snapshot, and the lock is its approval baseline.
     problems.push("external leaf evidence hash differs from the approved lock");
   }
   const evidencePath = path.join(root, "runtime-evidence.json");

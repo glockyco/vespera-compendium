@@ -4,11 +4,13 @@ import { collectImages, indexRefs } from "./images.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 /**
- * Turns the composed runtime tables into flat rows matching the published schema.
+ * Turn composed runtime tables into flat rows for the published schema.
  *
- * Two properties matter and are enforced here rather than left to the serializers: every row has
- * exactly its table's columns, and row order is deterministic. Without the second, republishing the
- * same build produces different bytes and no consumer can diff two releases.
+ * Enforce two properties here, not in serializers.
+ * Each row has exactly its table columns.
+ * Row order is deterministic.
+ * Without deterministic order, republishing one build produces different bytes.
+ * A consumer cannot then compare two releases.
  */
 
 export type Scalar = string | number | boolean | null;
@@ -18,10 +20,10 @@ export type Dataset = Record<string, Row[]>;
 
 type Source = Record<string, unknown>;
 
-/** Item ids that name a currency rather than an inventory item. */
+/** Item ids that name currency instead of inventory items. */
 export const CURRENCY_ITEM_IDS: ReadonlySet<string> = new Set(["gold"]);
 
-/** Reads a composed table as a row list, whether it was stored as an array or keyed by id. */
+/** Read a composed table as rows, whether stored as an array or keyed by id. */
 function sourceRows(value: unknown): Source[] {
   const list = Array.isArray(value) ? value : Object.values((value ?? {}) as Source);
   return list.filter((entry): entry is Source => Boolean(entry) && typeof entry === "object");
@@ -56,7 +58,7 @@ function text(value: unknown): string {
   return String(value ?? "");
 }
 
-/** The six modelled ways an item can be obtained, in the order `item_sources` lists them. */
+/** Six modeled item sources in the order used by `item_sources`. */
 const SOURCE_KINDS = ["recipe", "enemy", "gathering", "shop", "quest", "world_boss"] as const;
 type SourceKind = (typeof SOURCE_KINDS)[number];
 
@@ -79,9 +81,11 @@ const TARGET_KINDS = [
 ] as const;
 
 /**
- * Where an item's published level came from. Equipment carries the game's own balance level; for
- * everything else the level is a property of the source, and saying which source it is keeps the
- * number honest — a gathering requirement and a gear tier are not the same kind of number.
+ * Source of an item's published level.
+ * Equipment uses the game's balance level.
+ * Other items use a source property.
+ * Naming the source keeps the number honest.
+ * A gathering requirement and gear tier are different numbers.
  */
 export const LEVEL_SOURCES = [
   "game-balance",
@@ -95,8 +99,9 @@ export const LEVEL_SOURCES = [
 export type LevelSource = (typeof LEVEL_SOURCES)[number];
 
 /**
- * The game's own shorthand inside a display key. Left alone, `affix.class.mage.time_warp_cd`
- * renders "Time Warp Cd", which is neither the game's word nor a readable one.
+ * The game's shorthand inside a display key.
+ * Without conversion, `affix.class.mage.time_warp_cd` shows "Time Warp Cd".
+ * That is not the game's wording and is not readable.
  */
 const AFFIX_WORDS: Record<string, string> = {
   cd: "Cooldown",
@@ -105,18 +110,18 @@ const AFFIX_WORDS: Record<string, string> = {
   mp: "MP",
   xp: "XP",
   vs: "vs",
-  // A unit, not part of the name: the game's own label for this stat is "+{{value}}ms Stun
-  // Duration", so the unit rides with the value and never with the name.
+  // A unit is not part of the name. The game label is "+{{value}}ms Stun Duration", so the unit stays with the value.
   ms: "",
 };
 
 /**
- * A readable label for an affix, from the game's own `displayKey`.
+ * A readable affix label from the game's `displayKey`.
  *
- * `affix.cp.armorPenetration` becomes "Armor Penetration". The game ships the key but no table of
- * labels for it, so the final segment split on its camel humps is the closest thing to a name that
- * is still the game's own word rather than an invented one. Falls back to the id, which is the only
- * other identifier a row has.
+ * `affix.cp.armorPenetration` becomes "Armor Penetration".
+ * The game ships the key but no label table.
+ * Split the final segment at camel-case boundaries.
+ * This keeps the game's word instead of inventing one.
+ * If no label exists, use the id because it is the row's only other identifier.
  */
 function affixName(displayKey: unknown, id: string): string {
   const key = typeof displayKey === "string" ? (displayKey.split(".").pop() ?? "") : "";
@@ -151,16 +156,15 @@ export function projectAll(
   const classes = sourceRows(composed.classes?.value);
 
   const itemIds = new Set(items.map((item) => text(item.id)));
-  // Shop listings identify themselves by the item they sell, so name and art resolve through here.
+  // Shop listings use the item they sell as their identity. Resolve the name and art through this item.
   const itemNames = new Map(items.map((item) => [text(item.id), text(item.name)]));
   const gatheringNodeIds = new Set(gatheringNodes.map((node) => text(node.id)));
 
-  // One normalised art path per row, keyed by (table, id). Resolved here rather than read off the
-  // source rows because the fields carrying a path differ per table and two of them are polymorphic.
+  // Use one normalized art path per row, keyed by (table, id). Resolve it here because path fields differ and two fields are polymorphic.
   const images = indexRefs(collectImages(composed, extractedDir));
   const image = (table: string, id: unknown): Scalar => images.get(`${table}\u0000${text(id)}`) ?? null;
 
-  // Collected first so `items.has_modelled_source` can be set in the same pass that emits items.
+  // Collect sources first so `items.has_modelled_source` is set while items are emitted.
   const pendingSources: PendingSource[] = [];
   const addSource = (
     itemId: unknown,
@@ -171,8 +175,7 @@ export function projectAll(
     max: unknown = undefined,
   ): void => {
     const id = text(itemId);
-    // Keeps item_sources.item_id a real foreign key. The only value this drops is the pseudo-item
-    // `gold`, which enemy_drops still records verbatim.
+    // Keep item_sources.item_id as a real foreign key. The only dropped value is the pseudo-item `gold`, which enemy_drops records unchanged.
     if (!itemIds.has(id)) return;
     pendingSources.push({
       itemId: id,
@@ -207,13 +210,9 @@ export function projectAll(
 
   const modelledSourceItemIds = new Set(pendingSources.map((source) => source.itemId));
 
-  // Level per item, in the game's own precedence. Equipment takes the shipped balance level; world
-  // boss gear takes the level the boss advertises, which the balance pass deliberately skips; and
-  // anything else takes a level off the source that yields it.
+  // Assign each item level using the game's precedence. Equipment uses balance level. World-boss gear uses the boss level, which the balance pass skips. Other items use the level from their source.
   //
-  // Gathering, enemy and shop sources take the lowest level among them because that is the earliest
-  // point a player can reach the item, while crafting takes the highest because a recipe's stated
-  // requirement is a real gate rather than one of several ways in.
+  // Gathering, enemy, and shop sources use the lowest level because it is the earliest reachable point. Crafting uses the highest because its requirement is a real gate.
   const balanceLevels = (composed.itemLevels?.value ?? {}) as Record<string, { level?: unknown }>;
   const recipeLevels = new Map(recipes.map((recipe) => [text(recipe.id), Number(recipe.levelReq)]));
   const nodeLevels = new Map(gatheringNodes.map((node) => [text(node.id), Number(node.levelReq)]));
@@ -232,8 +231,7 @@ export function projectAll(
     else sourcesByItem.set(source.itemId, [source]);
   }
 
-  // The first zone listing each enemy, which is the place a drop answer names. An enemy in no zone
-  // stays null rather than being attached to a plausible one.
+  // Use the first zone that lists each enemy. This is the zone named by a drop answer. An enemy with no zone stays null instead of using a plausible zone.
   const zoneByEnemy = new Map<string, string>();
   for (const zone of zonesDungeons) {
     for (const enemyId of Array.isArray(zone.enemies) ? zone.enemies : []) {
@@ -251,9 +249,9 @@ export function projectAll(
   const itemById = new Map(items.map((entry) => [text(entry.id), entry]));
 
   /**
-   * How a source row describes itself, per kind. World bosses report the gear level they recommend
-   * rather than the level of the gear they drop, because this column says how hard the source is to
-   * reach rather than what it yields.
+   * How a source row describes itself for each kind.
+   * World bosses report the gear level they recommend, not the level of dropped gear.
+   * This column states source difficulty, not its output.
    */
   const sourceDescription = (kind: SourceKind, sourceId: string): { level: Scalar; name: Scalar } => {
     switch (kind) {
@@ -270,7 +268,7 @@ export function projectAll(
         return { level: scalar(node?.levelReq), name: scalar(node?.name) };
       }
       case "shop": {
-        // A shop source is keyed by the item itself, so its name is the item's.
+        // A shop source uses the item itself as its key, so its name is the item's name.
         return {
           level: scalar(listingByItem.get(sourceId)?.levelReq),
           name: scalar(itemById.get(sourceId)?.name),
@@ -526,7 +524,7 @@ export function projectAll(
 
     item_stats: items.flatMap((item) =>
       numberMap(item, "stats")
-        // attackStyle is the one non-numeric stat and is published as an items column instead.
+        // attackStyle is the only non-numeric stat. Publish it as an items column.
         .filter(([stat, value]) => stat !== "attackStyle" && typeof value === "number")
         .map(([stat, value]) => ({ item_id: text(item.id), stat, value: scalar(value) })),
     ),
@@ -625,9 +623,7 @@ export function projectAll(
     zone_resources: zonesDungeons.flatMap((zone) =>
       Object.entries(nested(zone, "resources") ?? {}).flatMap(([resourceKind, nodeIds]) =>
         (Array.isArray(nodeIds) ? nodeIds : [])
-          // Zone definitions still name the gathering nodes of tiers the shipped feature flags keep
-          // switched off. Those nodes are absent from the live node table, so listing them would
-          // promise a player a resource the zone does not actually offer.
+          // Zone definitions still name gathering nodes for tiers that feature flags disable. Those nodes are absent from the live table. Listing them promises a resource that the zone does not offer.
           .filter((nodeId) => gatheringNodeIds.has(text(nodeId)))
           .map((nodeId, ordinal) => ({
             zone_id: text(zone.id),
@@ -661,8 +657,7 @@ export function projectAll(
     search_index: [],
   };
 
-  // item_sources ordinals count within one (item, kind, source) group, so they are assigned after
-  // every source has been collected.
+  // item_sources ordinals count within each (item, kind, source) group. Assign them after collecting every source.
   const sourceOrdinals = new Map<string, number>();
   dataset.item_sources = pendingSources.map((source) => {
     const group = `${source.itemId}\u0000${source.sourceKind}\u0000${source.sourceId}`;
@@ -707,8 +702,7 @@ export function projectAll(
 
   sortDataset(dataset);
 
-  // Built after sorting so its row order follows the tables it indexes, and after every entity table
-  // exists so it can read the published columns rather than re-deriving them from composed rows.
+  // Build this after sorting so row order follows the indexed tables. Build it after entity tables exist so it can read published columns.
   dataset.search_index = buildSearchIndex(dataset);
 
   dataset.meta = [
@@ -724,7 +718,7 @@ export function projectAll(
   return dataset;
 }
 
-/** Orders every table by its primary key so republishing one build yields identical bytes. */
+/** Order every table by its primary key so one build always yields identical bytes. */
 function sortDataset(dataset: Dataset): void {
   for (const table of TABLES) {
     const rows = dataset[table.name];
@@ -748,9 +742,10 @@ function sortDataset(dataset: Dataset): void {
 /**
  * How each entity table describes itself in search results.
  *
- * `kind` is the singular label a reader sees beside a hit; `level` and `subtitle` are whatever
- * disambiguates two similarly named records of that type. Zones and dungeons share one table and
- * are told apart by their own `type` column, so their label is resolved per row.
+ * `kind` is the singular label beside a result.
+ * `level` and `subtitle` distinguish records with similar names.
+ * Zones and dungeons share a table and use their `type` column for distinction.
+ * Resolve their label per row.
  */
 const SEARCH_SHAPES: Record<
   string,
@@ -780,8 +775,7 @@ const SEARCH_SHAPES: Record<
   zones_dungeons: {
     kind: (row) => (row.type === "zone" ? "Zone" : "Dungeon"),
     level: "combat_level",
-    // The entry level rather than a range: the upper bound of a zone's band is not a published
-    // fact, and inventing one would state something the game does not.
+    // Use the entry level, not a range. The upper bound of a zone band is not published, so inventing one states a game fact that does not exist.
     subtitle: (row) => (row.combat_level === null ? null : `Combat ${row.combat_level}`),
   },
   achievements: { kind: "Achievement", subtitle: (row) => row.category },
@@ -827,7 +821,7 @@ function buildSearchIndex(dataset: Dataset): Row[] {
         table: table.name,
         id,
         slug: table.slug,
-        // Shop listings are the one entity table whose rows carry no name of their own.
+        // Shop listings are the only entity rows without their own name.
         name: typeof row.name === "string" && row.name.length > 0 ? row.name : id,
         kind: typeof shape.kind === "function" ? shape.kind(row) : shape.kind,
         subtitle: shape.subtitle?.(row) ?? null,

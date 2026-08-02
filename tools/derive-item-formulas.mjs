@@ -15,8 +15,7 @@ function declarationExpression(src, symbol) {
 }
 function tableWrapped(src, symbol, probes) {
   let expr = declarationExpression(src, symbol);
-  // These shipped constants are Object.freeze(literal); table() recognizes the
-  // same literal once the outer freeze wrapper is removed.
+  // Shipped constants use Object.freeze(literal). table() recognizes the same literal after it removes the outer freeze wrapper.
   if (expr.startsWith("(") && expr.endsWith(")"))
     expr = expr.slice(1, -1);
   const generated = `const ${symbol} = ${expr};`;

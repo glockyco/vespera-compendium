@@ -1,24 +1,24 @@
 /**
- * Extraction of the compendium's mechanics guides from the shipped bundles.
+ * Extract the compendium mechanics guides from shipped bundles.
  *
- * This module owns extraction and nothing else. It never reads the approval lock as content truth: the
- * lock records what a human approved, and treating it as a source would turn a stale explanation into a
- * self-confirming one.
+ * This module owns extraction only.
+ * It never reads the approval lock as source truth.
+ * The lock records approved data, and using it as source can make stale text pass its own check.
  *
  * Three ideas carry the design.
  *
- * Locators are semantic. Vespera ships hashed filenames it has reused for different bytes, and its
- * bundles are minified, so a physical offset or a minified alias is not a stable address. Every target
- * is located by content or AST shape, must resolve exactly once, and is identified by the canonical
- * bytes of its resolved range.
+ * Locators are semantic.
+ * Vespera reuses hashed filenames for different bytes, and its bundles are minified.
+ * A physical offset or minified alias is not a stable address.
+ * Each target uses content or AST shape, resolves exactly once, and uses canonical bytes for its range.
  *
- * Provenance is per displayed scalar, not per block. A game-authored expression can sit under a
- * compendium-authored label without either inheriting the other's standing, so `MechanicText` is the
- * unit that carries evidence.
+ * Provenance belongs to each shown scalar, not each block.
+ * A game-authored expression can sit below a compendium-authored label.
+ * Neither inherits the other's standing, so `MechanicText` carries the evidence.
  *
- * A derived number is executed, never transcribed. Where the compendium states a cap, a multiplier, or
- * an example, that value comes from running the game's own function or reading the game's own constant
- * over slices the model cites by hash.
+ * Execute every derived number instead of transcribing it.
+ * Caps, multipliers, and examples come from the game's function or constant.
+ * The model cites the source slices by hash.
  */
 
 import ts from "typescript";
@@ -50,7 +50,7 @@ import {
 export type { MechanicDerivation, MechanicJson, MechanicValueFormat, MechanicsContractFixture };
 export { parseMechanicsContract };
 
-/* ────────────────────────────── model ────────────────────────────── */
+/* Model */
 
 export type MechanicProbeRef = {
   suite: string;
@@ -103,7 +103,7 @@ export type MechanicLocator =
       kind: "translation-call-argument";
       translationKey: string;
       argumentIndex: number;
-      /** Which role the selected argument plays, which is what makes the match unique. */
+      /** Which role the selected argument plays. This role makes the match unique. */
       argumentKind: "string" | "object";
     }
   | { kind: "html-assignment"; name: string; valueType: "boolean" | "number" | "string" }
@@ -163,11 +163,11 @@ export const MECHANIC_DOCUMENT_IDS = [
 ] as const satisfies readonly MechanicDocumentId[];
 
 /**
- * The complete codex inventory, in source order.
+ * The complete codex inventory in source order.
  *
- * Combat Mathematics and Ability Calculations must consume each entry exactly once. A missing,
- * duplicate, reordered, or additional formula default fails extraction, because a codex the game grew
- * without the compendium noticing is exactly the silent gap this pipeline exists to prevent.
+ * Combat Mathematics and Ability Calculations must use each entry once.
+ * Extraction fails for a missing, duplicate, reordered, or extra formula.
+ * A codex that grew without the compendium noticing is the silent gap that this pipeline prevents.
  */
 export const CODEX_FORMULA_KEYS = [
   "normalMitigation",
@@ -203,15 +203,15 @@ export const COMBAT_CODEX_KEYS: readonly CodexKey[] = CODEX_FORMULA_KEYS.filter(
   (key) => !abilityKeySet.has(key),
 );
 
-/* ────────────────────────────── parsed roles ────────────────────────────── */
+/* Parsed roles */
 
-/** The prepared bundle text plus its parsed form, so a role is parsed once per extraction. */
+/** Prepared bundle text and its parsed form. Each role is parsed once per extraction. */
 export type ParsedRoles = {
   text: Record<BundleRole, string>;
   source: Record<BundleRole, ts.SourceFile>;
 };
 
-/** The subset of prepared inputs extraction needs. Preparation owns the immutability guarantees. */
+/** The prepared-input subset that extraction needs. Preparation owns immutability. */
 export type MechanicsExtractionInput = {
   readonly bundleText: Record<BundleRole, string>;
   readonly contractFixtureBytes: Uint8Array;
@@ -220,10 +220,11 @@ export type MechanicsExtractionInput = {
 const parseCache = new WeakMap<object, ParsedRoles>();
 
 /**
- * Parses each role once.
+ * Parse each role once.
  *
- * The two JavaScript roles are four and six megabytes, and every document resolves locators against
- * them, so reparsing per document would dominate the pipeline's runtime for no added guarantee.
+ * The two JavaScript roles are four and six megabytes.
+ * Every document resolves locators against them.
+ * Parsing once per document can dominate runtime without a new guarantee.
  */
 export function parseRoles(input: MechanicsExtractionInput): ParsedRoles {
   const cached = parseCache.get(input);
@@ -259,11 +260,11 @@ export function parseRoles(input: MechanicsExtractionInput): ParsedRoles {
 }
 
 /**
- * The inline scripts of the main document, with every other byte replaced by a space.
+ * The main document's inline scripts, with every other byte replaced by a space.
  *
- * Offsets are preserved exactly, so a node's indices in the parsed program are also its indices in the
- * HTML. That is what lets an `html-assignment` target hash a range of the real document rather than a
- * range of a reconstruction.
+ * Preserve offsets exactly.
+ * A node's indices in the parsed program then equal its indices in the HTML.
+ * An `html-assignment` target can hash real document bytes instead of a reconstruction.
  */
 function inlineScriptProgram(html: string): string {
   const characters = new Array<string>(html.length).fill(" ");
@@ -277,11 +278,11 @@ function inlineScriptProgram(html: string): string {
   return characters.join("");
 }
 
-/* ────────────────────────────── locator resolution ────────────────────────────── */
+/* Locator resolution */
 
 export type ResolvedRange = { sourceText: string; start: number; end: number };
 
-/** Thrown for every expected extraction failure, so callers can report `UNRESOLVED` per document. */
+/** Thrown for each expected extraction error. Callers can report `UNRESOLVED` per document. */
 export class MechanicExtractionError extends Error {}
 
 const nodeStart = (node: ts.Node, source: ts.SourceFile): number => node.getStart(source, false);
@@ -304,7 +305,7 @@ function matchesDeclarationNode(node: ts.Node, want: MechanicDeclarationNode): b
   }
 }
 
-/** Every node a declaration name resolves to: a function, a class, one declarator, or one method. */
+/** Every node that a declaration name resolves to: function, class, declarator, or method. */
 function namedDeclarations(source: ts.SourceFile, name: string): ts.Node[] {
   const found: ts.Node[] = [];
   const visit = (node: ts.Node): void => {
@@ -322,12 +323,13 @@ function namedDeclarations(source: ts.SourceFile, name: string): ts.Node[] {
 }
 
 /**
- * Collapses candidates whose canonical bytes are identical.
+ * Collapse candidates with identical canonical bytes.
  *
- * The canonical target is `sourceText.slice(start, end)`. Two call sites that produce byte-identical
- * slices are the same evidence, so treating them as an ambiguity would refuse a target that is in fact
- * perfectly determined — the game uses one codex label twice. Offsets are never stored, so taking the
- * first is not a hidden choice.
+ * The canonical target is `sourceText.slice(start, end)`.
+ * Byte-identical slices are the same evidence.
+ * Treating them as ambiguous can reject a determined target.
+ * The game uses one codex label twice.
+ * Offsets are not stored, so taking the first match is not a hidden choice.
  */
 function soleRange(
   describe: string,
@@ -347,7 +349,7 @@ function soleRange(
   return { sourceText, start: only.start, end: only.end };
 }
 
-/** A structural skeleton: node kinds and nesting, with every identifier and literal removed. */
+/** A structural skeleton with node kinds and nesting. Remove every identifier and literal. */
 function shapeOf(node: ts.Node): CanonicalJson {
   const children: CanonicalJson[] = [];
   ts.forEachChild(node, (child) => {
@@ -356,7 +358,7 @@ function shapeOf(node: ts.Node): CanonicalJson {
   return { k: ts.SyntaxKind[node.kind]!, c: children };
 }
 
-/** The shape hash an `ast-path` or `ast-reference` locator pins, so a renamed alias still matches. */
+/** Shape hash that an `ast-path` or `ast-reference` locator pins. A renamed alias still matches. */
 export function astShapeSha256(node: ts.Node): string {
   return canonicalSha256(shapeOf(node));
 }
@@ -372,7 +374,7 @@ function isNode(value: unknown): value is ts.Node {
   );
 }
 
-/** Child nodes grouped by the syntactic field they occupy, which is how a child path addresses them. */
+/** Child nodes grouped by syntactic field. A child path uses these fields. */
 export function childrenByField(node: ts.Node): Map<string, ts.Node[]> {
   const grouped = new Map<string, ts.Node[]>();
   for (const [field, value] of Object.entries(node)) {
@@ -398,11 +400,12 @@ function followPath(
 }
 
 /**
- * Resolves one locator to exactly one range.
+ * Resolve one locator to exactly one range.
  *
- * Every variant fails on zero or multiple distinct matches rather than choosing. A locator that has
- * become ambiguous means the bundle changed shape, and strengthening the anchor is a review decision,
- * not something extraction may make on its own.
+ * Every variant fails on zero or multiple distinct matches.
+ * It never chooses between matches.
+ * Ambiguity means that the bundle changed shape.
+ * Strengthening the anchor is a review decision, not an extraction action.
  */
 export function resolveLocator(
   roles: ParsedRoles,
@@ -434,7 +437,7 @@ export function resolveLocator(
         ts.forEachChild(node, visit);
       };
       ts.forEachChild(source, visit);
-      // A qualifying node's ancestors qualify too, so only the innermost match is the target.
+      // An ancestor of a qualifying node also qualifies. Use only the innermost match.
       const innermost = candidates.filter(
         (candidate) =>
           !candidates.some(
@@ -614,7 +617,7 @@ function allIndexesOf(haystack: string, needle: string): number[] {
   return found;
 }
 
-/** The sole node one declaration name resolves to, used as an `ast-string` or `ast-path` root. */
+/** The sole node that a declaration name resolves to. Use it as an `ast-string` or `ast-path` root. */
 export function declarationNode(roles: ParsedRoles, bundle: BundleRole, name: string): ts.Node {
   const found = namedDeclarations(roles.source[bundle], name);
   if (found.length !== 1) {
@@ -623,7 +626,7 @@ export function declarationNode(roles: ParsedRoles, bundle: BundleRole, name: st
   return found[0]!;
 }
 
-/** The declared value of a declaration, seeing through the game's `Object.freeze` wrappers. */
+/** The declared value of a declaration, through the game's `Object.freeze` wrappers. */
 function declarationValueNode(node: ts.Node): ts.Node {
   if (ts.isVariableDeclaration(node) && node.initializer) return unwrapFreeze(node.initializer);
   return node;
@@ -658,11 +661,11 @@ function accessPath(node: ts.Expression): string {
 }
 
 /**
- * Walks an object literal by property path, seeing through `Object.freeze`.
+ * Walk an object literal by property path through `Object.freeze`.
  *
- * The main document nests its feature flags inside frozen objects, so a flag's initializer sits several
- * frozen literals deep. Following that structure is what lets the Endgame document cite the exact
- * boolean that controls three of its bullets.
+ * The main document nests feature flags inside frozen objects.
+ * A flag initializer can sit several frozen literals deep.
+ * Following the path lets the Endgame document cite the boolean that controls three bullets.
  */
 function resolveObjectPath(node: ts.Expression, path: readonly string[]): ts.Node | null {
   let current: ts.Node = unwrapFreeze(node);
@@ -703,13 +706,14 @@ function matchesValueType(node: ts.Node, valueType: "boolean" | "number" | "stri
   }
 }
 
-/* ────────────────────────────── target registry ────────────────────────────── */
+/* Target registry */
 
 /**
- * Collects one document's source targets.
+ * Collect one document's source targets.
  *
- * Registering a target resolves it immediately, so a locator that no longer matches fails at the point
- * of use, named by the claim that needed it, rather than as an anonymous count mismatch later.
+ * Resolve each target during registration.
+ * A locator that no longer matches then fails at the claim that needs it.
+ * The error has a claim name instead of an anonymous count mismatch.
  */
 export class TargetRegistry {
   private readonly targets = new Map<string, MechanicSourceTarget>();
@@ -738,21 +742,21 @@ export class TargetRegistry {
     return id;
   }
 
-  /** The canonical text of a registered target, which is exactly what its hash covers. */
+  /** Canonical text of a registered target. This is exactly what its hash covers. */
   text(id: string): string {
     const range = this.ranges.get(id);
     if (!range) throw new MechanicExtractionError(`source target ${id} is not registered`);
     return canonicalSourceText(range.sourceText, range.start, range.end);
   }
 
-  /** The literal value of a string target, which is the game's own displayed wording. */
+  /** Literal value of a string target. The game owns this wording. */
   stringValue(id: string): string {
     const parsed = parseJsLiteralString(this.text(id).trim());
     if (parsed === null) throw new MechanicExtractionError(`source target ${id} is not a string literal`);
     return parsed;
   }
 
-  /** The `defaultValue` of a translation options object, which is the game's own label. */
+  /** The `defaultValue` of a translation options object. The game owns this label. */
   defaultValue(id: string): string {
     const source = ts.createSourceFile(
       "options.js",
@@ -800,15 +804,15 @@ function parseJsLiteralString(raw: string): string | null {
   return null;
 }
 
-/* ────────────────────────────── text construction ────────────────────────────── */
+/* Text construction */
 
 /**
- * Builds one `MechanicText` and attaches its live-probe obligations.
+ * Build one `MechanicText` and attach its live-probe obligations.
  *
- * The obligations are not chosen here. A claim binding in the core registry names the exact text ID, the
- * exact expected raw value, the exact source targets, and the exact derivation output a passing probe
- * supports; all four must match before the requirement attaches. That is what stops a copy change from
- * inheriting someone else's live evidence.
+ * The obligations come from the core registry.
+ * A claim binding names the exact text ID, raw value, source targets, and derivation output.
+ * All four must match before the requirement attaches.
+ * A copy change then cannot inherit another claim's live evidence.
  */
 export class TextBuilder {
   private readonly seen = new Set<string>();
@@ -902,9 +906,9 @@ function assertBindingMatches(
   }
 }
 
-/* ────────────────────────────── ordered traversal ────────────────────────────── */
+/* Ordered traversal */
 
-/** Every rendered text field, in the order a page renders it. The browser suite compares this exactly. */
+/** Every shown text field in page order. The browser suite compares this order exactly. */
 export function documentTexts(document: MechanicDocument): MechanicText[] {
   const texts: MechanicText[] = [document.title, document.summary];
   for (const section of document.sections) {
@@ -919,14 +923,13 @@ export function documentTexts(document: MechanicDocument): MechanicText[] {
   return texts;
 }
 
-/** The stable, deduplicated union of live-probe obligations across every text in a document. */
+/** Stable, deduplicated union of live-probe obligations across a document. */
 export function requiredProbes(document: MechanicDocument): MechanicProbeRef[] {
   const byTuple = new Map<string, MechanicProbeRef>();
   const consider = (ref: MechanicProbeRef): void => {
     const key = `${ref.suite}\u0000${ref.id}\u0000${ref.category ?? ""}\u0000${ref.contractSha256}`;
     const existing = byTuple.get(key);
-    // Promotion eligibility belongs to the claim rather than to the execution, so the union keeps the
-    // strongest standing any bound claim was granted.
+    // Promotion eligibility belongs to the claim, not execution. Keep the strongest standing from bound claims.
     if (!existing) byTuple.set(key, { ...ref });
     else if (ref.promotionEligible) existing.promotionEligible = true;
   };
@@ -941,10 +944,10 @@ export function requiredProbes(document: MechanicDocument): MechanicProbeRef[] {
   );
 }
 
-/* ────────────────────────────── shared locator helpers ────────────────────────────── */
+/* Shared locator helpers */
 
 
-/** The codex expression literal and its label options object, both located by translation key. */
+/** The codex expression literal and label options object, both located by translation key. */
 function addCodexFormulaTargets(
   targets: TargetRegistry,
   key: string,
@@ -960,7 +963,7 @@ function addCodexFormulaTargets(
   };
 }
 
-/** A codex entry that carries prose rather than a formula, so only its options object exists. */
+/** A codex entry with prose instead of a formula. Only its options object exists. */
 function addCodexLabelTarget(targets: TargetRegistry, key: string): string {
   return targets.add(`codex.${key}.label`, "gameView", {
     kind: "translation-call-argument",
@@ -970,7 +973,7 @@ function addCodexLabelTarget(targets: TargetRegistry, key: string): string {
   });
 }
 
-/** The path from one node to a descendant, expressed in the child-field language locators use. */
+/** The path from one node to a descendant in the child-field language used by locators. */
 function astPathBetween(root: ts.Node, target: ts.Node): { field: string; index: number }[] | null {
   if (root === target) return [];
   for (const [field, children] of childrenByField(root)) {
@@ -1001,11 +1004,12 @@ function nodeForRange(roles: ParsedRoles, bundle: BundleRole, range: ResolvedRan
 }
 
 /**
- * The minified helper one shipped function calls, cited without naming it.
+ * The minified helper that one shipped function calls, cited without its name.
  *
- * `getItemSellValue` reaches its rarity table through a single-letter alias the bundler chose. Storing
- * that letter would make the citation break on the next build for no reason, so the locator stores the
- * path to the *use* and lets the declaration be found by node kind and structural shape.
+ * `getItemSellValue` reaches its rarity table through a one-letter bundler alias.
+ * Storing that letter can break the citation on the next build.
+ * Store the path to the *use* instead.
+ * Find the declaration by node kind and structural shape.
  */
 function addMinifiedCalleeTarget(
   roles: ParsedRoles,
@@ -1060,15 +1064,17 @@ const SELL_DERIVATION_ID = "equipment.sell";
 const BALANCE_DERIVATION_ID = "equipment.balance";
 const ENDGAME_MITIGATION_DERIVATION_ID = "endgame.shared-defense.mitigation";
 
-/** The example Combat level the equipment curve is interpolated at, chosen to fall between two points. */
+/** The example Combat level for the equipment curve. It falls between two points. */
 const CURVE_EXAMPLE_LEVEL = 110;
 
 /**
- * Registers the incoming-mitigation implementation closure.
+ * Register the incoming-mitigation implementation closure.
  *
- * Ordinals are the derivation's addressing scheme, not a name: the function first, then the two
- * constants it reads. A minified rename cannot disturb them, and the core registry's claim bindings
- * name these exact IDs, so a changed closure is a contract mismatch rather than a silent substitution.
+ * Ordinals address derivation nodes, not names.
+ * The function comes first, followed by its two constants.
+ * A minified rename cannot change this order.
+ * Core claim bindings name these IDs.
+ * A changed closure therefore breaks the contract instead of silently replacing it.
  */
 function addMitigationClosure(targets: TargetRegistry, derivationId: string): string[] {
   return [
@@ -1097,7 +1103,7 @@ function mitigationDerivationRequest(
     evaluator: "eval-composition",
     sources: nodes.map((id) => ({ sourceTargetId: id, text: targets.text(id) })),
     bindings: {},
-    // Zero arguments against a constant declaration reads the game's own value rather than restating it.
+    // Zero arguments on a constant declaration read the game's value instead of restating it.
     calls: [
       { sourceTargetId: nodes[2]!, args: [] },
       { sourceTargetId: nodes[1]!, args: [] },
@@ -1168,8 +1174,7 @@ function buildCombatMathematics(context: BuildContext): MechanicDocument {
     evaluator: "eval-composition",
     sources: [{ sourceTargetId: critNode, text: targets.text(critNode) }],
     bindings: {},
-    // Overflow at the soft cap and well past it, which is what shows the conversion rate without
-    // restating either constant.
+    // Use values at the soft cap and well above it. These values show the conversion rate without restating either constant.
     calls: [
       { sourceTargetId: critNode, args: [0.3] },
       { sourceTargetId: critNode, args: [0.8] },
@@ -1338,7 +1343,7 @@ function buildCombatMathematics(context: BuildContext): MechanicDocument {
   };
 }
 
-/* ────────────────────────────── document: ability calculations ────────────────────────────── */
+/* Document: ability calculations */
 
 function buildAbilityCalculations(context: BuildContext): MechanicDocument {
   const targets = new TargetRegistry(context.roles);
@@ -1367,7 +1372,7 @@ function buildAbilityCalculations(context: BuildContext): MechanicDocument {
     },
     {
       id: "order",
-      // The game titles this section itself, so the compendium quotes it rather than inventing a heading.
+      // The game titles this section. The compendium quotes the title instead of inventing a heading.
       title: text.gameAuthored(
         "ability.section.order.title",
         targets.defaultValue(orderTitleTarget),
@@ -1402,9 +1407,9 @@ function buildAbilityCalculations(context: BuildContext): MechanicDocument {
   };
 }
 
-/* ────────────────────────────── document: skills and crafting ────────────────────────────── */
+/* Document: skills and crafting */
 
-/** The bonus entry shape the shipped XP method reads, so an example states real inputs. */
+/** The shipped XP method reads this bonus entry shape. Examples therefore use real inputs. */
 function xpBonus(target: string, value: number): MechanicJson {
   return { source: "vespera-compendium-probe", target, type: "multiplier", value };
 }
@@ -1429,8 +1434,7 @@ function buildSkillsAndCrafting(context: BuildContext): MechanicDocument {
   const targets = new TargetRegistry(context.roles);
   const text = new TextBuilder("skills-and-crafting");
 
-  // The game keeps these methods in one contiguous run, and the run is what a reviewer reads, so the
-  // region is cited whole rather than reassembled method by method.
+  // The game keeps these methods in one contiguous run. A reviewer reads the run, so cite it whole instead of rebuilding it method by method.
   const region = targets.add("skills.region.gather-craft", "index", {
     kind: "bounded-region",
     start: "static calculateGatherTime",
@@ -1625,7 +1629,7 @@ function buildSkillsAndCrafting(context: BuildContext): MechanicDocument {
   };
 }
 
-/* ────────────────────────────── document: equipment and value ────────────────────────────── */
+/* Document: equipment and value */
 
 const SELL_RARITY_ORDER = [
   "common",
@@ -1913,9 +1917,9 @@ function buildEquipmentAndValue(context: BuildContext): MechanicDocument {
   };
 }
 
-/* ────────────────────────────── document: endgame systems ────────────────────────────── */
+/* Document: endgame systems */
 
-/** The anchors that identify the Endgame guide's own section array inside GameView. */
+/** Anchors that identify the Endgame guide's section array inside GameView. */
 const ENDGAME_SECTIONS_LOCATOR: MechanicLocator = {
   kind: "declaration-shape",
   node: "array",
@@ -1952,8 +1956,7 @@ function buildEndgameSystems(
   const targets = new TargetRegistry(context.roles);
   const text = new TextBuilder("endgame-systems");
 
-  // The flag lives in the main document and is read by the index bundle, so both nodes control whether
-  // three of the guide's bullets say what they say.
+  // The flag is in the main document and the index bundle reads it. Both nodes control the wording of three guide bullets.
   const flagHtml = targets.add("endgame.flag.grandworks.html", "indexHtml", {
     kind: "html-assignment",
     name: "window.__VESPERA_FEATURE_FLAGS__.grandworks.enabled",
@@ -1985,11 +1988,12 @@ function buildEndgameSystems(
   }
 
   /**
-   * The conditional expressions the feature flag controls, addressed by structural path.
+   * Conditional expressions controlled by the feature flag, addressed by structural path.
    *
-   * Three bullets read differently when Grandworks is on. Those three cite the flag and the conditional
-   * as well as their own literal, because the literal alone would not explain why the compendium shows
-   * this wording rather than the other one. The remaining sixty cite only their literal.
+   * Grandworks changes three bullets.
+   * Those bullets cite the flag, conditional, and own literal.
+   * The literal alone does not explain why the compendium uses one wording instead of the other.
+   * The other sixty bullets cite only their literals.
    */
   const controlPaths = new Map<string, { field: string; index: number }[]>();
   const collectControls = (node: ts.Node): void => {
@@ -2056,9 +2060,7 @@ function buildEndgameSystems(
     };
   });
 
-  // The shared Defense rule appears in the game's own prose and in the Combat codex, and its cap and
-  // clamp are executed here rather than restated, so the Endgame guide carries the same standing as
-  // Combat Mathematics for the same claim.
+  // The shared Defense rule appears in game prose and the Combat codex. Execute its cap and clamp here instead of restating them. The Endgame claim then has the same standing as the Combat Mathematics claim.
   const sharedMath = sections.find((section) => section.id === "shared-math");
   if (!sharedMath) throw new MechanicExtractionError("the Endgame guide has no shared-math section");
 
@@ -2130,8 +2132,7 @@ function buildEndgameSystems(
     derivations: [mitigation],
   };
 
-  // A target no claim references would be evidence the model does not actually rest on, so it is
-  // refused rather than left as decoration.
+  // A target with no claim reference is evidence that the model does not use. Reject it instead of leaving it as decoration.
   assertEveryTargetReferenced(document);
   return document;
 }
@@ -2152,7 +2153,7 @@ function assertEveryTargetReferenced(document: MechanicDocument): void {
   }
 }
 
-/* ────────────────────────────── orchestration ────────────────────────────── */
+/* Orchestration */
 
 export type ExtractionOutcome =
   | { status: "OK"; document: MechanicDocument }
@@ -2166,8 +2167,7 @@ const BUILDERS: Record<MechanicDocumentId, (context: BuildContext) => MechanicDo
   "equipment-and-value": buildEquipmentAndValue,
   "endgame-systems": (context) =>
     buildEndgameSystems(context, (arrayText, grandworksEnabled) =>
-      // The strict sandbox with the game's own flag, never a permissive stub: `tx` returns the default
-      // the game passes it, which is exactly what an English client renders.
+      // Use the strict sandbox with the game's flag, not a permissive stub. `tx` returns the default that the game passes, which is the text an English client shows.
       evalComposition(`(()=>{ return ${arrayText}; })()`, {
         tx: (_key: unknown, value: unknown) => value,
         GRANDWORKS_ENABLED: grandworksEnabled,
@@ -2176,10 +2176,11 @@ const BUILDERS: Record<MechanicDocumentId, (context: BuildContext) => MechanicDo
 };
 
 /**
- * Every codex entry is consumed exactly once, across exactly two documents.
+ * Consume each codex entry once across exactly two documents.
  *
- * The two guides split the codex by subject, so neither alone can prove the split is complete. Checking
- * the union here is what turns a codex the game quietly extended into a failure rather than a gap.
+ * The two guides split the codex by subject.
+ * Neither guide alone can show that the split is complete.
+ * Checking the union turns a quietly extended codex into an error instead of a gap.
  */
 function assertCodexInventory(documents: readonly MechanicDocument[]): void {
   const consumed: string[] = [];
@@ -2218,7 +2219,7 @@ function assertCodexInventory(documents: readonly MechanicDocument[]): void {
   }
 }
 
-/** The claim-to-target map extraction actually produced, for comparison with the reviewed contract. */
+/** The claim-to-target map that extraction produced, for comparison with the reviewed contract. */
 export function claimToTargetMap(documents: readonly MechanicDocument[]): Record<string, string[]> {
   const map: Record<string, string[]> = {};
   for (const document of documents) {
@@ -2228,7 +2229,7 @@ export function claimToTargetMap(documents: readonly MechanicDocument[]): Record
   return map;
 }
 
-/** The claim-to-probe map, without contract hashes, which move whenever the executor is re-approved. */
+/** The claim-to-probe map without contract hashes. Reapproval changes those hashes. */
 export function claimToProbeMap(
   documents: readonly MechanicDocument[],
 ): Record<string, { suite: string; id: string; category: string | null; promotionEligible: boolean }[]> {
@@ -2260,11 +2261,12 @@ function assertSameStringLists(label: string, expected: readonly string[], actua
 }
 
 /**
- * Compares the extracted model with the separately reviewed contract.
+ * Compare the extracted model with the separately reviewed contract.
  *
- * Every difference is a `MODEL_CHANGED` finding rather than a warning. The contract is the thing a human
- * read, so extraction disagreeing with it means either the game moved or the extractor did, and both
- * deserve a fresh review.
+ * Report every difference as a `MODEL_CHANGED` finding, not a warning.
+ * A person read the contract.
+ * Disagreement means that the game or extractor changed.
+ * Both cases need a new review.
  */
 export function assertContractFixture(
   documents: readonly MechanicDocument[],
@@ -2336,8 +2338,7 @@ export function assertContractFixture(
     assertSameStringLists(`derivation ${derivationId} source targets`, expected.sourceTargetIds, actual.sourceTargetIds);
     assertSameStringLists(
       `derivation ${derivationId} calls`,
-      // Canonical rather than `JSON.stringify`, because the reviewed fixture is stored with sorted keys
-      // while extraction builds its argument objects in declaration order.
+      // Use canonical data, not `JSON.stringify`. The fixture stores sorted keys, while extraction builds argument objects in declaration order.
       expected.calls.map((call) => `${call.sourceTargetId}(${canonicalJson(call.args)})`),
       actual.calls.map((call) => `${call.sourceTargetId}(${canonicalJson(call.args)})`),
     );
@@ -2369,8 +2370,7 @@ export function assertContractFixture(
     );
   }
 
-  // The codex entries the contract fixes are compared against the model's own displayed strings, so a
-  // reworded formula in the game fails here rather than reaching a page.
+  // Compare contract codex entries with the model's shown strings. A reworded game formula then fails before reaching a page.
   for (const document of documents) {
     for (const text of documentTexts(document)) {
       const expressionMatch = /^codex\.([A-Za-z0-9_]+)\.expression$/.exec(
@@ -2387,7 +2387,7 @@ export function assertContractFixture(
   }
 }
 
-/** Cross-document invariants no single builder can see. */
+/** Cross-document invariants that no single builder can see. */
 function assertCrossDocumentInvariants(documents: readonly MechanicDocument[]): void {
   const ids = documents.map((document) => document.id);
   const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -2458,10 +2458,10 @@ function assertCrossDocumentInvariants(documents: readonly MechanicDocument[]): 
 }
 
 /**
- * Extracts each document independently and reports one outcome per document.
+ * Extract each document independently and report one outcome per document.
  *
- * Independence matters for review: a locator that broke in the Endgame guide must not hide the fact that
- * the other four are still exactly what was approved.
+ * Independence matters for review.
+ * A broken Endgame locator must not hide that the other four documents still match approval.
  */
 export function tryExtractMechanics(
   input: MechanicsExtractionInput,
@@ -2497,8 +2497,7 @@ export function tryExtractMechanics(
       contractFailures.push(error instanceof Error ? error.message : String(error));
     }
     if (contractFailures.length > 0) {
-      // A cross-document or contract failure implicates every document, because none of them can be
-      // published while the set disagrees with what was reviewed.
+      // A cross-document or contract error affects every document. None can publish while the set disagrees with the reviewed contract.
       for (const [index, id] of MECHANIC_DOCUMENT_IDS.entries()) {
         outcomes[id] = {
           status: "MODEL_CHANGED",
@@ -2512,7 +2511,7 @@ export function tryExtractMechanics(
   return outcomes as Record<MechanicDocumentId, ExtractionOutcome>;
 }
 
-/** The strict wrapper publish and sync use. It collects every diagnostic before it throws. */
+/** The strict wrapper that publish and sync use. It collects every diagnostic before throwing. */
 export function extractMechanics(input: MechanicsExtractionInput): MechanicDocument[] {
   const outcomes = tryExtractMechanics(input);
   const failures: string[] = [];

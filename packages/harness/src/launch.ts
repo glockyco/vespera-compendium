@@ -75,7 +75,7 @@ function signalProcessTree(processId: number, signal: NodeJS.Signals): void {
     try {
       process.kill(processId, signal);
     } catch {
-      // The process already exited.
+      // The process exited before this code stopped it.
     }
   }
 }

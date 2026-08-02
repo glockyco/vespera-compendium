@@ -1,13 +1,14 @@
 /**
- * The review and proof artifacts, and their parsers.
+ * Review and proof artifacts with their parsers.
  *
- * Kept apart from both the extractor and the lock so the inspector closure can render and validate an
- * artifact without reaching the TypeScript compiler. The inspector is the trust root of every other
- * approval, so a change to the extractor must not force it to rotate.
+ * Keep this module apart from the extractor and lock.
+ * The inspector closure can then read an artifact without reaching the TypeScript compiler.
+ * The inspector is the trust root for every approval.
+ * A change to the extractor does not force inspector rotation.
  *
- * Every parser here re-derives the hash the artifact records about itself, and refuses an unknown
- * structural field inside the hashed body. A field a future writer added would otherwise be invisible to
- * every reader that reconstructs the projection.
+ * Each parser recomputes the artifact hash.
+ * It rejects an unknown structural field inside the hashed body.
+ * A future field can stay invisible to readers that rebuild the projection.
  */
 
 import {
@@ -36,7 +37,7 @@ export type ReviewClaim = {
   text: string;
   sourceTargetIds: string[];
   requiredProbes: MechanicProbeRef[];
-  /** What the published page would say for this claim, given the evidence in this artifact. */
+  /** What the published page says for this claim, given the artifact evidence. */
   verificationHint: "editorial" | "source-verified" | "live-verified";
 };
 
@@ -96,7 +97,7 @@ export type MechanicsReviewBody = {
 
 export type MechanicsReviewArtifact = {
   version: 1;
-  /** Diagnostic only: filenames and the full path manifest stay outside the hash preimage. */
+  /** Diagnostic only. Filenames and the full path manifest stay outside the hash preimage. */
   pathManifest: { path: string; bytes: number; sha256: string }[];
   bundleFilenames: Record<BundleRole, string>;
   review: MechanicsReviewBody;
@@ -104,10 +105,11 @@ export type MechanicsReviewArtifact = {
 };
 
 /**
- * Independently derives what a page would claim for one text.
+ * Independently derive what a page claims for one text.
  *
- * The published `verification` field is never consulted here or in the browser suite. Deriving it twice,
- * from the requirements and the results, is the only way the label can be checked rather than trusted.
+ * The published `verification` field is not used here or in the browser suite.
+ * Derive the label twice from requirements and results.
+ * This is the only way to check the label instead of trusting it.
  */
 export function deriveVerificationStatus(
   text: MechanicText,
@@ -133,12 +135,7 @@ export function serializeMechanicsReviewArtifact(artifact: MechanicsReviewArtifa
   return new TextEncoder().encode(`${canonicalJson(artifact as unknown as CanonicalJson)}\n`);
 }
 
-/**
- * Parses a review artifact and re-derives its own hash.
- *
- * Unknown structural fields inside `review` are refused, because a field a future writer added would
- * otherwise be invisible to every reader that reconstructs the projection.
- */
+/** Parse a review artifact and recompute its hash. */
 export function parseMechanicsReviewArtifact(bytes: Uint8Array): MechanicsReviewArtifact {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   const record = asRecord(parsed, "mechanics review artifact");
@@ -173,7 +170,7 @@ export function parseMechanicsReviewArtifact(bytes: Uint8Array): MechanicsReview
   return artifact;
 }
 
-/** Hashes an artifact reconstructed from its own contents, for the assertion inspect performs. */
+/** Hash an artifact reconstructed from its contents for the inspect assertion. */
 export function reconstructReviewHashes(artifact: MechanicsReviewArtifact): {
   reviewSha256: string;
   fixtureSha256: string;
@@ -196,7 +193,7 @@ export type MechanicsProof = {
   proofSha256: string;
 };
 
-/** Parses a proof and re-derives its own hash from exactly the same preimage. */
+/** Parse a proof and recompute its hash from the same preimage. */
 export function parseMechanicsProof(bytes: Uint8Array): MechanicsProof {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   const record = asRecord(parsed, "mechanics proof");

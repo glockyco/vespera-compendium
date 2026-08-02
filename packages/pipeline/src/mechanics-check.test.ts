@@ -41,7 +41,7 @@ describe("mechanics check result contract", () => {
     };
     expect(deriveVerificationStatus(promotionText, [])).toBe("source-verified");
     expect(deriveVerificationStatus(promotionText, [statusRef("xpGainMultiplier", true)])).toBe("live-verified");
-    // The real status precedence and model diagnostics are exercised by mechanics:check in the sequence gate.
+    // The sequence gate checks status precedence and model diagnostics with mechanics:check.
   });
 });
 

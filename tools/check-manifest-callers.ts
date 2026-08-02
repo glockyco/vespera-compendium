@@ -234,7 +234,7 @@ function allowedRawIo(context: CallContext, root: string): boolean {
   if (file === "site/src/lib/client/search-index.ts" && context.callee === "fetch" && context.enclosing === "loadSearchIndex") return argument === "/data/search_index.json" || argumentText === "INDEX_URL" && sourceHas('INDEX_URL = "/data/search_index.json"');
   if (file === "site/src/lib/manifest.ts" && context.callee === "fetch" && context.enclosing === "fetchManifest") return argument === "/data/index.json" || argumentText === "MANIFEST_URL" && sourceHas('MANIFEST_URL = "/data/index.json"');
   if (file === "site/src/lib/server/dataset.ts" && context.callee === "readFileSync") {
-    // This is the single capability-scoped edge: the name is path-safe and joins beneath a validated PublishedSnapshotCapability root.
+    // This is the only capability-scoped edge. The name is path-safe and joins below the checked PublishedSnapshotCapability root.
     if (context.enclosing === "readPublishedSnapshotFile") {
       return (/(?:path\.)?join\(\s*(?:snapshot\.capability\.root|capability\.root)\s*,/.test(argumentText) || argumentText === "file" && /resolveBeneath\s*\(/.test(context.functionBody)) && /acceptSnapshot\s*\(/.test(context.functionBody);
     }
@@ -318,7 +318,7 @@ export function checkManifestCallers(root: string): Finding[] {
     const relative = rel(root, item.file);
     if (/\$lib(?:\/|["'])/.test(item.source) && aliases.libRoot === null) findings.push(makeFinding(root, item.file, item.source, 0, "ALIAS_UNRESOLVED", `Unable to resolve $lib alias from ${aliases.sourceFile ?? "site configuration"}`));
     if (item.source.includes("<script") && item.file.endsWith(".svelte")) {
-      // Parse errors are represented by the compiler, not by regular-expression guesses.
+      // The compiler represents parse errors. Regular-expression guesses do not represent them.
       try {
         parse(item.source);
       } catch (error) {

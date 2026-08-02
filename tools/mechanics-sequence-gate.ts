@@ -54,10 +54,10 @@ function parseReviewHash(file: string): string {
 }
 
 /**
- * Materializes the whole extracted tree, not only the three bundle roles.
+ * Materializes the complete extracted tree, not only the three bundle roles.
  *
- * Publication reads the game's art as well as its code, so a scratch workspace holding only the roles would
- * let the gate pass a publish the real command could never perform.
+ * Publication reads the game's art and code. A scratch workspace with only the roles lets the gate pass.
+ * The real publish command then fails because the art is missing.
  */
 function writeBundleSnapshot(root: string, base: GateBase): void {
   cpSync(base.extractedTreePath, safePath(root, "extracted"), { recursive: true });
@@ -158,8 +158,8 @@ function negativePhase(positive: string, base: GateBase): void {
     { name: "fixture bytes", mutate: (root) => mutateByte(root, "packages/pipeline/testdata/mechanics-contract-v1.json"), command: ["mechanics:prove", "extracted", "mechanics-review.json", "--out", "negative-proof.json"] },
     { name: "proof from another review", mutate: (root) => mutateByte(root, "mechanics-proof.json"), command: ["mechanics:sync", "extracted", "--proof", "mechanics-proof.json"] },
     { name: "fixture after approval", mutate: (root) => mutateByte(root, "packages/pipeline/testdata/mechanics-contract-v1.json"), command: ["publish", "extracted"] },
-    // Distinct from the "mechanics source approval" case below: that one moves the approved hashes, this one
-    // moves the tracked constant the runtime closure is checked against.
+    // This case differs from the "mechanics source approval" case below. That case moves approved hashes.
+    // This case moves the tracked constant against which the runtime closure is checked.
     { name: "runtime closure constant", mutate: (root) => mutateByte(root, "packages/core/src/execution-source-hashes/probe-runtime.ts"), command: ["verify-published", "data/latest", "mechanics.lock.json"] },
     { name: "evidence bytes", mutate: (root) => mutateByte(root, `evidence/${parseBuildId(base.evidenceBytes ?? base.externalLeafEvidenceBytes ?? new Uint8Array())}/runtime-evidence.json`), command: ["mechanics:sync", "extracted", "--proof", "mechanics-proof.json"] },
     { name: "lock generation", mutate: (root) => mutateByte(root, "mechanics.lock.json"), command: ["mechanics:sync", "extracted", "--proof", "mechanics-proof.json"] },
@@ -188,8 +188,7 @@ export function runMechanicsSequenceGate(extractedDir: string): void {
     } finally {
       rmSync(positive, { recursive: true, force: true });
     }
-    // A silent pass is indistinguishable from a gate that ran nothing, and this one is the reason the
-    // approval order cannot be reordered, so it states what it proved.
+    // A silent pass cannot show whether the gate ran. This message states what the ordered approval proved.
     console.log("SEQUENCE GATE PASS: the ordered command chain succeeded and all 8 out-of-order mutations were refused");
   } finally {
     rmSync(base.extractedTreePath, { recursive: true, force: true });

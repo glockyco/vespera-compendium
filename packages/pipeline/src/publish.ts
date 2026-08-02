@@ -117,7 +117,7 @@ export type PublishedMechanics = {
   documents: PublishedMechanicDocument[];
 };
 
-/** Sync filesystem operations are injectable so swap and rollback failures can be deterministic. */
+/** Filesystem operations are injectable so swap and rollback errors stay deterministic. */
 export type PublishFilesystemAdapter = {
   exists(pathname: string): boolean;
   mkdir(pathname: string): void;
@@ -201,7 +201,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Removes only verification fields, preserving the locked model for canonical hash comparison. */
+/** Remove only check fields. Preserve the locked model for canonical hash comparison. */
 export function lockedModelFromPublished(document: PublishedMechanicDocument): MechanicLockedModel {
   const allowedDocumentKeys = new Set(["id", "title", "category", "summary", "sections", "related", "sourceTargets", "derivations", "derivationExecutorSha256", "mechanicsSourceApprovalSha256"]);
   if (Object.keys(document).some((key) => !allowedDocumentKeys.has(key))) throw new Error("published mechanic document has unexpected structure");
@@ -294,7 +294,7 @@ function atomicReplace(staging: string, destination: string, filesystem: Publish
     if (hadDestination) filesystem.remove(backup);
   } catch (error) {
     if (hadDestination && filesystem.exists(backup) && !filesystem.exists(destination)) {
-      try { filesystem.rename(backup, destination); } catch { /* retain the original swap error */ }
+      try { filesystem.rename(backup, destination); } catch { /* Keep the original swap error. */ }
     }
     if (filesystem.exists(staging)) filesystem.remove(staging);
     if (filesystem.exists(backup) && filesystem.exists(destination)) filesystem.remove(backup);
@@ -303,11 +303,11 @@ function atomicReplace(staging: string, destination: string, filesystem: Publish
 }
 
 /**
- * Runs the emitted-artifact verifier over one staging tree.
+ * Run the emitted-artifact checker over one staging tree.
  *
- * The staging tree already holds the lock, fixture, and approval bytes publication prepared, so the
- * verifier is given those directly rather than reopening them: reading them twice is exactly the gap the
- * prepared-inputs contract exists to close.
+ * Publication prepared the lock, fixture, and approval bytes in this staging tree.
+ * Pass those bytes to the checker instead of reopening them.
+ * Reading them twice creates the gap that prepared inputs prevent.
  */
 function assertStagingVerifies(
   stagingDir: string,
@@ -367,9 +367,7 @@ export async function publish(prepared: PreparedMechanicsInputs, reviewedLock: M
     writeSqlite(dataset, path.join(buildStaging, SQLITE_FILENAME));
     copyEvidence(prepared.evidenceBytes, path.join(buildStaging, "runtime-evidence.json"), "runtime evidence");
     copyEvidence(prepared.externalLeafEvidenceBytes, path.join(buildStaging, "external-leaf-evidence.json"), "external leaf evidence", prepared.externalLeafEvidenceSha256);
-    // Both staging trees are fully verified before either swap. Publication is the last point at which a
-    // malformed emitted artifact can be caught without a reader having already seen it, and the check runs
-    // the same verifier the standalone post-publication gate runs rather than a lighter approximation.
+    // Check both staging trees completely before either swap. Publication is the last point to catch a malformed artifact before a reader sees it. Use the same checker as the standalone post-publication gate, not a lighter approximation.
     assertStagingVerifies(buildStaging, prepared, leases, "the build-stamped output");
     copyTree(buildStaging, latestStaging);
     assertStagingVerifies(latestStaging, prepared, leases, "the latest output");

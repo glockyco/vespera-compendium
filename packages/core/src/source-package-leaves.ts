@@ -1,38 +1,30 @@
 /**
- * Reviewed third-party dependencies that a source closure is allowed to reach.
+ * Reviewed third-party dependencies that a source closure can reach.
  *
- * Stopping at a package name would approve whatever `bun install` happens to place there, which is
- * exactly the substitution this repository refuses elsewhere. So a package leaf is recorded the same
- * way a bundle role is: by its bytes. The preimage carries the resolved version, the `bun.lock`
- * resolution and integrity string, and a sorted inventory of every file in the installed package
- * directory, native binaries included. Replacing a platform binary changes the closure hash and
- * invalidates the approval, which is the only defensible claim when that binary decodes the images
- * the site serves.
+ * A package name alone approves whatever `bun install` places there. This repository rejects that substitution.
+ * A package leaf records bytes, like a bundle role. Its preimage includes the resolved version, the `bun.lock` resolution and integrity string, and a sorted inventory of every installed file, including native binaries.
+ * Replacing a platform binary changes the closure hash and invalidates approval. That result is required when the binary decodes images that the site serves.
  *
- * Only a package a reviewed closure actually reaches may be listed. An unlisted package, a changed
- * lock resolution, a missing or extra file, or a dynamic package specifier fails source hashing.
+ * A reviewed closure can list only a package that it reaches. An unlisted package, changed lock resolution, missing or extra file, or dynamic package specifier fails source hashing.
  */
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
-/** Closure identifiers, matching the five approved closures. */
+/** Closure identifiers that match the five approved closures. */
 export type SourceClosureName = "approvalGate" | "derivation" | "inspector" | "probeExecutor" | "runtime";
 
 /**
  * The exhaustive registry.
  *
- * `typescript` appears in four closures because they import from `@vespera/core`, and that barrel
- * re-exports the source-hash module which owns the parser. Module-granular hashing follows the barrel, so
- * the parser is genuinely reachable from those roots rather than only from extraction.
+ * `typescript` appears in four closures because they import from `@vespera/core`. That barrel re-exports the source-hash module that owns the parser.
+ * Module-granular hashing follows the barrel, so the parser is reachable from those roots, not only from extraction.
  *
- * The probe executor lists nothing. It imports one Node-free module and no barrel, which is what makes
- * `executorSha256 -> contractSha256` acyclic, and listing a package it cannot reach would weaken the rule
- * that only a reached package may be declared.
+ * The probe executor lists no package. It imports one Node-free module and no barrel.
+ * This keeps `executorSha256 -> contractSha256` acyclic. Listing an unreachable package weakens the rule that only reached packages can be declared.
  *
- * `sharp` is reached from approval-gate roots alone, because publication is the only thing that decodes
- * and resizes the game's art.
+ * `sharp` is reached only from approval-gate roots because publication alone decodes and resizes the game's art.
  */
 export const SOURCE_CLOSURE_PACKAGE_LEAVES: Readonly<Record<SourceClosureName, readonly string[]>> =
   Object.freeze({
@@ -54,7 +46,7 @@ export type PackageLeafRecord = {
   inventorySha256: string;
 };
 
-/** Directories inside an installed package that hold another package rather than this one's bytes. */
+/** Directories inside an installed package that hold another package, not this package's bytes. */
 const NESTED_PACKAGE_DIR = "node_modules";
 
 function inventory(root: string): PackageFileRecord[] {
@@ -66,8 +58,8 @@ function inventory(root: string): PackageFileRecord[] {
       const absolute = path.join(dir, entry.name);
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
-        // A nested install is a different package with its own identity, so it is not folded into
-        // this record. Reaching it would require its own reviewed leaf.
+        // A nested install is a different package with its own identity. Do not fold it into this record.
+        // Reaching it requires another reviewed leaf.
         if (entry.name === NESTED_PACKAGE_DIR) continue;
         walk(absolute, relative);
         continue;
@@ -85,7 +77,7 @@ function inventory(root: string): PackageFileRecord[] {
   return records.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
 }
 
-/** Narrows an unknown JSON value to a record without asserting a shape the parser never checked. */
+/** Converts an unknown JSON value to a record without assuming an unchecked shape. */
 function asRecord(value: unknown, detail: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`expected a JSON object: ${detail}`);
@@ -94,15 +86,14 @@ function asRecord(value: unknown, detail: string): Record<string, unknown> {
 }
 
 /**
- * The lock's own resolution and integrity strings for one package.
+ * The lock resolution and integrity strings for one package.
  *
- * Bun writes each entry as a tuple whose first member is the resolution (`name@version`) and whose
- * last member is the integrity hash. Reading the tuple positionally is fragile, so both are located
- * by shape and a missing entry fails rather than defaulting.
+ * Bun writes each entry as a tuple. Its first member is the resolution (`name@version`), and its last member is the integrity hash.
+ * Tuple positions are fragile, so this function locates both strings by shape. A missing entry fails instead of using a default.
  */
 function lockEntry(lockPath: string, name: string): { resolution: string; integrity: string } {
   const source = readFileSync(lockPath, "utf8");
-  // `bun.lock` is JSONC: it carries trailing commas that `JSON.parse` rejects.
+  // `bun.lock` is JSONC. It carries trailing commas that `JSON.parse` rejects.
   const stripped = source.replace(/,(\s*[}\]])/g, "$1");
   let parsed: unknown;
   try {
@@ -133,8 +124,8 @@ const cache = new Map<string, PackageLeafRecord>();
 /**
  * The byte-level record for one reviewed package leaf.
  *
- * Cached per process because a single command can compute several closures over the same install,
- * and hashing a native binary tree repeatedly is pure cost with no added guarantee.
+ * The process caches this record because one command can compute several closures over the same install.
+ * Repeated hashing of a native binary tree adds cost but no guarantee.
  */
 export function packageLeafRecord(workspaceRoot: string, name: string): PackageLeafRecord {
   const key = `${workspaceRoot}\u0000${name}`;
@@ -175,7 +166,7 @@ export function isPackageLeaf(closure: SourceClosureName, name: string): boolean
   return SOURCE_CLOSURE_PACKAGE_LEAVES[closure].includes(name);
 }
 
-/** The bare package name of a module specifier, honouring scoped packages. */
+/** The bare package name of a module specifier, including scoped packages. */
 export function packageNameOf(specifier: string): string {
   if (specifier.startsWith("@")) {
     const [scope, name] = specifier.split("/");

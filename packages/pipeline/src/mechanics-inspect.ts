@@ -1,15 +1,16 @@
 /**
- * Rendering review artifacts, and the receipts that record which inspector rendered them.
+ * Show review artifacts and receipts that record the inspector used.
  *
- * This is the trust root of the whole approval chain, which is why it is the one closure with no source
- * constant: a constant here would need the inspector to authorize a change to itself. Instead its
- * approved hash lives in `mechanics-source.lock.json`, and every attestation is accepted only when the
- * inspector that produced it matches that value.
+ * This closure is the trust root for the approval chain.
+ * It has no source constant because a constant can let the inspector authorize its own change.
+ * Its approved hash lives in `mechanics-source.lock.json`.
+ * An attestation is accepted only when its inspector matches that hash.
  *
- * An attestation is a public-data integrity receipt. It records which approved inspector rendered which
- * review, and nothing more. It is not a signature, and it does not evidence that a human read anything.
- * The commands say so where they print it, because a receipt that implies more than it proves is worse
- * than no receipt.
+ * An attestation is a public-data integrity receipt.
+ * It records the approved inspector and the review that it showed.
+ * It is not a signature and does not show that a person read the review.
+ * Commands state this when they print the receipt.
+ * A receipt that implies more than it proves is worse than no receipt.
  */
 
 import {
@@ -32,12 +33,13 @@ import { parseMechanicsContract } from "./mechanics-contract.ts";
 export type InspectLine = string;
 
 /**
- * Renders one mechanics review artifact and asserts it against the tracked contract.
+ * Show one mechanics review artifact and check it against the tracked contract.
  *
- * The assertion runs before any rendering: printing 231 claims and then reporting that the contract
- * disagreed would bury the one fact that matters. Everything printed comes from inside the artifact's own
- * hash preimage, never from a reopened bundle or workspace file, so what a reviewer reads is exactly what
- * the proof will bind.
+ * Run the check before showing it.
+ * Print 231 claims before reporting contract disagreement hides the important fact.
+ * All shown data comes from the artifact hash preimage.
+ * It never comes from a reopened bundle or workspace file.
+ * A reviewer therefore reads exactly what the proof binds.
  */
 export function inspectMechanicsReview(input: {
   reviewBytes: Uint8Array;
@@ -132,11 +134,11 @@ export function inspectMechanicsReview(input: {
 }
 
 /**
- * Renders all five source-closure review artifacts.
+ * Show all five source-closure review artifacts.
  *
- * Every changed slice is printed in full. A summary would let a one-character change to a hashing helper
- * pass as "the derivation closure moved", which is precisely the kind of change this whole mechanism
- * exists to surface.
+ * Show every changed slice in full.
+ * A summary can let a one-character hashing-helper change pass as "the derivation closure moved".
+ * Full output exposes the change that this mechanism must surface.
  */
 export function inspectMechanicsSourceReviews(input: {
   reviews: Record<SourceClosureName, SourceReviewArtifact>;
@@ -174,10 +176,11 @@ function renderDiff(diff: ClosureFieldDiff): InspectLine[] {
 }
 
 /**
- * Writes the attestation receipt for a completed inspection.
+ * Write the attestation receipt for a completed inspection.
  *
- * The hash omits itself, and the receipt records the inspector's own approved hash so a later sync can
- * tell whether the renderer it trusts is the renderer that ran.
+ * The hash omits itself.
+ * The receipt records the inspector's approved hash.
+ * A later sync can then check that the trusted inspector is the one that ran.
  */
 export function writeInspectAttestation(input: {
   kind: InspectAttestation["kind"];
@@ -203,7 +206,7 @@ export function writeInspectAttestation(input: {
   return attestation;
 }
 
-/** Recomputes an attestation hash from a parsed receipt, for callers that only hold the object. */
+/** Recompute an attestation hash from a parsed receipt for callers that hold only the object. */
 export function attestationSha256(attestation: InspectAttestation): string {
   return canonicalSha256(withoutMember(attestation, "attestationSha256"));
 }

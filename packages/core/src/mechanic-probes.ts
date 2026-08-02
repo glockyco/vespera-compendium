@@ -1,15 +1,10 @@
 /**
  * The sole authoritative registry of live probe contracts.
  *
- * A probe is not "a name that passed". It is one hashed object holding the exact inputs, the exact
- * expected outputs, the expected runtime resolver and bundle role, the exact bridge suffix where one is
- * needed, and the exact published claims the pass is allowed to support. The pipeline, the harness, and
- * the site all read this one object, so the runtime case grid, the displayed fact, and the approved
- * obligation cannot drift into three different truths.
- *
- * `contractSha256` is `hash({ executorSha256, contractWithoutHashes })`. Changing execution logic, a
- * case, an expectation, or a claim binding therefore changes the hash, marks every affected document
- * `MODEL_CHANGED`, and makes older evidence ineligible.
+ * A probe is not `a name that passed`. It is one hashed object with exact inputs, outputs, resolver, bundle role, bridge suffix, and published claim bindings.
+ * The pipeline, harness, and site read this object. The runtime case grid, shown fact, and approved obligation cannot drift into separate truths.
+ * `contractSha256` is `hash({ executorSha256, contractWithoutHashes })`.
+ * A change to execution logic, a case, an expectation, or a claim binding changes the hash. It marks affected documents `MODEL_CHANGED` and makes old evidence ineligible.
  */
 
 import { canonicalJson, type BundleRole, type CanonicalJson, type PublicProbeContract } from "./canonical-public-evidence.ts";
@@ -23,20 +18,19 @@ import { sha256Hex } from "./source-hash.ts";
 
 export type { MechanicProbeCase, MechanicProbeClaimBinding, MechanicProbeContract };
 
-/** Every live probe belongs to one suite; the name is part of the deduplicated execution tuple. */
+/** Every live probe belongs to one suite. The name is part of the deduplicated execution tuple. */
 export const MECHANIC_PROBE_SUITE = "formulas";
 
 /**
  * The exact source appended to the index module served to the bridged harness session.
  *
- * One assignment, capturing the module-scope function object. It copies nothing and reimplements
- * nothing, so the probe still calls the game's own code — but the served bytes are no longer the
- * shipped bytes, which is why every Defense claim binding is ineligible for promotion.
+ * One assignment captures the module-scope function object. It copies and reimplements nothing, so the probe calls the game's own code.
+ * The served bytes differ from the shipped bytes. Every Defense claim binding is therefore ineligible for promotion.
  */
 export const CANONICAL_BRIDGE_SUFFIX =
   "\n;globalThis.__VESPERA_DEFENSE_BRIDGE__ = getIncomingDefenseMitigation;\n";
 
-/** SHA-256 of {@link CANONICAL_BRIDGE_SUFFIX}, which sync uses to reconstruct the served bytes. */
+/** SHA-256 of {@link CANONICAL_BRIDGE_SUFFIX}. Sync uses it to reconstruct the served bytes. */
 export const CANONICAL_BRIDGE_SUFFIX_SHA256 = sha256Hex(new TextEncoder().encode(CANONICAL_BRIDGE_SUFFIX));
 
 const DEFENSE_LEVEL_CAP = 256;
@@ -45,9 +39,9 @@ const DEFENSE_MITIGATION_CAP = 0.75;
 /**
  * The expectation, stated independently of the game's source.
  *
- * A probe that reused the game's own function to compute its expectation would prove only that a value
- * equals itself. This restatement is the claim: if the game's implementation changes, the probe fails
- * and a human decides whether the compendium's explanation was wrong or the game's balance moved.
+ * A probe that uses the game's function to compute its expectation only shows that a value equals itself.
+ * This independent statement is the claim. If the implementation changes, the probe fails.
+ * A human then decides whether the compendium explanation is wrong or the game's balance changed.
  */
 function expectedMitigation(defense: number, attackerLevel: number): number {
   const mitigationLevel = Math.min(DEFENSE_LEVEL_CAP, attackerLevel);
@@ -58,7 +52,7 @@ function expectedMitigation(defense: number, attackerLevel: number): number {
 const MITIGATION_DEFENSES = [0, 100, 1000, 100_000] as const;
 const MITIGATION_LEVELS = [1, 50, 256, 10_000] as const;
 
-/** Defense-major, level-minor, so a reviewer reads one defense's whole level curve on adjacent rows. */
+/** Defense-major and level-minor. A reviewer reads one defense's full level curve on adjacent rows. */
 const MITIGATION_CAP_CASES: MechanicProbeCase[] = MITIGATION_DEFENSES.flatMap((defense) =>
   MITIGATION_LEVELS.map((attackerLevel) => ({
     id: `d${defense}-l${attackerLevel}`,
@@ -70,8 +64,8 @@ const MITIGATION_CAP_CASES: MechanicProbeCase[] = MITIGATION_DEFENSES.flatMap((d
 /**
  * The two cases that isolate the level clamp.
  *
- * Both must return the same number: above Level 256 the mitigation level stops rising even though the
- * enemy's raw damage keeps climbing. A single case could not show that, and the whole grid would bury it.
+ * Both return the same number. Above Level 256, the mitigation level stops rising while enemy raw damage keeps rising.
+ * One case cannot show this. The full grid hides the boundary.
  */
 const MITIGATION_CLAMP_CASES: MechanicProbeCase[] = [
   { id: "d1000-l256", input: { defense: 1000, attackerLevel: 256 }, expected: expectedMitigation(1000, 256) },
@@ -85,7 +79,7 @@ const multiplierBonus = (target: string, value: number): CanonicalJson => ({
   value,
 });
 
-/** Proves target filtering, additive stacking of the two bonus kinds, and the final floor. */
+/** Checks target filtering, additive stacking of both bonus kinds, and the final floor. */
 const XP_CASES: MechanicProbeCase[] = [
   { id: "base", input: { baseXp: 101, skillType: "combat", bonuses: [] }, expected: 101 },
   {
@@ -115,11 +109,11 @@ const XP_CASES: MechanicProbeCase[] = [
 ];
 
 /**
- * The full rarity grid plus four edges.
+ * The full rarity grid plus four edge cases.
  *
- * The grid fixes the ratios `[1, 1.1, 1.22, 1.36, 1.52, 1.7, 1.52]`, including the fact that Legendary
- * and Living share 1.52 — a coincidence a reviewer would otherwise assume was a transcription error.
- * The edges fix the unknown-rarity fallback, quantity flooring, and final value flooring.
+ * The grid fixes the ratios `[1, 1.1, 1.22, 1.36, 1.52, 1.7, 1.52]`.
+ * Legendary and Living both use 1.52. This coincidence can look like a transcription error without this case grid.
+ * The edge cases fix the unknown-rarity fallback, quantity floor, and final value floor.
  */
 const SELL_CASES: MechanicProbeCase[] = [
   { id: "rarity-common", input: { baseValue: 100, rarity: "common", quantity: 1 }, expected: 100 },
@@ -157,7 +151,7 @@ const ENDGAME_MITIGATION_DERIVATION = "endgame.shared-defense.mitigation";
 const SKILLS_XP_DERIVATION = "skills.xp";
 const EQUIPMENT_SELL_DERIVATION = "equipment.sell";
 
-/** The codex literal both Defense expressions quote verbatim. */
+/** The codex literal that both Defense expressions quote verbatim. */
 const CODEX_MITIGATION_TARGET = "codex.normalMitigation.expression";
 
 /** The endgame bullet that states the same rule in the game's own prose. */
@@ -394,8 +388,7 @@ export function claimBindingsForText(textId: string): { contract: MechanicProbeC
 /**
  * The browser-visible projection of one contract.
  *
- * Everything a visitor needs to recheck the arithmetic, and nothing that maps the game's internals:
- * source locators and target IDs stay out.
+ * It contains everything a visitor needs to check the arithmetic. Source locators and target IDs stay private.
  */
 export function publicProbeContract(contract: MechanicProbeContract): PublicProbeContract {
   return {
@@ -427,9 +420,8 @@ export function publicProbeContract(contract: MechanicProbeContract): PublicProb
 /**
  * Recomputes every registry hash from the approved executor constant.
  *
- * Registry changes flow through the mechanics model and its review, never through the executor's source
- * closure, so this check is separate from `probe-executor:check`: it proves the published contract hashes
- * are the ones this registry actually produces.
+ * Registry changes flow through the mechanics model and its review, not through the executor's source closure.
+ * This separate operation checks that the published contract hashes match this registry.
  */
 export function checkProbeContractHashes(): { id: string; expected: string; actual: string }[] {
   return CONTRACTS_WITHOUT_HASHES.map((contract, index) => ({

@@ -44,11 +44,10 @@ export type RuntimeBinding = {
 export type RuntimeResolverContext = {
   indexBundle?: string;
   /**
-   * The exact URL the runtime served the index module from.
+   * The exact URL that the runtime served for the index module.
    *
-   * Importing a reconstructed `./assets/<file>` path creates a second script for the same module, and that
-   * script's id maps to no Network response, so the byte binding cannot be established. Importing the
-   * captured URL keeps the resolved function on the response that was actually observed.
+   * A reconstructed `./assets/<file>` path creates a second script for the same module. Its script ID maps to no Network response, so the byte binding fails.
+   * The captured URL keeps the resolved function on the response that the harness observed.
    */
   indexResourceUrl?: string;
   resources?: readonly RuntimeResource[];
@@ -267,11 +266,10 @@ export async function resolveDefenseRuntimeBinding(
 }
 
 /**
- * Calls the resolved runtime function with the contract's own argument shape.
+ * Calls the resolved runtime function with the contract's argument shape.
  *
- * The arguments come from the hashed `argumentTemplate`, not from this module's idea of the signature. A
- * flat case input passed straight through would make `Number({defense: 100}) || 0` return zero, and the
- * probe would then confirm a formula that never ran.
+ * The arguments come from the hashed `argumentTemplate`, not from this module's idea of the signature.
+ * A flat input makes `Number({defense: 100}) || 0` return zero. The probe then records a formula that never ran.
  */
 export async function invokeRuntimeBinding(
   client: CdpClient,

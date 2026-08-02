@@ -9,19 +9,19 @@ import {
 } from "./anchors.ts";
 
 /**
- * Equipment stats are not literal. The bundle declares base stats, then rewrites nearly every
- * equipment record at module scope: it assigns class requirements, converts some primary stats
- * between classes, and rescales each stat group against a level curve, a per-class power budget and
- * a per-slot share.
+ * Equipment stats are not literal.
+ * The bundle declares base stats and then rewrites most equipment records at module scope.
+ * It assigns class requirements, converts some primary stats between classes, and rescales each stat group.
+ * It uses a level curve, a per-class power budget, and a per-slot share.
  *
- * Restating that model in TypeScript is what drifted. Copied constants go stale, a feature flag that
- * is on in the browser reads as off outside it, and lookup tables added in a later build go
- * unnoticed — each one silently changing published numbers. So this module runs the game's own two
- * entry points, `applyClassGearSeparationCatalog` and `normalizeCompleteGearBalance`, over our
- * composed tables, with the shipped source sliced out of the bundle verbatim.
+ * A TypeScript copy of this model drifted.
+ * Copied constants became stale, browser flags read as off outside the browser, and later lookup tables went unnoticed.
+ * Each error changed published numbers without a visible failure.
+ * This module runs the game's two entry points over the composed tables.
+ * It slices the shipped source from the bundle without changes.
  */
 
-/** Bundle functions the gear pass calls that live outside the pass's own region. */
+/** Bundle functions that the gear pass calls from outside its region. */
 const FUNCTIONS = [
   "normalizeClassId",
   "inferAccessoryClassFromItemId",
@@ -30,7 +30,7 @@ const FUNCTIONS = [
   "getWorldBossStatPower",
 ] as const;
 
-/** Bundle constants those functions read. */
+/** Bundle constants that those functions read. */
 const CONSTANTS = [
   "LEGACY_CLASS_ID_TO_CURRENT",
   "ARMOR_CLASS_AFFINITY_OVERRIDES",
@@ -40,20 +40,21 @@ const CONSTANTS = [
 ] as const;
 
 /**
- * Four earlier passes retune raw stat values before the gear-balance pass rescales them: they pin
- * each normal weapon tier to the previous tier's scenario power, pin the named endgame families to
- * their heroic and nightmare references, and pin divine and soulbound gear to a multiple of those
- * references. They run as one contiguous region ending in their own invocations, and they must run
- * before the class-gear region because the endgame pass reads the class requirement the literals
- * declare, not the one the catalog later assigns.
+ * Four earlier passes retune raw stats before the gear-balance pass rescales them.
+ * They set each normal weapon tier to the previous tier's scenario power.
+ * They set named endgame families to their heroic and nightmare references.
+ * They set divine and soulbound gear to a multiple of those references.
+ * The passes form one contiguous region and end with their own invocations.
+ * They must run before the class-gear region.
+ * The endgame pass reads the class requirement in the literals, not the later catalog value.
  */
 const RAW_POWER_START = "const DIVINE_HEROIC_REFERENCE_BY_CLASS";
 const RAW_POWER_END = "normalizeSoulboundRawPower();";
 
 /**
- * The class-gear catalog and the gear-balance pass form one contiguous run of statements that ends
- * in their own invocations, so the region is taken verbatim rather than reassembled declaration by
- * declaration.
+ * The class-gear catalog and gear-balance pass form one contiguous run.
+ * The run ends with their own invocations.
+ * Take the region verbatim instead of rebuilding it declaration by declaration.
  */
 const REGION_START = "const CLASS_GEAR_SPECIAL_NIGHTMARE_RECIPE_PATTERN";
 const REGION_END = "normalizeCompleteGearBalance();";
@@ -70,43 +71,41 @@ const RARITY_MULTIPLIER_PROBES = [
 export type GearBalanceInput = {
   /** The index bundle source. */
   source: string;
-  /** Composed item table keyed by id. Mutated in place, exactly as the game mutates its own. */
+  /** Composed item table keyed by id. The game mutates it in place, and this code does the same. */
   items: DataRecord;
-  /** Bundle symbol the item table is declared under, as reported by its content anchor. */
+  /** Bundle symbol for the item table, as reported by its content anchor. */
   itemsSymbol: string;
-  /** Composed recipe list, read for crafted gear levels. The pass also edits it, so pass a copy. */
+  /** Composed recipe list for crafted gear levels. The pass edits it, so pass a copy. */
   recipes: DataRecord[];
-  /** Bundle symbol the recipe array is declared under. */
+  /** Bundle symbol for the recipe array. */
   recipesSymbol: string;
-  /** Soulbound item definitions, the table the pass writes rescaled stats back into. */
+  /** Soulbound item definitions. The pass writes rescaled stats back into this table. */
   definitions: DataRecord;
-  /** Shipped `__VESPERA_FEATURE_FLAGS__` object, which decides two of the class attack budgets. */
+  /** Shipped `__VESPERA_FEATURE_FLAGS__` object. It sets two class attack budgets. */
   featureFlags: DataRecord;
 };
 
-/** Runs the shipped class-gear and gear-balance passes over `items`, mutating it in place. */
+/** Run the shipped class-gear and gear-balance passes over `items` in place. */
 export function applyGearBalance(input: GearBalanceInput): void {
   const { program, bindings } = buildProgram(input);
   evalComposition(`(()=>{\n${program}\n})()`, bindings);
 }
 
 /**
- * The balance level the game assigns each equipment item, which is what it scales stats against.
- *
- * Published as `items.level` so the compendium states the game's own number rather than inferring
- * one from a recipe. `getCompleteGearBalanceLevel` returns null for world-boss gear and for
- * `the_last_memory`, which the game excludes deliberately; those ids are simply absent here.
+ * The balance level that the game assigns to each equipment item.
+ * The game uses this level to scale stats.
+ * Publish it as `items.level` so the compendium states the game's number instead of inferring it from a recipe.
+ * `getCompleteGearBalanceLevel` returns null for world-boss gear and `the_last_memory`.
+ * The game deliberately excludes those ids, so they are absent here.
  */
 export type GearLevel = { level: number; downOnly: boolean };
 
 export function gearBalanceLevels(input: GearBalanceInput): Record<string, GearLevel> {
   const { program, bindings } = buildProgram(input);
-  // The recipe map is built once rather than per item: the shipped helper walks every recipe on
-  // each call, and calling it inside the map would make this quadratic for no change in result.
+  // Build the recipe map once, not per item. The shipped helper walks every recipe on each call. Calling it inside the map makes this quadratic without changing the result.
   //
-  // The `equipment` and `stats` gate is the game's own, copied from `normalizeCompleteGearBalance`.
-  // Without it the helper happily returns its rarity fallback for resources and consumables, and we
-  // would publish a balance level for items the game never computes one for.
+  // The `equipment` and `stats` gate comes from `normalizeCompleteGearBalance`.
+  // Without it, the helper returns its rarity fallback for resources and consumables. The pipeline can then publish a balance level for items that the game never computes one for.
   const collect = [
     program,
     `const __recipeLevels = getCompleteGearRecipeLevels();`,
@@ -121,10 +120,11 @@ export function gearBalanceLevels(input: GearBalanceInput): Record<string, GearL
 }
 
 /**
- * Slices the shipped source both entry points run.
+ * Slice the shipped source that both entry points run.
  *
- * Shared rather than duplicated because the two must never diverge: a level read from a different
- * program than the one that rescaled the stats would describe an item the game does not ship.
+ * Share this source instead of duplicating it.
+ * The two paths must not diverge.
+ * A level from another program can describe an item that the game does not ship.
  */
 function buildProgram(input: GearBalanceInput): {
   program: string;
@@ -135,8 +135,7 @@ function buildProgram(input: GearBalanceInput): {
   const gearTiers = declarationByAnchor(source, [...GEAR_TIER_PROBES], "{");
   const rarityMultiplier = functionByAnchor(source, [...RARITY_MULTIPLIER_PROBES]);
 
-  // The soulbound predicate is an arrow function, so it is matched directly rather than through the
-  // declaration or function helpers. Matching it also proves which table it tests membership in.
+  // The soulbound predicate is an arrow function. Match it directly instead of using declaration or function helpers. The match also proves which table it tests.
   const predicate =
     /([A-Za-z_$][\w$]*)\s*=\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*=>\s*Object\.prototype\.hasOwnProperty\.call\(\s*([A-Za-z_$][\w$]*)\s*,\s*\2\s*\)/.exec(
       source,
@@ -147,8 +146,7 @@ function buildProgram(input: GearBalanceInput): {
   }
 
   const program = [
-    // `CLASS_BALANCE_V2_ENABLED` is derived from `window`, which no sandbox provides. Reading the
-    // shipped flag instead keeps the barbarian and nightblade attack budgets matching the game.
+    // `CLASS_BALANCE_V2_ENABLED` comes from `window`, which the sandbox does not provide. Read the shipped flag instead, so barbarian and nightblade attack budgets match the game.
     `const CLASS_BALANCE_V2_ENABLED = ${input.featureFlags.classBalanceV2 !== false};`,
     ...CONSTANTS.map((name) => namedDeclarationSource(source, name)),
     `const ${gearTiers.symbol} = ${gearTiers.text};`,

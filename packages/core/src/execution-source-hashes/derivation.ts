@@ -1,10 +1,8 @@
 /**
  * The reviewed hash of the derivation-executor source closure.
  *
- * Covers `evaluateMechanicDerivation`, its formatter and template helpers, the core composition
- * evaluator, and the gear-balance evaluator. Every published `MechanicDerivation` carries this value,
- * so changing how a shipped function is executed or formatted makes older models ineligible before
- * they can be republished.
+ * It covers `evaluateMechanicDerivation`, its formatter and template helpers, the core composition evaluator, and the gear-balance evaluator.
+ * Every published `MechanicDerivation` carries this value. A change to function execution or formatting makes old models ineligible before republishing.
  */
 export const MECHANIC_DERIVATION_EXECUTOR_SHA256 =
-  "78a3ce686678be8b8bca37c9d8687c8a71cf2f2b19dd1f1e296efadd2ca53967";
+  "cbac375477015c9c7a03d639ffbd0c8b4c8b9514214d225699d9832a7b920f7d";

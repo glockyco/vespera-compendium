@@ -22,9 +22,9 @@ const URLS: Record<string, string> = {
 /**
  * A fake client that replays a navigation.
  *
- * The real capture observes a load rather than querying a finished one, because Chromium evicts response
- * bodies. So the fake must emit `Network.responseReceived` and `Network.loadingFinished` in response to
- * `Page.navigate`, and it refuses a body request for a request it never announced.
+ * The real capture observes a load instead of querying a finished load. Chromium evicts response bodies after load.
+ * The fake emits `Network.responseReceived` and `Network.loadingFinished` after `Page.navigate`.
+ * It refuses a body request for a request that it never announced.
  */
 function fakeClient(mutateIndex = false): CdpClient {
   const responses: CdpNetworkResponse[] = [

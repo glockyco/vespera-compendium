@@ -1,27 +1,30 @@
 /**
  * Immutable command inputs, exclusive leases, and atomic writes.
  *
- * Every approval decision in this repository rests on the claim "these exact bytes". A command that
- * reads its inputs twice cannot make that claim: the game can be updated, the harness can rewrite
- * evidence, and a sibling command can replace a lock between two reads. So each command prepares once,
- * and everything downstream sees only the prepared object.
+ * Each approval decision rests on the claim "these exact bytes".
+ * A command that reads inputs twice cannot make this claim.
+ * The game can update, the harness can rewrite evidence, and another command can replace a lock between reads.
+ * Each command therefore prepares inputs once.
+ * Later steps receive only the prepared object.
  *
- * Three mechanisms do the work.
+ * Three mechanisms provide this behavior.
  *
- * `readStableFile` records the file's identity and size before and after a complete read and refuses
- * anything that moved. Combined with the atomic writer below, a reader observes one whole generation or
- * an error, never a torn file.
+ * `readStableFile` records file identity and size before and after a complete read.
+ * It rejects a file that changes.
+ * With the atomic writer, a reader sees one complete generation or an error.
+ * It never sees a partial file.
  *
- * Directory snapshots are inventoried, copied, and inventoried again, and all three manifests must
- * agree. A command can then publish the snapshot even if the source changes afterward, and the next
- * command notices the new manifest.
+ * Directory snapshots are inventoried, copied, and inventoried again.
+ * All three manifests must agree.
+ * A command can publish the snapshot after the source changes.
+ * The next command then sees the new manifest.
  *
- * Leases are exclusive `mkdir` directories acquired in a fixed rank order, so a compare-then-write gap
- * cannot let an older publication race a newer sync.
+ * Leases are exclusive `mkdir` directories acquired in a fixed rank order.
+ * This prevents an older publication from racing a newer sync during a compare-and-write gap.
  *
- * The prepared types carry private brands and are additionally checked against a module-private
- * `WeakSet`, because a structural cast is exactly the shortcut that would quietly reintroduce all of the
- * above.
+ * Prepared types carry private brands.
+ * A module-private `WeakSet` checks them too.
+ * A structural cast cannot bypass these protections.
  */
 
 import { createHash } from "node:crypto";
@@ -65,9 +68,9 @@ import {
   type SourceApprovalHashes,
 } from "./mechanics-source.ts";
 
-/* stable reads */
+/* Stable reads */
 
-/** Identity of an open file, used to prove nothing swapped underneath a read. */
+/** Identity of an open file. It checks that no process swapped the file during a read. */
 type FileIdentity = { dev: number; ino: number; size: number; mtimeMs: number };
 
 function identityOf(descriptor: number): FileIdentity {
@@ -82,10 +85,10 @@ const sameIdentity = (left: FileIdentity, right: FileIdentity): boolean =>
   left.mtimeMs === right.mtimeMs;
 
 /**
- * Reads a file through one descriptor and proves it did not move.
+ * Read a file through one descriptor and check that it did not move.
  *
- * A short read is treated the same as a swap: both mean the bytes in hand are not a whole generation of
- * anything.
+ * Treat a short read like a swap.
+ * Both mean that the bytes in hand are not one complete generation.
  */
 export function readStableFile(file: string): Uint8Array {
   const descriptor = openSync(file, "r");
@@ -108,17 +111,17 @@ export function readStableFile(file: string): Uint8Array {
   }
 }
 
-/** A file's generation, or the explicit absent marker. Absence is a state, not an error. */
+/** A file generation, or the explicit absent marker. Absence is a state, not an error. */
 export function fileGeneration(file: string): string {
   if (!existsSync(file)) return "ABSENT";
   return sha256Hex(readStableFile(file));
 }
 
 /**
- * Writes through a same-directory temporary file, `fsync`, and rename.
+ * Write through a same-directory temporary file, `fsync`, and rename.
  *
- * The rename is what makes a concurrent reader see either the old file or the new one. Writing in place
- * would let `readStableFile` observe a half-written approval and, worse, let it look valid.
+ * A concurrent reader then sees either the old file or the new file.
+ * In-place writing lets `readStableFile` see a partial approval and mistake it for a valid file.
  */
 export function commitAtomicFile(file: string, bytes: Uint8Array): void {
   const directory = path.dirname(file);
@@ -134,7 +137,7 @@ export function commitAtomicFile(file: string, bytes: Uint8Array): void {
   renameSync(temporary, file);
 }
 
-/* directory snapshots */
+/* Directory snapshots */
 
 export type FileManifestEntry = { path: string; bytes: number; sha256: string };
 export type FileManifest = FileManifestEntry[];
@@ -214,10 +217,11 @@ const LEASE_PATHS: Readonly<Record<LeaseKind, string>> = Object.freeze({
 });
 
 /**
- * Acquires one exclusive lease.
+ * Acquire one exclusive lease.
  *
- * A lease that already exists is never removed automatically: it may belong to a live process, and
- * deleting it would replace a wait with silent corruption. The recovery path is printed instead.
+ * Never remove an existing lease automatically.
+ * A live process can own it, and deleting it replaces a wait with silent corruption.
+ * Print the recovery path instead.
  */
 export function acquireLease(kind: LeaseKind, detail: string): Lease {
   const directory = path.resolve(LEASE_PATHS[kind]);
@@ -262,14 +266,14 @@ export function acquireLease(kind: LeaseKind, detail: string): Lease {
 
 export type LeaseSet = {
   mechanicsSource: Lease;
-  /** Absent for the approval-domain commands, which never consume or update mechanics approval. */
+  /** Absent for approval-domain commands. These commands do not use or update mechanics approval. */
   mechanics: Lease | null;
   siteData: Lease | null;
   assertLive(): void;
   releaseAll(): void;
 };
 
-/** Acquires several leases in rank order, so no caller can invert it by accident. */
+/** Acquire several leases in rank order. No caller can invert the order by accident. */
 export function acquireLeases(kinds: readonly LeaseKind[], detail: string): LeaseSet {
   const ordered = [...new Set(kinds)].sort((left, right) => LEASE_RANK[left] - LEASE_RANK[right]);
   const acquired: Lease[] = [];
@@ -277,8 +281,7 @@ export function acquireLeases(kinds: readonly LeaseKind[], detail: string): Leas
     for (const kind of ordered) acquired.push(acquireLease(kind, detail));
     const find = (kind: LeaseKind): Lease | null => acquired.find((lease) => lease.kind === kind) ?? null;
     const mechanicsSource = find("mechanics-source");
-    // The mechanics-source lease is the global first lock, so every set holds it. The mechanics lease is
-    // optional because the approval-domain commands neither consume nor update mechanics approval.
+    // The mechanics-source lease is the global first lock, so every set holds it. The mechanics lease is optional because approval-domain commands do not use or update mechanics approval.
     if (!mechanicsSource) throw new Error("a lease set must include the mechanics-source lease");
     return {
       mechanicsSource,
@@ -297,7 +300,7 @@ export function acquireLeases(kinds: readonly LeaseKind[], detail: string): Leas
   }
 }
 
-/* prepared inputs */
+/* Prepared inputs */
 
 const preparedMechanicsBrand: unique symbol = Symbol("PreparedMechanicsInputs");
 const preparedPublishedBrand: unique symbol = Symbol("PreparedPublishedInputs");
@@ -375,7 +378,7 @@ export type PreparedMechanicsInputs = {
   dispose(): void;
 };
 
-/** The one-use token the site build passes to its child so a raw environment path cannot de-taint. */
+/** The one-use token that the site build passes to its child. It prevents a raw environment path from bypassing preparation. */
 export type PublishedSnapshotCapability = {
   buildToken: string;
   manifestSha256: string;
@@ -483,11 +486,11 @@ function workspaceSourceSnapshot(workspaceRoot: string): Snapshot {
 }
 
 /**
- * Chooses which build's evidence a command may read.
+ * Choose the build whose evidence a command can read.
  *
- * In read-only check mode a missing Steam manifest is not fatal: if the extracted bytes exactly match a
- * valid lock, the locked build id names the right report. The caller announces that fallback rather than
- * presenting it as knowledge of the current installation.
+ * In read-only check mode, a missing Steam manifest is not fatal.
+ * If extracted bytes match a valid lock, the locked build id names the correct report.
+ * The caller announces this fallback instead of claiming knowledge of the current installation.
  */
 function resolveBuildForEvidence(
   mode: PrepareMode,
@@ -546,11 +549,12 @@ function assertSourceApprovalAgrees(
 }
 
 /**
- * Prepares every protected input a source-domain command may read.
+ * Prepare every protected input that a source-domain command can read.
  *
- * Absence is never an error here. A missing lock is `UNAPPROVED` and a missing or malformed report is
- * `BUILD_UNVERIFIED`, because turning either into a tool failure would make the first run of a new build
- * indistinguishable from a broken installation.
+ * Absence is not an error here.
+ * A missing lock is `UNAPPROVED`.
+ * A missing or malformed report is `BUILD_UNVERIFIED`.
+ * Turning either state into a tool error can make a new build look like a broken installation.
  */
 export function prepareMechanicsInputs(
   extractedDir: string,
@@ -639,9 +643,7 @@ export function prepareMechanicsInputs(
       paths,
       assertPreparedBuildCurrent(): void {
         if (resolved.usedLockFallback) {
-          // Steam was unavailable at preparation, so the only claim available is that the approved
-          // extracted bytes have not moved. Requiring Steam to reappear would fail a legitimate
-          // read-only check for a reason that has nothing to do with the data.
+          // Steam was unavailable during preparation. The only claim is that the approved extracted bytes have not moved. Requiring Steam to return can fail a valid read-only check for an unrelated reason.
           if (!sameBundleIdentities(readBundleRoles(extracted.path).fingerprints, roles.fingerprints)) {
             throw new Error("BUILD_ADVANCED: the prepared extracted bytes changed");
           }
@@ -666,7 +668,7 @@ export function prepareMechanicsInputs(
   }
 }
 
-/* emitted artifacts */
+/* Emitted artifacts */
 
 function randomBuildToken(): string {
   return createHash("sha256").update(`${process.pid}:${Date.now()}:${Math.random()}`).digest("hex");
@@ -688,10 +690,10 @@ type FinalizeInput = {
 };
 
 /**
- * The mechanics lease an emitted-artifact caller must already hold.
+ * The mechanics lease that an emitted-artifact caller must already hold.
  *
- * Verifying or replacing published data reads the mechanics approval, so a caller that did not take that
- * lease could be verifying against an approval another process is mid-way through replacing.
+ * Checking or replacing published data reads mechanics approval.
+ * Without this lease, a caller can read approval while another process replaces it.
  */
 function mechanicsLeaseGeneration(leases: LeaseSet): string {
   if (!leases.mechanics) {
@@ -741,13 +743,13 @@ function finalizePublishedInputs(input: FinalizeInput): PreparedPublishedInputs 
 }
 
 /**
- * Snapshots an emitted publication tree for read-only verification.
+ * Snapshot an emitted publication tree for read-only checking.
  *
- * The verifier never reopens source data, the lock, the fixture, or the source approval. Everything it
- * compares comes from this one coherent snapshot, so a tree that changed after publication cannot be
- * verified as though it were the tree that was approved. It acquires no lease of its own: the caller
- * already holds them, and reacquiring an exclusive directory lock inside nested verification would
- * deadlock against the caller.
+ * The checker does not reopen source data, the lock, the fixture, or source approval.
+ * It compares data from one coherent snapshot.
+ * A changed tree cannot then appear to match the approved tree.
+ * It acquires no lease because the caller already holds the leases.
+ * Reacquiring an exclusive lock during nested checking causes a deadlock.
  */
 export function snapshotPublishedInputs(
   dataDir: string,
@@ -788,10 +790,10 @@ export function snapshotPublishedInputs(
 }
 
 /**
- * The same branded value for a staging tree the publisher is about to swap into place.
+ * The same branded value for a staging tree that the publisher will swap into place.
  *
- * Publication already holds coherent lock, fixture, and approval bytes from its own preparation, so it
- * passes them in rather than reading them a second time.
+ * Publication already holds coherent lock, fixture, and approval bytes from preparation.
+ * It passes those bytes here instead of reading them again.
  */
 export function prepareStagedPublishedInputs(
   stagingDir: string,
@@ -805,7 +807,7 @@ export function prepareStagedPublishedInputs(
   const manifestBytes = readStableFile(path.join(stagingDir, "index.json"));
   return finalizePublishedInputs({
     snapshotPath: path.resolve(stagingDir),
-    // The staging tree belongs to the publisher, which renames or removes it itself.
+    // The publisher owns the staging tree and renames or removes it.
     dispose: () => undefined,
     manifestBytesBefore: manifestBytes,
     manifestBytesStaged: manifestBytes,
@@ -820,7 +822,7 @@ export function prepareStagedPublishedInputs(
   });
 }
 
-/* review artifacts */
+/* Review artifacts */
 
 export type PreparedReviewInputs = {
   readonly reviewBytes: Uint8Array;
@@ -835,9 +837,9 @@ export type PreparedReviewInputs = {
 /**
  * Artifact-only inputs for inspection.
  *
- * "Artifact-only" means it never opens an extracted bundle or a runtime report, not that it skips
- * inspector trust: the current inspector closure is computed and compared with the approved value before
- * an attestation may be written.
+ * "Artifact-only" means that this code never opens an extracted bundle or runtime report.
+ * It still checks inspector trust.
+ * The current inspector closure is computed and compared with the approved value before an attestation is written.
  */
 export function prepareReviewInputs(
   reviewPath: string,
@@ -866,9 +868,10 @@ export type SequenceGateInputBase = {
   /**
    * A caller-owned copy of the prepared extracted tree.
    *
-   * The gate spawns real production commands, and publication reads the whole art tree rather than the three
-   * bundle roles, so handing over only the role bytes would make the gate exercise a directory the real
-   * commands never see. The caller removes this directory in its own `finally`.
+   * The gate starts real production commands.
+   * Publication reads the whole art tree, not only the three bundle roles.
+   * Passing only role bytes tests a directory that real commands never see.
+   * The caller removes this directory in its own `finally` block.
    */
   extractedTreePath: string;
   bundleRoles: Record<BundleRole, { filename: string; bytes: Uint8Array }>;
@@ -890,8 +893,9 @@ const SEQUENCE_GATE_ROOTS = [
 /**
  * The gate's only legitimate input source.
  *
- * The gate spawns real production commands, so it must not open caller-supplied protected paths itself:
- * that would make the gate the one path in the repository which bypasses the rule it exists to test.
+ * The gate starts real production commands.
+ * It must not open caller-supplied protected paths.
+ * Otherwise the gate bypasses the rule that it tests.
  */
 export function sequenceGateInputBase(
   extractedDir: string,
@@ -965,7 +969,7 @@ export type PreparedMechanicsSourceReviewInputs = {
     probeExecutor: string;
     runtime: string;
   };
-  /** Rechecks everything that could have moved while the lease was being taken. */
+  /** Rechecks everything that can have moved while the lease was being taken. */
   assertUnchanged(): void;
   dispose(): void;
 };
@@ -973,11 +977,12 @@ export type PreparedMechanicsSourceReviewInputs = {
 /**
  * The single approval-domain preparation.
  *
- * Every command that reads or writes the source approval goes through here. It snapshots the old approval,
- * the review artifacts, and the attestation with stable reads, inventories every closure source before and
- * after the candidates are computed, and records the constant values it saw. `assertUnchanged` is called
- * again while the exclusive lease is held, so a concurrent edit between preparation and commit aborts
- * instead of being approved.
+ * Every command that reads or writes source approval uses this function.
+ * It snapshots the old approval, review artifacts, and attestation with stable reads.
+ * It inventories each closure source before and after candidate computation.
+ * It records the constant values that it read.
+ * `assertUnchanged` runs again while the exclusive lease is held.
+ * A concurrent edit then aborts instead of receiving approval.
  */
 export function prepareMechanicsSourceReviewInputs(input: {
   workspaceRoot: string;

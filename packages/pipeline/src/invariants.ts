@@ -10,9 +10,11 @@ import { CURRENCY_ITEM_IDS, LEVEL_SOURCES, type Dataset, type Row } from "./proj
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 /**
- * Guards that must hold before anything is written. They exist because a published dataset is read
- * by people who cannot check it against the game: a dangling item id or a silently dropped column
- * looks exactly like real data. A failure here writes nothing rather than shipping a broken file.
+ * Guards that must hold before any write.
+ *
+ * People read the published dataset without checking it against the game.
+ * A dangling item id or dropped column can look like real data.
+ * A failure here writes nothing and prevents a broken file from shipping.
  */
 
 export type InvariantResult = { id: string; status: "PASS" | "FAIL"; detail: string };
@@ -209,11 +211,12 @@ export function checkInvariants(
 }
 
 /**
- * Item level and its provenance stay in step.
+ * Item level and provenance stay in step.
  *
- * A level with no stated source, or a source claiming a level that is absent, is the failure mode
- * that matters here: a reader cannot tell a gear tier from a gathering requirement by looking, so
- * the pair has to be trustworthy or the number is worse than no number at all.
+ * A level without a stated source is a failure.
+ * A source that claims an absent level is also a failure.
+ * A reader cannot tell a gear tier from a gathering requirement by sight.
+ * The pair must be trustworthy. An untrustworthy number is worse than no number.
  */
 function checkLevels(dataset: Dataset): InvariantResult {
   const allowed = new Set<string>(LEVEL_SOURCES);
@@ -329,8 +332,7 @@ function checkReferences(dataset: Dataset): InvariantResult {
     }
   }
 
-  // Enemy drop tables name a currency alongside real items, so that one id is allowed here and
-  // nowhere else. item_sources deliberately excludes it so its item_id stays a real foreign key.
+  // Enemy drop tables name a currency with real items. Allow that one id here and nowhere else. item_sources excludes it, so its item_id remains a real foreign key.
   const itemIds = idsOf("items");
   for (const row of dataset.enemy_drops ?? []) {
     const value = String(row.item_id ?? "");

@@ -1,13 +1,11 @@
 /**
- * Names the records the live game has and the composed dataset does not.
+ * Names the records that the live game has and the composed dataset does not.
  *
- * `parity.probe` reports only a count mismatch, which says a gap exists but never which rows are in
- * it. This launches the same isolated harness session, reads the identified runtime tables by their
- * exported alias, and diffs the id sets against the composed tables so the missing rows can be
- * traced back to whichever pass drops them.
+ * `parity.probe` reports only a count mismatch. It shows that a gap exists, but not which rows are in it.
+ * This tool runs the same isolated harness session, reads the identified runtime tables by exported alias, and compares the ID sets.
+ * The missing rows then trace to the pass that drops them.
  *
- * Read-only and self-contained: it takes the harness's own launch and identification, and tears the
- * session down in a finally.
+ * This tool only reads data and does not depend on external state. It uses the harness run and identification, then stops the session in a finally block.
  */
 
 import { resolveBundles } from "../packages/core/src/index.ts";
@@ -15,7 +13,7 @@ import { composeAll } from "../packages/pipeline/src/compose.ts";
 import { identifyTables } from "../packages/harness/src/identify.ts";
 import { launchGame } from "../packages/harness/src/launch.ts";
 
-/** Composed tables store rows either as an array or keyed by id. */
+/** Composed tables store rows as an array or as keys in an object. */
 function ids(value) {
   const list = Array.isArray(value) ? value : Object.values(value ?? {});
   return new Set(
@@ -44,8 +42,7 @@ try {
       continue;
     }
 
-    // The alias is the bundle-local export name identification resolved, so the live rows are
-    // reachable by re-importing the module namespace and reading that key back.
+    // Identification resolved the bundle-local alias. Re-import the module namespace and read that key to reach the live rows.
     const moduleUrl = JSON.stringify(`./assets/${bundles.index}`);
     const liveIds = await session.client.evaluate(
       `(async () => {

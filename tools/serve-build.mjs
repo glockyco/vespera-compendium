@@ -1,10 +1,10 @@
 /**
- * Serves the prerendered site the way the CDN does, for measuring what a visitor actually pays.
+ * Serves the prerendered site like the CDN and measures what a visitor receives.
  *
- * The dev server is not a usable yardstick here: it ships unminified modules and an HMR client, so
- * a page reads several times heavier than the build that deploys. Cloudflare compresses text
- * responses, so this does too; without that, a prerendered HTML page of nine hundred cards looks
- * twenty times worse than it is on the wire.
+ * The dev server is not a useful measure. It sends unminified modules and an HMR client.
+ * A page then reads several times more data than the deployed build.
+ * Cloudflare compresses text responses, so this server does too.
+ * Without compression, a prerendered page with 900 cards looks 20 times worse than it is on the network.
  *
  * Usage: bun tools/serve-build.mjs [port] [dir]
  */
@@ -29,7 +29,7 @@ const TYPES = {
   ".woff2": "font/woff2",
 };
 
-/** Already-compressed formats gain nothing from a second pass and cost CPU to re-encode. */
+/** Already-compressed formats gain no benefit from a second pass and cost CPU to re-encode. */
 const COMPRESSIBLE = new Set([".html", ".js", ".css", ".json", ".csv", ".svg"]);
 
 function resolveFile(pathname) {

@@ -1,15 +1,15 @@
 /**
  * The external-leaf coverage aggregate.
  *
- * Source hashing stops at declared platform leaves, and each leaf names an executable test. That
- * assignment is checked before source approval, but assignment is not execution: a leaf can be listed,
- * assigned, and still never run. This aggregate is what binds the two, and it must be present and current
- * before mechanics review, sync, or publication may proceed.
+ * Source hashing stops at declared platform leaves. Each leaf names an executable test.
+ * The assignment is checked before source approval, but assignment is not execution.
+ * A leaf can be listed and assigned without running.
+ * This aggregate links assignment to execution. It must be present and current before review, sync, or publication.
  *
- * Coverage arrives from two suites that cannot run in one process. Node and Bun primitives are exercised
- * by a byte-vector command; WebSocket and CDP operations are exercised by the harness, because only a real
- * browser can demonstrate them. Neither is complete alone, so the aggregate requires both and pins the
- * exact bytes of each input.
+ * Two suites provide the coverage. They cannot run in one process.
+ * A byte-vector command exercises Node and Bun primitives.
+ * The harness exercises WebSocket and CDP operations because only a real browser can demonstrate them.
+ * Neither suite is complete alone. The aggregate requires both and stores each input's exact bytes.
  */
 
 import path from "node:path";
@@ -31,7 +31,7 @@ export type NodeCoverageArtifact = {
   passed: string[];
   skipped: string[];
   failed: string[];
-  /** Harness-owned ids, reported as absent rather than skipped: this suite cannot run them at all. */
+  /** Harness-owned ids are absent, not skipped. This suite cannot run them. */
   absent: string[];
   mechanicsSourceApprovalSha256: string;
   runtimeVersions: { bun: string; node: string };
@@ -57,11 +57,12 @@ function asRecord(value: unknown, detail: string): Record<string, unknown> {
 }
 
 /**
- * Reads the node suite's outcome arrays into coverage rows.
+ * Read the node suite outcome arrays into coverage rows.
  *
- * The suite reports `passed`, `failed`, `skipped`, and `absent` rather than one array, because "absent" is a
- * real and different state: a harness-owned id is not something this suite skipped, it is something this
- * suite cannot run. Absent ids are dropped here and must arrive from the harness instead.
+ * The suite reports `passed`, `failed`, `skipped`, and `absent` in separate arrays.
+ * "Absent" is a real state with a different meaning.
+ * A harness-owned id is not skipped by this suite. This suite cannot run it.
+ * Drop absent ids here. The harness must provide them.
  */
 function parseNodeOutcome(record: Record<string, unknown>): CoverageRow[] {
   const read = (key: "passed" | "skipped" | "failed"): string[] => {
@@ -93,11 +94,11 @@ function parseCoverage(value: unknown, detail: string): CoverageRow[] {
 }
 
 /**
- * Merges the two coverage inputs and requires the exact assigned ID set, all passing.
+ * Merge the two coverage inputs and require the exact assigned ID set with every id passing.
  *
- * The sole writer of the aggregate. It pins the exact bytes of both inputs, so replacing a report after
- * approval is detectable, and it rejects a skipped row: a skip is honest reporting from a suite, but it is
- * not coverage.
+ * This function is the only aggregate writer.
+ * It stores the exact bytes of both inputs, so replacement after approval is detectable.
+ * It rejects a skipped row. A skip is honest suite reporting, but it is not coverage.
  */
 export function verifyExternalLeafEvidence(input: {
   nodeBytes: Uint8Array;
@@ -132,8 +133,7 @@ export function verifyExternalLeafEvidence(input: {
     [harnessCoverage, "harness"],
   ] as const) {
     for (const row of rows) {
-      // A suite reporting an id it does not own would let one runtime vouch for a capability it never
-      // exercised, which is exactly what splitting the aggregate in two exists to prevent.
+      // A suite that reports an unowned id can claim a capability that it did not exercise. Splitting the aggregate prevents this error.
       if (externalLeafSuite(row.id) !== suiteName) {
         throw new Error(`coverage id ${row.id} was reported by the ${suiteName} suite, which does not own it`);
       }
@@ -199,7 +199,7 @@ export function verifyExternalLeafEvidence(input: {
   return approval;
 }
 
-/** Parses and self-verifies the aggregate. */
+/** Parse and check the aggregate. */
 export function parseExternalLeafApproval(bytes: Uint8Array): ExternalLeafApproval {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   const record = asRecord(parsed, "the external leaf approval");
@@ -214,9 +214,10 @@ export function parseExternalLeafApproval(bytes: Uint8Array): ExternalLeafApprov
 }
 
 /**
- * Where the aggregate lives for one build.
+ * Store the aggregate for one build.
  *
- * Beside the runtime report it binds, because the two are only meaningful together.
+ * Store it beside the runtime report that it binds.
+ * The two files are meaningful only together.
  */
 export function externalLeafApprovalPath(evidenceRoot: string, buildId: string): string {
   return path.join(evidenceRoot, buildId, "external-leaves-approved.json");

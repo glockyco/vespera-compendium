@@ -1,24 +1,22 @@
 /**
- * Turns a Discord capture into a ranked list of question shapes, and applies the promotion rules
- * that decide which of them earn a surface on the compendium.
+ * Turns a Discord capture into ranked question shapes and applies the promotion rules.
  *
- * The split of work here is deliberate. Everything mechanical — windowing, candidate detection,
- * counting, share arithmetic, the promotion cutoff — lives in this file so the result is
- * reproducible and can be re-derived from the capture at any time. The one judgement call, deciding
- * which shape a given message belongs to, is supplied from outside as a labels file, so a reader can
- * audit both halves separately: the labels for accuracy, this file for arithmetic.
+ * This file performs all mechanical work: windowing, candidate detection, counting, share arithmetic, and the promotion cutoff.
+ * The result is reproducible and can be derived again from the capture.
+ * A labels file supplies the only judgment call: the shape for each message.
+ * A reader can examine the labels for accuracy and this file for arithmetic.
  *
- * Nothing here reads or emits a display name, and no output quotes a message verbatim. Examples in
- * the findings are paraphrases written by the caller.
+ * This tool does not read or show display names. It does not quote messages. The caller writes paraphrases in the findings.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 /**
- * The taxonomy. `answerable` means the published dataset can answer the shape as it stands;
- * `buildable: false` marks a shape whose subject the pipeline does not model at all, which the
- * promotion rules exclude from the denominator rather than letting it absorb share.
+ * The taxonomy defines each question shape.
+ * `answerable` means that the published dataset can answer the shape as it stands.
+ * `buildable: false` marks a subject that the pipeline does not model.
+ * Promotion rules exclude that shape from the denominator. It does not absorb share.
  */
 export const SHAPES = {
   acquisition: {
@@ -90,7 +88,7 @@ export const SHAPES = {
   },
 };
 
-/** Loads every captured channel, keeping human prose inside the analysis window. */
+/** Loads every captured channel and keeps human prose inside the analysis window. */
 export function loadCorpus(dir, { sinceIso }) {
   const start = Date.parse(sinceIso);
   const messages = [];
@@ -109,7 +107,7 @@ export function loadCorpus(dir, { sinceIso }) {
     });
     for (const message of record.messages) {
       if (message.bot) continue;
-      // 0 is a plain message and 19 a reply; joins, boosts and pins carry no prose.
+      // 0 is a plain message and 19 is a reply. Joins, boosts, and pins carry no prose.
       if (message.type !== 0 && message.type !== 19) continue;
       if (Date.parse(message.ts) < start) continue;
       const text = (message.content ?? "").trim();
@@ -128,9 +126,10 @@ export function loadCorpus(dir, { sinceIso }) {
 }
 
 /**
- * Messages that read as a question: punctuated as one, or opening with an interrogative. Cast wide
- * on purpose — the classifier below has a `social` bucket, so over-collecting here costs a label
- * rather than skewing a share, while under-collecting would silently drop real demand.
+ * Selects messages that read as questions.
+ * A message qualifies when it has a question mark or starts with an interrogative.
+ * The selector accepts extra messages because the classifier has a `social` bucket.
+ * Extra messages cost a label. Missing messages silently remove real demand.
  */
 const OPENER =
   /^(how|where|what|which|when|why|who|can|could|do|does|did|is|are|am|should|would|will|any(one|body|way)?|has|have|whats|wheres|hows|need help|help)\b/i;
@@ -142,10 +141,9 @@ export function questionCandidates(messages) {
 /**
  * Counts labels into ranked shapes.
  *
- * Two denominators matter and both are reported. `classified` is every candidate that named a real
- * question about the game, which is what a share is quoted against. `addressable` removes the
- * shapes whose subject the pipeline does not model, because a system with no data cannot be built
- * and must not absorb share that would otherwise promote a shape that can.
+ * The tool reports two denominators. `classified` contains every candidate that names a real game question.
+ * A share uses this denominator. `addressable` removes subjects that the pipeline does not model.
+ * A system with no data cannot be built. It must not absorb share that promotes a buildable shape.
  */
 export function aggregate(candidates, labels) {
   const counts = new Map();
@@ -191,9 +189,9 @@ export function aggregate(candidates, labels) {
 /**
  * Applies the plan's promotion rules.
  *
- * Rule 1: rank answerable shapes by share and promote in descending order until the promoted set
- * covers more than half of the addressable volume. Rule 2: if that takes more than eight shapes
- * there is no dominant question, and cards are the wrong device entirely.
+ * Rule 1 ranks answerable shapes by share and promotes them in descending order.
+ * It stops when the promoted set covers more than half of the addressable volume.
+ * Rule 2 applies when this takes more than eight shapes. No dominant question exists, so cards are the wrong device.
  */
 export function promote(ranked, totals) {
   const eligible = ranked.filter((shape) => shape.answerable && shape.buildable);
@@ -217,14 +215,14 @@ export function promote(ranked, totals) {
     steps,
     covered,
     coveredShare: covered / totals.addressable,
-    // Rule 2 fires when no set of eight or fewer answerable shapes reaches half the volume.
+    // Rule 2 fires when eight or fewer answerable shapes do not reach half the volume.
     ruleTwoFired: !dominant,
   };
 }
 
 const percent = (value) => `${(value * 100).toFixed(1)}%`;
 
-/** The findings document: ranked shapes, the arithmetic, and what it decides. */
+/** The findings document contains ranked shapes, the arithmetic, and the decision. */
 export function renderFindings({ ranked, totals, promotion, window, channels, paraphrases }) {
   const lines = [];
   lines.push("# Vespera Discord — question shapes");
@@ -305,7 +303,7 @@ export function renderFindings({ ranked, totals, promotion, window, channels, pa
   return `${lines.join("\n")}\n`;
 }
 
-/** The capture document: what was collected, from where, and how completely. */
+/** The capture document describes what the tool collected, where, and how completely. */
 export function renderCapture({ channels, window, totals }) {
   const lines = [];
   lines.push("# Vespera Discord — raw capture");

@@ -1,18 +1,19 @@
 /**
- * The mechanics approval lock: what a human reviewed, and whether it still applies.
+ * The mechanics approval lock records what a person reviewed and whether it still applies.
  *
- * The lock answers one question per document: are the source bytes, the rendered model, the bundle
- * identities, and the live evidence still the ones that were approved. It is not a cache. Publication
- * always re-extracts, and the lock's embedded model exists only so a reviewer can see what changed.
+ * For each document, the lock checks source bytes, shown model, bundle identities, and live evidence.
+ * The lock is not a cache.
+ * Publication always extracts again.
+ * The embedded model only shows a reviewer what changed.
  *
- * Two decisions shape everything here.
+ * Two decisions shape this design.
  *
- * A source change fails even when the rendered text is identical. The extractor can miss a semantic
- * effect, so "the page looks the same" is not evidence that the explanation is still true.
+ * A source change fails even when shown text stays identical.
+ * The extractor can miss a semantic effect, so equal page text does not show that the explanation remains true.
  *
- * The lock approves one complete evidence object rather than a per-document slice. A changed runtime
- * hash or a changed normalized result therefore invalidates every document, because the report they all
- * rest on is no longer the report that was approved.
+ * The lock approves one complete evidence object, not a document slice.
+ * A changed runtime hash or normalized result invalidates every document.
+ * Their shared report is no longer the approved report.
  */
 
 import {
@@ -62,7 +63,7 @@ import {
 } from "./mechanics-artifacts.ts";
 import type { PreparedMechanicsInputs } from "./inputs.ts";
 
-/* lock shape */
+/* Lock shape */
 
 export type LockedBundle = { filename: string; bytes: number; sha256: string };
 
@@ -102,12 +103,12 @@ function asRecord(value: unknown, detail: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-/** The canonical hash of one locked model, over the complete reviewed projection. */
+/** The canonical hash of one locked model over the complete reviewed projection. */
 export function lockedModelSha256(model: MechanicLockedModel): string {
   return canonicalSha256(model as unknown as CanonicalJson);
 }
 
-/** Canonical bytes of the lock, so writer and reader agree byte for byte. */
+/** Canonical lock bytes. Writer and reader then use the same bytes. */
 export function serializeMechanicsLock(lock: MechanicsLock): Uint8Array {
   return new TextEncoder().encode(`${canonicalJson(lock as unknown as CanonicalJson)}\n`);
 }
@@ -115,11 +116,12 @@ export function serializeMechanicsLock(lock: MechanicsLock): Uint8Array {
 export class LockCorruptError extends Error {}
 
 /**
- * Parses the lock and re-derives everything it claims about itself.
+ * Parse the lock and recompute every value that it claims about itself.
  *
- * Every embedded model hash is recomputed, and every `verifiedProbes` array must equal the model's own
- * exact required union. A lock that disagrees with itself is corruption, not disapproval: it fails before
- * status comparison and prints the concrete inconsistency.
+ * Recompute every embedded model hash.
+ * Each `verifiedProbes` array must equal the model's exact required union.
+ * A lock that disagrees with itself is corruption, not disapproval.
+ * Reject it before status comparison and print the concrete inconsistency.
  */
 export function parseMechanicsLock(bytes: Uint8Array): MechanicsLock {
   let parsed: unknown;
@@ -198,7 +200,7 @@ const probeKey = (refs: readonly MechanicProbeRef[]): string =>
     .sort()
     .join("|");
 
-/* evidence normalization */
+/* Evidence normalization */
 
 export type EvidenceStatus = "VERIFIED" | "MISSING" | "MALFORMED" | "BUILD_MISMATCH" | "BUILD_UNRESOLVED";
 
@@ -218,11 +220,11 @@ export type NormalizedEvidence = {
 const RFC3339_UTC_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 /**
- * Normalizes one evidence report into the semantic projection the lock approves.
+ * Normalize one evidence report into the semantic projection that the lock approves.
  *
- * Resource URLs are replaced by canonical binding tokens before hashing, so a build that renames a bundle
- * without changing its bytes keeps its approval, while any change to a byte identity, a probe case, or an
- * observation invalidates it.
+ * Replace resource URLs with canonical binding tokens before hashing.
+ * A build can then rename a bundle without changing its approval when its bytes stay the same.
+ * A byte identity, probe case, or observation change still invalidates the approval.
  */
 export function normalizeEvidence(
   bytes: Uint8Array | null,
@@ -288,7 +290,7 @@ export function normalizeEvidence(
 
   let canonical: CanonicalJson;
   try {
-    // The projection itself validates the bundle identity shape and refuses a null runtime side.
+    // The projection checks the bundle identity shape and rejects a null runtime side.
     canonical = normalizeRuntimeEvidenceForApproval(
       report as unknown as Parameters<typeof normalizeRuntimeEvidenceForApproval>[0],
       normalizedResults,
@@ -338,8 +340,7 @@ function normalizeResults(results: readonly unknown[]): NormalizedProbeResult[] 
     if (status !== "PASS" && status !== "FAIL" && status !== "SKIPPED" && status !== "UNRESOLVED") {
       throw new Error(`probe ${suite}/${id} has the unknown status ${String(status)}`);
     }
-    // A missing category normalizes to null on both sides of every tuple comparison, so a copy change
-    // cannot weaken an obligation by dropping the field.
+    // A missing category becomes null on both sides of each tuple comparison. A copy change cannot weaken an obligation by dropping the field.
     const category = typeof result.category === "string" ? result.category : null;
     const contract = probeContract(suite, id);
     const cases = normalizeCases(result.cases);
@@ -377,11 +378,11 @@ function isBundleRole(value: unknown): value is BundleRole {
 }
 
 /**
- * The canonical stand-in for whichever response produced the invoked function.
+ * The canonical stand-in for the response that produced the invoked function.
  *
- * A clean session's binding is its semantic role. The instrumented Defense session's binding names the
- * suffix and the served bytes instead, so the approval records that the corroboration ran against
- * modified source rather than pretending it did not.
+ * A clean session uses its semantic role as the binding.
+ * The instrumented Defense session uses the suffix and served bytes.
+ * Approval then records modified source instead of hiding the modification.
  */
 function canonicalBinding(result: Record<string, unknown>, fallbackRole: BundleRole | null): string | null {
   if (typeof result.servedResourceSha256 === "string" && typeof result.bridgeSuffixSha256 === "string") {
@@ -411,11 +412,11 @@ function normalizeCases(value: unknown): NormalizedProbeCase[] {
 }
 
 /**
- * The exact PASS set one model's obligations resolve to.
+ * The exact PASS set that one model's obligations resolve to.
  *
- * A tuple must appear exactly once with `PASS`, and its cases must deep-match the reviewed contract. One
- * passing execution can satisfy several claim bindings inside the same contract hash, which is why the
- * union deduplicates the execution tuple rather than the claim.
+ * Each tuple must occur once with `PASS`, and its cases must match the reviewed contract deeply.
+ * One passing execution can satisfy several claim bindings in one contract hash.
+ * The union therefore removes duplicate execution tuples, not claims.
  */
 export function verifiedProbesFor(
   model: MechanicLockedModel,
@@ -455,9 +456,9 @@ function sameCaseGrid(
   return true;
 }
 
-/* approval preimage */
+/* Approval preimage */
 
-/** The canonical `approval` object the published artifact carries and the site rechecks. */
+/** The canonical `approval` object that the published artifact carries and the site checks again. */
 export function canonicalMechanicsApproval(
   lock: MechanicsLock,
   publicContracts: readonly PublicProbeContract[],
@@ -488,7 +489,7 @@ export function canonicalMechanicsApproval(
   });
 }
 
-/** The published `approvalSha256`, recomputed by the producer, the verifier, and the browser. */
+/** The published `approvalSha256`, recomputed by the producer, checker, and browser. */
 export function mechanicsApprovalSha256(
   lock: MechanicsLock,
   publicContracts: readonly PublicProbeContract[],
@@ -496,12 +497,12 @@ export function mechanicsApprovalSha256(
   return canonicalSha256(canonicalMechanicsApproval(lock, publicContracts));
 }
 
-/** Every contract the site is allowed to see, in registry order. */
+/** Every contract that the site can see, in registry order. */
 export function publicProbeContracts(): PublicProbeContract[] {
   return MECHANIC_PROBE_CONTRACTS.map(publicProbeContract);
 }
 
-/* check */
+/* Check */
 
 export type MechanicStatus =
   | "PASS"
@@ -533,11 +534,11 @@ function worst(findings: { status: MechanicStatus; detail: string }[]): { status
 }
 
 /**
- * One status per document, each carrying only its highest-priority finding.
+ * One status per document with only its highest-priority finding.
  *
- * The precedence is fixed and deliberately puts source and model changes above build state: a reviewer
- * needs to know that the explanation moved before being told that the evidence is stale, because the
- * second is a consequence of the first.
+ * Source and model changes have higher priority than build state.
+ * A reviewer must know that the explanation changed before seeing that evidence is stale.
+ * Stale evidence is a consequence of the source or model change.
  */
 export function checkMechanics(prepared: PreparedMechanicsInputs): MechanicCheck[] {
   const findings = new Map<MechanicDocumentId, { status: MechanicStatus; detail: string }[]>();
@@ -600,9 +601,8 @@ export function checkMechanics(prepared: PreparedMechanicsInputs): MechanicCheck
       for (const target of fresh.sourceTargets) {
         const approved = lockedTargets.get(target.id);
         if (!approved) continue;
-        // Canonical comparison, not `JSON.stringify`: a locator parsed from the lock carries sorted keys
-        // while a freshly built one carries declaration order, and treating that as a change would skip
-        // the byte comparison this branch exists to perform.
+        // Compare canonical data, not `JSON.stringify`. The lock has sorted keys, while a new locator has declaration order.
+        // Treating this order difference as a change skips the byte comparison.
         if (canonicalJson(approved.locator as unknown as CanonicalJson) !== canonicalJson(target.locator as unknown as CanonicalJson)) continue;
         if (approved.sha256 !== target.sha256) changed.push(target.id);
       }
@@ -679,7 +679,7 @@ export function checkMechanics(prepared: PreparedMechanicsInputs): MechanicCheck
   });
 }
 
-/** A field-level description of why two models differ, so a reviewer is not handed two hashes. */
+/** A field-level description of why two models differ, not only two hashes. */
 export function describeModelDifference(approved: MechanicLockedModel, candidate: MechanicLockedModel): string {
   const differences: string[] = [];
   const approvedTexts = new Map(documentTexts(approved).map((text) => [text.id, text]));
@@ -733,12 +733,12 @@ export type { MechanicText };
 /* review artifact construction */
 
 /**
- * Builds the bounded review artifact.
+ * Build the bounded review artifact.
  *
- * It carries every displayed claim, its provenance, its obligations, its resolved targets, and the exact
- * canonical bytes of every target and closure node. The diagnostic path manifest and the artifact's own
- * hash stay outside the preimage, so a filename-only relocation with identical role bytes is invisible to
- * review — which is the point: it changes nothing a reviewer could have an opinion about.
+ * It carries every shown claim, provenance, obligation, resolved target, and target or closure byte.
+ * The diagnostic path manifest and artifact hash stay outside the preimage.
+ * A filename-only relocation with identical role bytes is invisible to review.
+ * This is correct because it changes nothing that a reviewer can assess.
  */
 export function buildMechanicsReviewArtifact(input: {
   prepared: PreparedMechanicsInputs;
@@ -867,13 +867,13 @@ export function buildMechanicsReviewArtifact(input: {
 }
 
 /**
- * Reruns every locator, slice, closure, derivation, formatter, and map through the production APIs and
- * compares the result with the review artifact and the reviewed fixture.
+ * Rerun every locator, slice, closure, derivation, formatter, and map through production APIs.
+ * Compare the result with the review artifact and reviewed fixture.
  *
- * This is the automated provenance gate: it proves byte binding, repeatability, and agreement between the
- * code and a separately reviewed contract. It does not claim an independent second implementation, and it
- * cannot rule out a defect shared by the contract and the extractor — manual inspection remains the
- * semantic review.
+ * This automated provenance gate checks byte binding, repeatability, and contract agreement.
+ * It does not claim a separate implementation.
+ * It cannot rule out a defect shared by contract and extractor.
+ * Manual inspection remains the semantic review.
  */
 export function validateMechanicsProof(input: {
   prepared: PreparedMechanicsInputs;
@@ -932,17 +932,18 @@ export function validateMechanicsProof(input: {
 }
 
 
-/* sync */
+/* Sync */
 
 export type SyncOutcome = { lock: MechanicsLock; bytes: Uint8Array; reviewSha256: string };
 
 /**
- * Replaces the lock after a reviewed change, or refreshes it for an exact-equivalent input.
+ * Replace the lock after a reviewed change, or refresh it for exact-equivalent input.
  *
- * Two exceptions may sync without a review hash, and both require everything a reviewer would have looked
- * at to be byte-identical: a new build whose semantic inputs are unchanged, and a regenerated report whose
- * normalized results are unchanged. Anything else needs `--reviewed`, and the argument must equal the
- * hash of the artifact reconstructed from the caller's own prepared inputs.
+ * Two exact-equivalent cases need no review hash.
+ * A new build keeps the same semantic inputs.
+ * A regenerated report keeps the same normalized results.
+ * Any other change needs `--reviewed`.
+ * The argument must equal the artifact hash rebuilt from the caller's prepared inputs.
  */
 export function syncMechanicsLock(input: {
   prepared: PreparedMechanicsInputs;
@@ -1085,11 +1086,12 @@ export function syncMechanicsLock(input: {
 }
 
 /**
- * Whether a sync is one of the two exact-equivalent refreshes that need no fresh review.
+ * State whether a sync is an exact-equivalent refresh that needs no new review.
  *
- * A build-only refresh keeps every model, target, locator, dependency, and contract identical. An
- * evidence-time refresh additionally keeps every bundle identity and normalized result identical, so only
- * the report's timestamp moved. Anything else is a reviewable change.
+ * A build-only refresh keeps every model, target, locator, dependency, and contract identical.
+ * An evidence-time refresh also keeps every bundle identity and normalized result identical.
+ * Only the report timestamp changes in that case.
+ * Any other change needs review.
  */
 function classifyRefresh(approved: MechanicsLock, candidate: MechanicsLock): "build" | "evidence-time" | null {
   for (const id of MECHANIC_DOCUMENT_IDS) {
@@ -1140,11 +1142,13 @@ function assertEvidenceBindsBundles(evidence: NormalizedEvidence, prepared: Prep
 }
 
 /**
- * Every required tuple occurs exactly once with PASS, from the right resolver, role, and module.
+ * Each required tuple occurs once with PASS from the correct resolver, role, and module.
  *
- * Defense is checked differently on purpose. Its clean response participates in bundle parity, while its
- * bound module is the served bytes, which must equal the clean extracted index plus exactly the canonical
- * bridge suffix. That distinction is the whole reason its claims cannot be promoted.
+ * Defense uses a different path on purpose.
+ * Its clean response participates in bundle parity.
+ * Its bound module is the served bytes.
+ * Those bytes must equal the clean extracted index plus the canonical bridge suffix.
+ * This distinction prevents promotion of its claims.
  */
 function assertRequiredProbesPass(
   documents: readonly MechanicDocument[],
@@ -1216,10 +1220,11 @@ function assertRequiredProbesPass(
 }
 
 /**
- * Replaces a corrupt lock, and only a corrupt lock.
+ * Replace a corrupt lock, and only a corrupt lock.
  *
- * It prints the prior hash so the previous file can be recovered from version control, and it never
- * publishes in the same invocation: a repair and a release are different decisions.
+ * Show the prior hash so version control can recover the previous file.
+ * Never publish in the same invocation.
+ * Repair and release are different decisions.
  */
 export function recoverMechanicsLock(input: {
   prepared: PreparedMechanicsInputs;

@@ -45,8 +45,8 @@ export async function verifySiteBrowser(options: VerifySiteBrowserOptions): Prom
   const emit = async (id: string, assertion: () => Promise<string | void>): Promise<void> => { if (seen.has(id)) throw new Error(`duplicate ${id}`); seen.add(id); try { const detail = await assertion(); checks.push({ id, status: "PASS", detail: detail ?? "passed" }); } catch (error: unknown) { checks.push({ id, status: "FAIL", detail: error instanceof Error ? error.message : String(error) }); } };
   const browser = await puppeteer.launch({ headless: true, executablePath: options.executablePath ?? nodeProcess.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   const page = await browser.newPage();
-  // A blank page has no base URL, so a relative fetch cannot resolve. Loading the site first also proves the
-  // server is answering before eighty assertions blame their own subject for a missing server.
+  // A blank page has no base URL, so a relative fetch cannot resolve.
+  // Load the site first. This checks the server before the 80 assertions blame their own subject for a missing server.
   await go(page, options.url, "/");
   const mechanics = rec(await getJson(page, "/data/mechanics.json")); const runtime = rec(await getJson(page, "/data/runtime-evidence.json")); const external = rec(await getJson(page, "/data/external-leaf-evidence.json"));
   if (typeof mechanics.buildId !== "string" || typeof runtime.buildId !== "string" || !external) throw new Error("published evidence is malformed");

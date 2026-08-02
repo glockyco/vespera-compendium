@@ -1,14 +1,13 @@
+/** Semantic bundle roles resolved by content, not by filename. */
+
 /**
- * Semantic bundle roles, resolved by content rather than by filename.
+ * The game ships hashed filenames. They look content-addressed, but they are not.
  *
- * The game ships hashed filenames, which look content-addressed and are not: Vespera has reused
- * `index-D6527GFL.js` for different bytes across builds. So a filename can neither identify a role nor
- * evidence that two byte sequences are the same. Roles are located by anchors that describe what the
- * file *is* — the feature-flag document, the module holding the sell and Defense implementations, the
- * module holding the Combat codex and the Endgame guide — and identity is the SHA-256 of its bytes.
+ * Vespera reused `index-D6527GFL.js` for different bytes across builds. A filename cannot identify a role or show that two byte sequences match.
+ * Anchors identify each role by its content. The roles are the feature-flag document, the sell and Defense implementations, the Combat codex, and the Endgame guide.
+ * The SHA-256 digest of the bytes identifies each role.
  *
- * The same resolver runs over files on disk and over raw CDP response bodies, which is what lets the
- * harness prove the running game loaded exactly the bytes the pipeline read.
+ * One resolver reads files from disk and raw CDP response bodies. This lets the harness show that both paths read the same bytes.
  */
 
 import { createHash } from "node:crypto";
@@ -25,11 +24,10 @@ export type BundleFingerprint = { filename: string; bytes: number; sha256: strin
 export type BundleFingerprints = Record<BundleRole, BundleFingerprint>;
 
 /**
- * The filename-free projection every hash, comparison, and approval uses.
+ * The filename-free value used by every hash, comparison, and approval.
  *
- * No caller serializes a {@link BundleFingerprint} into a preimage. A build that renames a bundle
- * without changing its bytes must stay `PASS`, and this is the projection that makes that true by
- * construction rather than by remembering to drop a field.
+ * No caller serializes a {@link BundleFingerprint} into a preimage. A renamed bundle must keep the `PASS` result when its bytes stay the same.
+ * This projection removes the filename by construction. Callers do not need to remember to remove it.
  */
 export function bundleIdentity(role: BundleRole, fingerprint: BundleFingerprint): BundleIdentity {
   return { role, bytes: fingerprint.bytes, sha256: fingerprint.sha256 };
@@ -40,7 +38,7 @@ export function bundleIdentities(fingerprints: BundleFingerprints): BundleIdenti
   return BUNDLE_ROLES.map((role) => bundleIdentity(role, fingerprints[role]));
 }
 
-/** Whether two fingerprint sets name the same bytes for every role, ignoring filenames. */
+/** Two fingerprint sets name the same bytes for every role when filenames differ. */
 export function sameBundleIdentities(left: BundleFingerprints, right: BundleFingerprints): boolean {
   return BUNDLE_ROLES.every(
     (role) => left[role].bytes === right[role].bytes && left[role].sha256 === right[role].sha256,
@@ -50,11 +48,10 @@ export function sameBundleIdentities(left: BundleFingerprints, right: BundleFing
 const sha256 = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
 
 /**
- * The anchors that identify each role.
+ * These anchors identify each role.
  *
- * Every anchor must be present, and the resolver requires exactly one candidate per role. Anchors are
- * chosen from game-authored content and named implementations rather than from build artifacts, so a
- * bundler upgrade that resplits chunks fails loudly instead of resolving the wrong file.
+ * The resolver requires every anchor and exactly one candidate per role. Anchors use game-authored content and named implementations, not build artifacts.
+ * If a bundler splits chunks differently, the resolver fails instead of selecting the wrong file.
  */
 const ROLE_ANCHORS: Readonly<Record<BundleRole, readonly string[]>> = Object.freeze({
   indexHtml: Object.freeze(["__VESPERA_FEATURE_FLAGS__", '<div id="root">']),
@@ -70,11 +67,11 @@ const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const encoder = new TextEncoder();
 
 /**
- * Decoded text for a role's bytes.
+ * Decoded text for one role's bytes.
  *
- * Decoding is fatal and the result is re-encoded and compared, because a lossy decode would make two
- * different byte sequences produce one identical string and quietly break the parity claim. A BOM is
- * preserved rather than stripped for the same reason.
+ * The decoder rejects invalid UTF-8. It compares re-encoded text with the input bytes.
+ * Lossy decoding can make different byte sequences produce one string. That result breaks the parity claim.
+ * The decoder preserves a BOM for the same reason.
  */
 export function decodeBundleText(bytes: Uint8Array, describe: string): string {
   let text: string;
@@ -103,9 +100,9 @@ function matchRole(text: string): BundleRole | null {
 }
 
 /**
- * `indexHtml` and `index` both mention `GRANDWORKS_ENABLED`-adjacent text in some builds, and
- * `gameView` mentions the flag too. Role matching is ordered so the most specific anchor set wins, and
- * the caller still requires exactly one candidate per role.
+ * `indexHtml` and `index` can both contain text near `GRANDWORKS_ENABLED` in some builds.
+ * `gameView` can contain the flag too. The resolver checks roles in order, so the most specific anchors win.
+ * The caller still requires exactly one candidate per role.
  */
 function classify(candidates: { key: string; text: string }[]): Record<BundleRole, string[]> {
   const found: Record<BundleRole, string[]> = { indexHtml: [], index: [], gameView: [] };
@@ -120,12 +117,11 @@ function classify(candidates: { key: string; text: string }[]): Record<BundleRol
 }
 
 /**
- * The single candidate for a role, collapsing byte-identical duplicates.
+ * The single candidate for a role, after identical bytes collapse into one candidate.
  *
- * A session can legitimately serve one asset twice: the harness navigates the page to force a fresh load, and
- * a bridged session answers a second request for the same module. Two responses carrying the same bytes are
- * the same evidence, so treating them as ambiguous would refuse a role that is in fact perfectly determined.
- * Two responses carrying different bytes under one role are a real ambiguity and still fail.
+ * A session can serve one asset twice. The harness navigates the page to force a fresh load, and a bridged session requests the same module again.
+ * Two responses with the same bytes are one item of evidence. Treating them as ambiguous rejects a determined role.
+ * Two responses with different bytes under one role are ambiguous and fail.
  */
 function soleCandidate(
   role: BundleRole,
@@ -148,15 +144,14 @@ function soleCandidate(
 
 export type ResolvedBundleRoles = {
   fingerprints: BundleFingerprints;
-  /** Decoded text per role, so extraction parses the exact bytes that were fingerprinted. */
+  /** Decoded text for each role. Extraction parses the exact bytes that the fingerprints contain. */
   text: Record<BundleRole, string>;
 };
 
 /**
  * The three roles read from an extracted build directory.
  *
- * Only the main document and the JavaScript assets it can reach are considered, so a stray file in
- * `assets/` cannot become a candidate.
+ * The resolver considers the main document and the JavaScript assets that it can reach. A stray file in `assets/` cannot become a candidate.
  */
 export function readBundleRoles(extractedDir: string): ResolvedBundleRoles {
   const root = path.resolve(extractedDir);
@@ -178,7 +173,7 @@ export function readBundleRoles(extractedDir: string): ResolvedBundleRoles {
     try {
       text = decodeBundleText(bytes, key);
     } catch {
-      // A binary or non-UTF-8 asset cannot be a role and is not an error on its own.
+      // A binary or non-UTF-8 asset cannot be a role. It is not an error by itself.
       continue;
     }
     candidates.push({ key, text });
@@ -219,8 +214,8 @@ export type RawResource = { url: string; bytes: Uint8Array };
 /**
  * The three roles identified from raw response bodies.
  *
- * The harness passes what the browser actually received. Nothing about the URL participates: only the
- * bytes decide the role, and the diagnostic `filename` records which URL supplied them.
+ * The harness passes the bytes that the browser received. The URL does not affect the role.
+ * The bytes identify the role. The diagnostic `filename` records the URL that supplied them.
  */
 export function fingerprintBundleSources(resources: readonly RawResource[]): BundleFingerprints {
   const candidates: { key: string; text: string }[] = [];
@@ -248,8 +243,8 @@ export function fingerprintBundleSources(resources: readonly RawResource[]): Bun
 /**
  * Bytes of one CDP response body.
  *
- * A base64 body decodes directly. A text body is encoded with `TextEncoder` and nothing else: any
- * normalization here would silently change the hash the parity claim depends on.
+ * A base64 body decodes directly. A text body is encoded with `TextEncoder` and no other operation.
+ * Any normalization silently changes the hash that the parity claim depends on.
  */
 export function cdpResponseBytes(body: string, base64Encoded: boolean): Uint8Array {
   if (!base64Encoded) return encoder.encode(body);
@@ -264,8 +259,7 @@ export type ResolvedBundles = { index: string; gameView: string; all: string[] }
 /**
  * Asset-relative filenames for the composition path, which still reads files by name.
  *
- * The names come from content-resolved roles rather than from a filename pattern, so composition and
- * the mechanics pipeline agree on which file is which even when the game renames one.
+ * Content-resolved roles provide the names, not a filename pattern. Composition and the mechanics pipeline therefore agree on each file when the game renames one.
  */
 export function resolveBundles(dir: string): ResolvedBundles {
   const { fingerprints } = readBundleRoles(dir);

@@ -1,30 +1,24 @@
 /**
- * Community-evidence capture from an already-authenticated Discord web client.
+ * Captures community evidence from an authenticated Discord web client.
  *
- * Why this shape, rather than reading the DOM or calling the REST API directly:
+ * The client sends API responses before it shows them in the DOM. The module listens for those responses and lets the client fetch them.
+ * It does not forge requests. Generated class names change between deploys, so selectors based on them become stale.
  *
- * - The rendered client ships obfuscated class names that change between deploys, so any selector
- *   written against them rots. The client's own `/api/v9/channels/<id>/messages` responses are the
- *   same data before it reaches the DOM, and their shape is documented and stable. We attach a
- *   response listener and let the client fetch; nothing here forges a request.
- * - Calling the API ourselves would need the account token. The client holds it in module scope and
- *   attaches it per request, so lifting it is a deliberate act we decline: this module never reads,
- *   stores or transmits a credential. It only observes responses to requests the user's own client
- *   already made.
- * - Discord ids are snowflakes: `(unixMillis - 1420070400000) << 22`. That makes a date a position
- *   in the channel, so a bounded sweep deep-links to the cutoff instant and walks forward, instead
- *   of scrolling up through a history of unknown depth. This is the pagination model
- *   DiscordChatExporter uses (`before`/`after` snowflakes); we apply it to the client's scroller.
+ * The client holds the account token in module scope and adds it to each request. This module does not read, store, or transmit that credential.
+ * It observes responses to requests that the user's client already made.
  *
- * Privacy: `normalizeMessage` keeps the author's numeric id and drops display name, nickname and
- * avatar. Captures belong in `research/discord/`, which `.gitignore` excludes, so third-party
- * messages stay on the machine that captured them and no published artifact quotes a user.
+ * Discord IDs are snowflakes: `(unixMillis - 1420070400000) << 22`.
+ * A date maps to a channel position. A bounded sweep opens at the cutoff and walks forward instead of scrolling through unknown history.
+ * This is the pagination model that DiscordChatExporter uses with (`before`/`after` snowflakes).
  *
- * Captures are incremental archives. Re-running adds the tail and preserves everything already
- * stored, so a rolling analysis window never costs a re-download of history already on disk.
+ * `normalizeMessage` keeps the author's numeric ID and drops display name, nickname, and avatar.
+ * `.gitignore` excludes `research/discord/`, so captures stay on the capture machine and published artifacts quote no user.
  *
- * This module imports nothing beyond `node:fs` and `node:path`. It is driven by injecting a
- * puppeteer `page`, so it runs unchanged under the agent browser tool or a plain puppeteer script.
+ * Captures are incremental archives. A new run adds the tail and preserves stored messages.
+ * A rolling analysis window then avoids a new download of stored history.
+ *
+ * This module imports only `node:fs` and `node:path`.
+ * It receives an injected puppeteer `page`, so it runs under the agent browser tool or a plain puppeteer script.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -45,8 +39,8 @@ export function dateOfSnowflake(id) {
 }
 
 /**
- * One captured message. Deliberately narrow: everything a question-shape analysis needs and nothing
- * that identifies a person beyond the id needed to tell two authors apart.
+ * A captured message. The record contains the fields that question-shape analysis needs.
+ * It identifies a person only by the ID that separates two authors.
  */
 export function normalizeMessage(raw, channelName) {
   return {
@@ -57,8 +51,7 @@ export function normalizeMessage(raw, channelName) {
     editedTs: raw.edited_timestamp ?? null,
     authorId: raw.author?.id ?? null,
     bot: Boolean(raw.author?.bot),
-    // `type` 0 is a normal message and 19 is a reply; joins, pins and boosts are other values and
-    // carry no prose, so the analyser filters on this rather than on empty content.
+    // Type 0 is a normal message and 19 is a reply. Other values carry no prose, so the analyser filters them out.
     type: raw.type,
     content: raw.content ?? "",
     replyToId: raw.referenced_message?.id ?? raw.message_reference?.message_id ?? null,
@@ -79,11 +72,10 @@ const PINS_ROUTE = /\/api\/v\d+\/channels\/(\d+)\/(?:messages\/)?pins/;
 const THREADS_ROUTE = /\/api\/v\d+\/channels\/(\d+)\/threads\/search/;
 
 /**
- * Watches the client's traffic and accumulates every message it receives, deduplicated by id.
+ * Watches client traffic and accumulates each message that it receives.
  *
- * Response bodies must be read while the response is still live, so parsing happens inside the
- * listener and failures are swallowed: a body already consumed by the client, or discarded by a
- * navigation, is normal and must not abort a sweep.
+ * Read response bodies while the response is live. The listener parses each body and ignores normal read errors.
+ * The client can consume a body first, or a navigation can discard it. Neither event stops a sweep.
  */
 export function attachCollector(page, channelName = null) {
   const messages = new Map();
@@ -112,15 +104,14 @@ export function attachCollector(page, channelName = null) {
         }
         return;
       }
-      // Pins arrive either as a bare array (older route) or wrapped in `{ items: [{ message }] }`.
+      // Pins use a bare array on the older route. The newer route wraps them in `{ items: [{ message }] }`.
       const list = Array.isArray(body) ? body : (body?.items ?? []).map((i) => i.message ?? i);
       for (const raw of list) {
         if (!raw?.id) continue;
         const message = normalizeMessage(raw, channelName);
         if (isPins) pins.set(raw.id, { ...message, pinned: true });
         else messages.set(raw.id, message);
-        // A reply embeds the message it answers; keeping it recovers context the scroller may
-        // never render on its own.
+        // A reply embeds its target. Keep that target to recover context that the scroller does not show.
         if (raw.referenced_message?.id && !messages.has(raw.referenced_message.id)) {
           messages.set(raw.referenced_message.id, normalizeMessage(raw.referenced_message, channelName));
         }
@@ -156,8 +147,8 @@ export function attachCollector(page, channelName = null) {
 }
 
 /**
- * The client's message scroller. Found by structure — the element that both scrolls and contains
- * the message list — because every class name in the tree is a build-specific hash.
+ * Finds the client's message scroller by structure.
+ * It selects the element that scrolls and contains the message list because class names change between builds.
  */
 async function scrollBy(page, ratio) {
   return page.evaluate((step) => {
@@ -167,8 +158,7 @@ async function scrollBy(page, ratio) {
     while (scroller && scroller.scrollHeight <= scroller.clientHeight + 20) {
       scroller = scroller.parentElement;
     }
-    // A channel short enough to fit the viewport has no scroller at all. That is the whole channel
-    // on screen, not a broken lookup, so it reports as already at both ends.
+    // A short channel fits the viewport and has no scroller. The whole channel is on screen, so both ends are already visible.
     if (!scroller) return { ok: true, fits: true, moved: false, top: 0, atBottom: true, atTop: true };
     const before = scroller.scrollTop;
     scroller.scrollTop = before + Math.round(scroller.clientHeight * step);
@@ -186,33 +176,27 @@ async function scrollBy(page, ratio) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Captures one channel from `sinceIso` to the present.
+ * Captures one channel from `sinceIso` to now.
  *
- * Deep-links to the snowflake for `sinceIso` so the client loads that point in history directly,
- * then walks forward to the newest message. Falls back to scrolling up from the bottom when the
- * anchor does not resolve, which happens when the channel's history starts after the cutoff.
+ * Opens at the snowflake for `sinceIso`, then walks forward to the newest message.
+ * If the anchor does not resolve, scrolls up from the bottom. This occurs when channel history starts after the cutoff.
  *
- * Resumable: an existing capture whose `complete` flag is set is returned untouched, so a
- * multi-channel sweep can be run in slices without losing work.
+ * If an existing capture has `complete` set, returns it unchanged. A multi-channel sweep can then run in slices without losing work.
  */
 /**
- * Captures one channel incrementally, merging into whatever an earlier run already stored.
+ * Captures one channel incrementally and merges the result into the stored archive.
  *
- * The file on disk is an archive, not a snapshot of one run: messages accumulate, and the window a
- * given analysis cares about is applied when reading, never when writing. Re-running tomorrow with
- * a rolling cutoff therefore adds the new tail instead of discarding yesterday's history.
+ * The file on disk is an archive, not a snapshot of one run. Messages accumulate.
+ * The analysis window applies when the tool reads the archive, never when it writes it.
+ * A new run adds the new tail instead of discarding the previous history.
  *
- * Two things make that cheap. Every sweep walks *forward* to the newest message, and the anchor it
- * starts from is chosen from stored coverage:
+ * Every sweep walks forward to the newest message. The anchor comes from stored coverage.
  *
- * - Nothing stored, or stored history does not reach back to `sinceIso` yet, so anchor at the
- *   cutoff snowflake and backfill forward.
- * - History already reaches the cutoff, so anchor at the newest message we hold. The client opens
- *   at that point and the sweep only pages through what arrived since.
+ * - If no history is stored, or it does not reach `sinceIso`, anchor at the cutoff snowflake and backfill forward.
+ * - If history reaches the cutoff, anchor at the newest stored message. The client opens there and the sweep pages through new messages.
  *
- * When a backfill anchored at the cutoff returns nothing older than the anchor, the channel simply
- * has no history that old. That is recorded as `startsAfterCutoff` so later runs stop re-checking
- * a beginning that will never move.
+ * If a cutoff-anchored backfill returns no message older than the anchor, the channel has no older history.
+ * Record `startsAfterCutoff` so later runs do not repeat that search.
  */
 export async function sweepChannel({
   page,
@@ -223,7 +207,7 @@ export async function sweepChannel({
   outDir,
   budgetMs = 120000,
   settleMs = 900,
-  /** Skip a channel already refreshed this recently, so a budgeted multi-call sweep converges. */
+  /** Skip a channel that the tool refreshed less than this interval ago. */
   refreshAfterMs = 6 * 60 * 60 * 1000,
 }) {
   mkdirSync(outDir, { recursive: true });
@@ -241,7 +225,7 @@ export async function sweepChannel({
     return { ...summarize(prior), skipped: "fresh" };
   }
 
-  // Anchor: the cutoff while history is still short of it, otherwise the newest message we hold.
+  // Use the cutoff while history is short of it. Otherwise, use the newest stored message.
   const anchor = covered.backfilled && covered.newestId ? covered.newestId : snowflakeFor(sinceIso);
   const anchoredAtTail = anchor === covered.newestId;
 
@@ -269,7 +253,7 @@ export async function sweepChannel({
         continue;
       }
       if (step.atBottom) {
-        // Let anything still in flight append before declaring the end of the channel.
+        // Let in-flight responses append before the tool declares the channel end.
         await sleep(step.fits ? 700 : 1300);
         if (collector.messages.size === before) {
           reachedNewest = true;
@@ -303,8 +287,8 @@ export async function sweepChannel({
     if (thread.parentId === channelId) threads.set(thread.id, thread);
   }
 
-  // A cutoff-anchored pass that surfaced nothing older than the anchor proves the channel has no
-  // history that far back, so the backfill is done for good rather than retried every run.
+  // A cutoff-anchored pass with no message older than the anchor proves that the channel has no older history.
+  // The backfill then ends instead of repeating on every run.
   const oldestMillis = messages.length > 0 ? Date.parse(messages[0].ts) : Infinity;
   const startsAfterCutoff =
     prior?.startsAfterCutoff || (!anchoredAtTail && iterations > 0 && oldestMillis > cutoffMillis);
@@ -313,7 +297,7 @@ export async function sweepChannel({
     channel: name,
     channelId,
     capturedAt: new Date().toISOString(),
-    /** Every sweep that touched this archive, so a partial capture is auditable rather than implied. */
+    /** Records every sweep that touched this archive. A partial capture is then auditable. */
     runs: [
       ...(prior?.runs ?? []),
       {
@@ -327,7 +311,7 @@ export async function sweepChannel({
     ].slice(-20),
     reachedNewest,
     startsAfterCutoff,
-    /** The contiguous span this archive holds, which is what the next run resumes from. */
+    /** Records the contiguous span that this archive holds for the next run. */
     coverage: {
       from: messages[0]?.ts ?? null,
       to: messages.at(-1)?.ts ?? null,
@@ -348,7 +332,7 @@ export async function sweepChannel({
   return summarize(record);
 }
 
-/** What an archive already holds, which decides where the next sweep anchors. */
+/** Describes the coverage that an archive already holds and selects the next anchor. */
 function coverageOf(prior, cutoffMillis) {
   if (!prior || !prior.messages?.length) return { backfilled: false, newestId: null };
   const oldest = Date.parse(prior.messages[0].ts);
@@ -359,11 +343,10 @@ function coverageOf(prior, cutoffMillis) {
 }
 
 /**
- * Opens the pinned-message popout so the client fetches pins, which the collector then sees.
+ * Opens the pinned-message popout so the client fetches pins for the collector.
  *
- * The control is a `div[role="button"]`, and calling `.click()` on it does nothing: the client
- * drives this from pointer events, so the whole sequence has to be dispatched. Returns what the
- * popout said, which is what distinguishes a channel with no pins from a click that never landed.
+ * The control is a `div[role="button"]`. `.click()` has no effect because the client uses pointer events.
+ * Dispatch the complete pointer sequence. Return the popout state to distinguish no pins from an ineffective click.
  */
 export async function capturePins(page) {
   const opened = await page
@@ -382,7 +365,7 @@ export async function capturePins(page) {
     .evaluate(() => {
       const popout = document.querySelector('[class*="popout"], [role="dialog"]');
       const text = popout ? popout.innerText : "";
-      // Dismiss it so the next channel's header is clickable.
+      // Dismiss the popout so the next channel header is clickable.
       document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       return /doesn't have any/i.test(text);
     })
@@ -391,10 +374,10 @@ export async function capturePins(page) {
 }
 
 /**
- * Collects pins for every already-captured channel and merges them into its archive.
+ * Collects pins for every captured channel and merges them into its archive.
  *
- * Pins are not time-bounded the way a message sweep is: a pin from before the cutoff is still the
- * highest-signal message in a channel, so this runs over the whole roster independently.
+ * Pins are not time-bounded like a message sweep. A pin from before the cutoff remains a high-signal message.
+ * This operation runs over the whole roster independently.
  */
 export async function sweepPins({ page, guildId, outDir, budgetMs = 240000 }) {
   const rosterFile = path.join(outDir, "_roster.json");
@@ -458,8 +441,9 @@ function summarize(record) {
 }
 
 /**
- * Lists a forum channel's posts. Each post is its own thread channel, so the caller sweeps them
- * with `sweepChannel` using the thread id — a forum's parent channel holds no messages of its own.
+ * Lists posts in a forum channel.
+ * Each post is a thread channel, so the caller sweeps it with `sweepChannel` and its thread ID.
+ * The forum parent channel has no messages of its own.
  */
 export async function listForumThreads({ page, guildId, channelId }) {
   const collector = attachCollector(page, null);
@@ -486,12 +470,11 @@ export async function listForumThreads({ page, guildId, channelId }) {
 }
 
 /**
- * Reads the guild's channel roster from the client's own sidebar.
+ * Reads the guild channel roster from the client's sidebar.
  *
- * Discovered rather than hardcoded: a roster committed to a file goes stale the first time the
- * server adds a channel, and a stale roster fails silently by capturing less than it claims to.
- * The sidebar's `aria-label` carries both the name and the channel kind, which is the one part of
- * this tree that is not a build-specific hash.
+ * Discover the roster instead of hardcoding it. A committed roster becomes stale when the server adds a channel.
+ * A stale roster silently captures less data than it claims.
+ * The sidebar `aria-label` carries the name and channel kind. This field is not a build-specific hash.
  */
 export async function discoverChannels({ page, guildId }) {
   await page
@@ -505,13 +488,13 @@ export async function discoverChannels({ page, guildId }) {
       const id = href.split("/").pop() ?? "";
       if (!/^\d+$/.test(id) || seen.has(id)) continue;
       const label = anchor.getAttribute("aria-label") ?? "";
-      // The label carries unread state and the channel kind around the name, for example
+      // The label carries unread state and the channel kind around the name, for example:
       // "unread, new-player-questions (text channel)".
       const match = /^(?:unread,\s*)?(.*?)\s*\((\w+) channel\)$/.exec(label);
       const rawName = (match?.[1] ?? label).trim();
       seen.set(id, {
         id,
-        // Leading emoji are decoration in the server's own taxonomy; the slug is what people cite.
+        // Leading emoji are decoration in the server taxonomy. The slug is the name that people cite.
         name: rawName.replace(/^[^\p{L}\p{N}]+/u, ""),
         displayName: rawName,
         kind: (anchor.innerText || "").trim().split("\n")[0].toLowerCase(),
@@ -524,10 +507,10 @@ export async function discoverChannels({ page, guildId }) {
 }
 
 /**
- * Sweeps a whole guild within one time budget, writing one file per channel plus a roster file.
+ * Sweeps a whole guild within one time budget and writes one file per channel plus a roster file.
  *
- * Callers run this repeatedly: every completed channel is skipped on the next pass, so a harness
- * that caps a single call at a few minutes still converges on a full capture.
+ * Call this operation repeatedly. Each completed channel is skipped on the next pass.
+ * A harness that limits one call to a few minutes can then reach a full capture.
  */
 export async function runSweep({
   page,
@@ -575,7 +558,7 @@ export async function runSweep({
   return { rosterSize: roster.channels.length, results };
 }
 
-/** A forum holds no messages of its own; each post is a thread channel swept in its own right. */
+/** A forum has no messages of its own. Sweep each post as a separate thread channel. */
 async function sweepForum({ page, guildId, channel, sinceIso, outDir, budgetMs }) {
   const deadline = Date.now() + budgetMs;
   const listFile = path.join(outDir, `_forum_${channel.name}.json`);
@@ -608,8 +591,8 @@ async function sweepForum({ page, guildId, channel, sinceIso, outDir, budgetMs }
 }
 
 /**
- * Sweeps the threads a text channel spawned. Thread messages never appear in the parent scroller,
- * so a capture that skips them loses whole conversations.
+ * Sweeps the threads that a text channel spawned.
+ * Thread messages never appear in the parent scroller, so skipping them loses whole conversations.
  */
 export async function sweepThreadsOf({ page, guildId, name, outDir, sinceIso, budgetMs = 90000 }) {
   const file = path.join(outDir, `${name}.json`);

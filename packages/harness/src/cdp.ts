@@ -61,10 +61,9 @@ export type CdpClient = {
   getNetworkResponses?(): readonly CdpNetworkResponse[];
   getScriptsParsed?(): readonly CdpScriptParsed[];
   /**
-   * The external-leaf coverage IDs this session actually exercised.
+   * The external-leaf coverage IDs that this session exercised.
    *
-   * Recorded by the transport rather than asserted by a caller, so the aggregate reports what ran instead
-   * of what the harness intended to run.
+   * The transport records these IDs. A caller does not assert them. The aggregate reports what ran, not what the harness intended to run.
    */
   executedOperations(): ReadonlySet<string>;
 };
@@ -195,7 +194,7 @@ export async function connect(port: number, urlSubstring?: string): Promise<CdpC
   const listeners = new Map<string, Set<CdpEventHandler>>();
   const networkResponses = new Map<string, CdpNetworkResponse>();
   const scriptsParsed: CdpScriptParsed[] = [];
-  // The socket is already open at this point, so the handshake is the first demonstrated operation.
+  // The socket is open, so the handshake is the first operation that the transport demonstrates.
   const executed = new Set<string>(["harness.websocket.cdpHandshake"]);
 
   const rememberNetworkEvent = (method: string, params: unknown): void => {
@@ -246,8 +245,7 @@ export async function connect(port: number, urlSubstring?: string): Promise<CdpC
     }
     const method = payload.method;
     if (typeof method === "string") {
-      // An observed event is a protocol operation the transport genuinely exercised, so it counts as
-      // coverage in the same way a successful call does.
+      // An observed event is a protocol operation that the transport exercised. It counts as coverage like a successful call.
       if (isAllowedMethod(method)) executed.add(cdpCoverageId(method));
       dispatch(method, decodeEventParams(payload));
     }
@@ -288,8 +286,7 @@ export async function connect(port: number, urlSubstring?: string): Promise<CdpC
       }, timeoutMs);
       pending.set(id, {
         resolve: (value) => {
-          // Coverage is recorded on a successful round trip, so a rejected call never reports the operation
-          // as demonstrated.
+          // Coverage records a successful round trip. A rejected call does not report the operation as demonstrated.
           executed.add(cdpCoverageId(method));
           resolve(value as T);
         },

@@ -323,8 +323,8 @@ function browserVerifierReadAllowed(relative: string, enclosing: string, callee:
 
 function browserVerifierWriteAllowed(relative: string, enclosing: string, callee: string, source: string): boolean {
   if (relative !== "tools/verify-site-browser.ts" || enclosing !== "atomicWrite") return false;
-  // The verifier reads already-published output. Its sole write is its own evidence artifact, and
-  // the destination is accepted only when this exact owner retains the evidence-root contract.
+  // The browser check reads published output. Its only write is the evidence artifact.
+  // Accept the destination only when this owner keeps the evidence-root contract.
   if (!source.includes("EVIDENCE_ROOT") || !source.includes("\"evidence\"")) return false;
   return ["mkdirSync", "mkdtempSync", "openSync", "writeFileSync", "fsyncSync", "closeSync", "renameSync"].includes(callee);
 }

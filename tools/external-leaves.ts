@@ -477,10 +477,10 @@ function globalSetTimeout(): Promise<void> {
 
 
 /**
- * Bun's own hasher must agree with Node's for the same bytes.
+ * Bun's hasher must agree with Node's hasher for the same bytes.
  *
- * Publication hashes art through Bun and approvals through Node, so a divergence between the two would
- * make two honest commands disagree about the same file.
+ * Publication hashes art with Bun and approvals with Node.
+ * A difference between the hashers makes two valid commands disagree about one file.
  */
 function bunCryptoHasher(): void {
   const bytes = new TextEncoder().encode("vespera external leaf vector");
@@ -489,7 +489,7 @@ function bunCryptoHasher(): void {
   if (viaBun !== viaNode) throw new Error(`Bun.CryptoHasher produced ${viaBun}, Node produced ${viaNode}`);
 }
 
-/** A synchronous child must return its own stdout bytes, which is how a launcher hash is read. */
+/** A synchronous child must return its own stdout bytes. The launcher hash uses these bytes. */
 function bunSpawnSyncStdout(): void {
   const result = Bun.spawnSync(["printf", "vespera"]);
   const text = new TextDecoder().decode(result.stdout);
@@ -497,7 +497,7 @@ function bunSpawnSyncStdout(): void {
   if (result.exitCode !== 0) throw new Error(`Bun.spawnSync exited ${String(result.exitCode)}`);
 }
 
-/** Base64 through the global decoder must round-trip the exact bytes a CDP body carries. */
+/** Base64 through the global decoder must round-trip the exact bytes that a CDP body carries. */
 function globalAtob(): void {
   const bytes = Uint8Array.from([0, 1, 200, 255, 127]);
   const encoded = Buffer.from(bytes).toString("base64");
@@ -508,14 +508,14 @@ function globalAtob(): void {
   }
 }
 
-/** `Buffer` is used for base64 and save decryption, so its byte view must be exact. */
+/** `Buffer` handles base64 and save decryption, so its byte view must be exact. */
 function globalBuffer(): void {
   const buffer = Buffer.from("vespera", "utf8");
   if (buffer.toString("base64") !== "dmVzcGVyYQ==") throw new Error("Buffer base64 differs");
   if (buffer.byteLength !== 7) throw new Error(`Buffer length is ${buffer.byteLength}`);
 }
 
-/** A served response must hand back exactly the bytes it was given, with no transcoding. */
+/** A served response must return the exact bytes that it received, without transcoding. */
 async function globalResponse(): Promise<void> {
   const bytes = Uint8Array.from([0, 34, 92, 255, 10]);
   const roundTripped = new Uint8Array(await new Response(bytes).arrayBuffer());
@@ -525,7 +525,7 @@ async function globalResponse(): Promise<void> {
   }
 }
 
-/** The ambient process must report the runtime versions every approval records. */
+/** The ambient process must report the runtime versions that each approval records. */
 function globalProcessVersions(): void {
   if (typeof process.versions.node !== "string" || process.versions.node.length === 0) {
     throw new Error("process.versions.node is unavailable");
@@ -628,10 +628,9 @@ export async function runNodeExternalLeafTests(options: RunNodeExternalLeafTests
       failed.push(id);
     }
   }
-  // Both suites execute under the same Bun process, so the runtime identity is Bun's executable and the
-  // Node compatibility version it implements. A separately installed `node` binary is a capability these
-  // tests exercise, not the runtime that ran them, and reporting it here would make the aggregate refuse
-  // two honest inputs for disagreeing about a runtime neither of them used.
+  // Both suites run in the same Bun process. The runtime identity is Bun's executable and its Node compatibility version.
+  // A separately installed `node` binary is a capability that these tests exercise, not the runtime that ran them.
+  // Reporting that binary makes the aggregate reject two valid inputs because of an unused runtime.
   const bunArtifactSha256 = sha256Hex(readFileSync(nodeProcess.execPath));
   const nodeArtifactSha256 = bunArtifactSha256;
   const artifact: ExternalLeafNodeArtifact = {

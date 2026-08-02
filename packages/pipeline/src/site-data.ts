@@ -30,11 +30,11 @@ function assertLeases(prepared: PreparedPublishedInputs, leases: LeaseSet): void
   assertLeaseSetLive(leases);
 }
 
-/**
- * Sorted path, size, and content hash for every file under a root.
+/** Sorted path, size, and content hash for every file under a root.
  *
- * Sorted, because the prepared manifest is sorted and the comparison below is index-by-index: directory
- * order is a filesystem detail, and letting it decide the result reports a coherent tree as mutated.
+ * Sort because the prepared manifest is sorted and comparison uses indexes.
+ * Directory order is a filesystem detail.
+ * If it decides the result, a coherent tree can appear changed.
  */
 function files(root: string, prefix = ""): { path: string; bytes: number; sha256: string }[] {
   const entries: { path: string; bytes: number; sha256: string }[] = [];
@@ -49,8 +49,7 @@ function files(root: string, prefix = ""): { path: string; bytes: number; sha256
       entries.push({ path: relative.split(path.sep).join("/"), bytes: bytes.byteLength, sha256: digest.digest("hex") });
     }
   }
-  // The same byte comparison the prepared manifest uses. `localeCompare` orders mixed case and
-  // punctuation differently, and an index-by-index comparison then reports a coherent tree as mutated.
+  // Use the same byte comparison as the prepared manifest. `localeCompare` orders case and punctuation differently. Index comparison then reports a coherent tree as changed.
   return entries.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
 }
 
@@ -75,7 +74,7 @@ function replaceDirectory(staging: string, destination: string): void {
     if (present) rmSync(backup, { recursive: true, force: true });
   } catch (error) {
     if (present && existsSync(backup) && !existsSync(destination)) {
-      try { renameSync(backup, destination); } catch { /* preserve original failure */ }
+      try { renameSync(backup, destination); } catch { /* Keep the original error. */ }
     }
     if (existsSync(staging)) rmSync(staging, { recursive: true, force: true });
     throw error;

@@ -1,15 +1,12 @@
 /**
  * Canonical serialization shared by the pipeline and the browser.
  *
- * Everything the site must be able to re-derive lives here, and nothing in this module may touch
- * Node or Bun. The published pages recompute the evidence hash and the mechanics approval hash from
- * the same bytes the pipeline hashed, which is only meaningful if both runtimes agree on the
- * preimage down to the byte. Sharing one module is what makes that agreement checkable rather than
- * asserted: `packages/core/src/canonical-public-evidence.test.ts` and
- * `site/src/lib/mechanics-verification.test.ts` pin the same expected hex values.
+ * This module contains every value that the site must derive again. It does not use Node or Bun.
+ * The published pages compute the evidence hash and mechanics approval hash from the same bytes as the pipeline.
+ * Both runtimes must use the same preimage bytes. The shared module lets both tests check the expected hex values.
  */
 
-/** JSON that survives canonical serialization: no `undefined`, no non-finite number. */
+/** JSON that canonical serialization accepts. It excludes `undefined` and non-finite numbers. */
 export type CanonicalJson =
   | string
   | number
@@ -21,8 +18,8 @@ export type CanonicalJson =
 /**
  * Sorted-key JSON text with no insignificant whitespace.
  *
- * Object key order is the only freedom JSON leaves that a hash would otherwise inherit, so it is
- * removed. Array order is meaningful everywhere in this repository and is preserved.
+ * JSON leaves object key order free. A hash inherits that freedom, so this function sorts object keys.
+ * Array order has meaning in this repository, so this function preserves array order.
  */
 export function canonicalJson(value: CanonicalJson): string {
   if (value === null) return "null";
@@ -31,7 +28,7 @@ export function canonicalJson(value: CanonicalJson): string {
     if (!Number.isFinite(value)) {
       throw new Error(`canonical JSON cannot encode the non-finite number ${String(value)}`);
     }
-    // `-0` and `0` are the same value to a reader and must not produce two preimages.
+    // `-0` and `0` have the same value to a reader. They must not produce two preimages.
     return JSON.stringify(value === 0 ? 0 : value);
   }
   if (typeof value === "string") return JSON.stringify(value);
@@ -52,7 +49,7 @@ export function canonicalJson(value: CanonicalJson): string {
   return `{${parts.join(",")}}`;
 }
 
-/** UTF-8 bytes of {@link canonicalJson}, which is what both runtimes hash. */
+/** UTF-8 bytes of {@link canonicalJson}. Both runtimes hash these bytes. */
 export function canonicalJsonBytes(value: CanonicalJson): Uint8Array {
   return new TextEncoder().encode(canonicalJson(value));
 }
@@ -78,8 +75,9 @@ export type PublicProbeCase = {
 };
 
 /**
- * The part of a probe contract the site is allowed to see. Source locators stay private: a visitor
- * must be able to recheck the arithmetic without being handed a map of the game's internals.
+ * The part of a probe contract that the site can show.
+ *
+ * Source locators stay private. A visitor can check the arithmetic without a map of the game's internals.
  */
 export type PublicProbeContract = {
   suite: string;
@@ -90,7 +88,7 @@ export type PublicProbeContract = {
   methodName: string | null;
   bridgeSuffix: string | null;
   expression: string;
-  /** How a case input becomes the shipped function's real arguments, so a visitor can recheck the call. */
+/** How a case input becomes the shipped function's arguments. A visitor can check the call. */
   argumentTemplate: CanonicalJson[];
   cases: PublicProbeCase[];
   claimBindings: {
@@ -132,10 +130,9 @@ export type NormalizedProbeResult = {
 /**
  * The canonical stand-in for a resource URL.
  *
- * A URL carries a hashed filename and a cache-busting query the game rewrites between builds, so
- * hashing it would invalidate an approval that is still exactly correct. What matters is which
- * semantic role answered the request, and — for the instrumented Defense session — that the served
- * bytes were the clean module plus the one canonical suffix.
+ * A URL contains a hashed filename and a cache-busting query. The game changes both between builds.
+ * Hashing the URL rejects a correct approval after a rename.
+ * The semantic role matters. For the instrumented Defense session, the served bytes must contain the clean module and the one canonical suffix.
  */
 export function bindingToken(role: BundleRole): string {
   return role;
@@ -165,7 +162,7 @@ export type RuntimeEvidenceInput = {
   results: unknown[];
 };
 
-/** Byte identity of every role, in fixed role order, with filenames dropped. */
+/** Byte identity of every role, in fixed role order, with filenames removed. */
 function identities(
   bundles: Record<BundleRole, { bytes: number; sha256: string }>,
 ): BundleIdentity[] {
@@ -179,9 +176,8 @@ function identities(
 /**
  * The semantic projection of a runtime evidence report.
  *
- * Diagnostic filenames and raw URLs are replaced by canonical binding tokens, so regenerating a
- * report after the game renames a bundle leaves the approval intact while any change to a byte
- * identity, a probe case, or an observation invalidates it.
+ * Diagnostic filenames and raw URLs become canonical binding tokens. A renamed bundle then keeps the approval.
+ * A byte identity, probe case, or observation change invalidates the approval.
  */
 export function normalizeRuntimeEvidenceForApproval(
   evidence: RuntimeEvidenceInput,
@@ -237,10 +233,8 @@ export type MechanicsApprovalInput = {
 /**
  * The canonical `approval` object published inside `mechanics.json`.
  *
- * This is the whole claim the site makes in one hashable shape: which build, which bytes, which
- * evidence, which reviewed source closures, which probe contracts, and which document models. A
- * visitor recomputes this hash in the browser; if it disagrees with the published
- * `approvalSha256`, the page is not entitled to show a verification label.
+ * This object is the complete claim in one hashable shape. It contains the build, bytes, evidence, reviewed source closures, probe contracts, and document models.
+ * A visitor recomputes this hash in the browser. If it differs from `approvalSha256`, the page cannot show an approval label.
  */
 export function mechanicsApprovalPreimage(input: MechanicsApprovalInput): CanonicalJson {
   return {

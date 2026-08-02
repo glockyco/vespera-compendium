@@ -1,10 +1,10 @@
 /**
  * The pipeline command surface.
  *
- * Every command that touches a protected input prepares once through `inputs.ts` and passes only that
- * prepared object onward. The six path overrides exist for the sequence gate, which runs these exact
- * commands against a scratch workspace; production defaults are unchanged, and a command never reopens an
- * override path itself.
+ * Each command that uses a protected input prepares it once through `inputs.ts`.
+ * It passes only the prepared object to later steps.
+ * The six path overrides support the sequence gate in a scratch workspace.
+ * Production defaults stay unchanged. A command never reopens an override path.
  */
 
 import path from "node:path";
@@ -153,7 +153,7 @@ function writeCanonical(file: string, value: CanonicalJson): void {
   commitAtomicFile(path.resolve(file), new TextEncoder().encode(`${canonicalJson(value)}\n`));
 }
 
-/* source closure commands */
+/* Source closure commands */
 
 function closureDiff(name: SourceClosureName, options: Options): void {
   const overrides = overridesOf(options);
@@ -238,7 +238,7 @@ function readReviewedHashes(options: Options): Record<SourceClosureName, string>
   return reviewed as Record<SourceClosureName, string>;
 }
 
-/* mechanics commands */
+/* Mechanics commands */
 
 function runMechanicsCheck(dir: string, options: Options): void {
   const prepared = prepareMechanicsInputs(dir, "check", overridesOf(options));
@@ -427,7 +427,7 @@ function runMechanicsSync(dir: string, options: Options): void {
   }
 }
 
-/* source approval commands */
+/* Source approval commands */
 
 function runSourcesInspect(options: Options): void {
   const reviews = readReviewSet({ ...options, flags: options.flags });
@@ -597,7 +597,7 @@ function runExternalLeavesVerify(options: Options): void {
   }
 }
 
-/* publication commands */
+/* Publication commands */
 
 function runVerify(dir: string): void {
   const checks = verify(dir);
@@ -699,7 +699,7 @@ function runSiteDataCommand(command: "sync-site" | "verify-site-data", options: 
   }
 }
 
-/* dispatch */
+/* Dispatch */
 
 const argv = process.argv.slice(2);
 const command = argv[0] ?? "verify";

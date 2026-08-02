@@ -1,9 +1,9 @@
 import type { Row } from "./project.ts";
 
 /**
- * RFC 4180 CSV, because the published tables are meant to be pulled straight into Google Sheets and
- * Excel. `parseCsv` exists so the emitted files can be round-tripped in verification without adding
- * a dependency whose bugs would then be indistinguishable from ours.
+ * RFC 4180 CSV supports direct import into Google Sheets and Excel.
+ * `parseCsv` supports round trips for checks without a new dependency.
+ * A dependency error can then look like a pipeline error.
  */
 
 const NEEDS_QUOTING = /["\r\n,]/;

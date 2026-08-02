@@ -4,7 +4,7 @@ import path from "node:path";
 
 export const STEAM_APP_ID = "4824420";
 
-/** Thrown when the installed game or its Steam manifest cannot be read. */
+/** Error when the installed game or its Steam manifest cannot be read. */
 export class GameUnavailableError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -18,7 +18,7 @@ const MANIFEST = path.join(
   `appmanifest_${STEAM_APP_ID}.acf`,
 );
 
-/** Reads the installed build id from the Steam app manifest inside the CrossOver bottle. */
+/** Reads the installed build ID from the Steam app manifest in the CrossOver bottle. */
 export function readInstalledBuildId(): string {
   let source: string;
   try {

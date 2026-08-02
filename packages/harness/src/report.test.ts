@@ -49,9 +49,9 @@ function results(): ProbeResult[] {
 }
 
 /**
- * Every harness-owned coverage id, as a fully exercised session would report it.
+ * Every harness-owned coverage ID that a fully exercised session reports.
  *
- * The report must not invent coverage, so the test hands it the same set the CDP transport would.
+ * The report must not invent coverage. The test passes the same set that the CDP transport passes.
  */
 const EXERCISED: ReadonlySet<string> = new Set(
   allExternalLeafCoverageIds().filter((id) => id.startsWith("harness.")),

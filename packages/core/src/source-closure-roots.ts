@@ -1,19 +1,15 @@
 /**
  * The exhaustive registry of reviewed source closures.
  *
- * Five closures decide whether this repository may publish a claim about the game:
+ * Five closures decide whether this repository can publish a claim about the game.
  *
- * - `inspector` renders review artifacts and writes attestations. It is the trust root, so it has no
- *   source constant: its only approved value lives in the source lock and rotating it is an explicit
- *   operator act.
- * - `approvalGate` is every command that reads a protected input, decides an approval, or writes an
- *   emitted artifact. A change here invalidates old approvals before that code may publish again.
- * - `derivation` executes shipped functions to produce published values.
+ * - `inspector` shows review artifacts and writes attestations. It is the trust root, so it has no source constant. Its approved value lives in the source lock. An operator rotates it explicitly.
+ * - `approvalGate` contains commands that read protected input, decide approval, or write an emitted artifact. A change invalidates old approvals before publishing can resume.
+ * - `derivation` runs shipped functions to produce published values.
  * - `probeExecutor` runs a probe contract against an observation callback.
  * - `runtime` is the harness transport that produces live evidence.
  *
- * Keeping the root lists here, rather than beside each implementation, is what makes "unmapped
- * command" and "root outside the registry" checkable failures instead of judgement calls.
+ * These root lists stay here instead of beside each implementation. The source hash can then check that every command and root has a registry entry.
  */
 
 import type { SourceClosureName } from "./source-package-leaves.ts";
@@ -35,9 +31,9 @@ const CORE = "packages/core/src";
 /**
  * The harness transport that produces live evidence.
  *
- * Published as its own named list because the plan-level guarantee is about these exact entry points:
- * command orchestration, launch and cache setup, byte parity before dispatch, runtime resolution,
- * CDP invocation, and bridge serving. Their transitive closure covers the lower-level helpers.
+ * This list has a name because the plan guarantee covers these exact entry points.
+ * They include command orchestration, game start and cache setup, byte parity before dispatch, runtime resolution, CDP calls, and bridge serving.
+ * Their transitive closure covers the lower-level helpers.
  */
 export const MECHANIC_RUNTIME_ROOTS: readonly SourceClosureRoot[] = Object.freeze([
   { module: `${HARNESS}/probes/formulas.ts`, symbol: "resolveSellRuntimeBinding" },
@@ -93,11 +89,10 @@ export const SOURCE_CLOSURE_ROOTS: Readonly<Record<SourceClosureName, readonly S
   });
 
 /**
- * Tokens a closure declares rather than discovers.
+ * Tokens that a closure declares instead of discovering.
  *
- * The CDP operations are string literals sent over a socket, so no import mentions them. Declaring
- * them keeps the capability list reviewable: removing one is a hash change even though the type
- * checker would never notice.
+ * CDP operations are string literals sent over a socket, so imports do not mention them.
+ * Declaration keeps the capability list reviewable. Removing one changes the hash even though the type checker does not detect it.
  */
 export const SOURCE_CLOSURE_DECLARED_LEAVES: Readonly<Record<SourceClosureName, readonly string[]>> =
   Object.freeze({
@@ -111,11 +106,10 @@ export const SOURCE_CLOSURE_DECLARED_LEAVES: Readonly<Record<SourceClosureName, 
   });
 
 /**
- * Every protected command and the single closure root that owns it.
+ * Every protected command and its single owning closure root.
  *
- * The caller checker rejects a protected command whose handler is not mapped here, and a root that is
- * not in {@link SOURCE_CLOSURE_ROOTS}. That pairing is what stops a new command from quietly reading
- * an approval input through a path no closure covers.
+ * The caller check rejects a protected command whose handler has no entry here or whose root is not in {@link SOURCE_CLOSURE_ROOTS}.
+ * This pairing stops a new command from reading approval input through an uncovered path.
  */
 export const PROTECTED_CLI_COMMANDS: Readonly<Record<string, SourceClosureRoot>> = Object.freeze({
   "external-leaves:verify": { module: `${PIPELINE}/external-leaf-evidence.ts`, symbol: "verifyExternalLeafEvidence" },
@@ -135,7 +129,7 @@ export const PROTECTED_CLI_COMMANDS: Readonly<Record<string, SourceClosureRoot>>
   "verify-site-data": { module: `${PIPELINE}/site-data.ts`, symbol: "verifySiteData" },
 });
 
-/** Every closure name, in the fixed order the source lock and review artifacts use. */
+/** Every closure name, in the fixed order used by the source lock and review artifacts. */
 export const SOURCE_CLOSURE_ORDER: readonly SourceClosureName[] = Object.freeze([
   "inspector",
   "approvalGate",

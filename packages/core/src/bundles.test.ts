@@ -79,16 +79,16 @@ describe("bundle byte identities", () => {
 
   test("missing and genuinely ambiguous semantic roles fail closed", () => {
     expect(() => fingerprintBundles(extracted(undefined, false))).toThrow(/gameView/);
-    // Two candidates carrying DIFFERENT bytes under one role is a real ambiguity: the resolver cannot know
-    // which one the claim rests on.
+    // Two candidates with different bytes under one role create a real ambiguity.
+    // The resolver cannot know which candidate supports the claim.
     const conflicting = encoder.encode(`${new TextDecoder().decode(indexBytes)} conflicting`);
     const duplicate = extracted(undefined, true, { "second-index.js": conflicting });
     expect(() => fingerprintBundles(duplicate)).toThrow(/ambiguous index/);
   });
 
   test("byte-identical duplicates of one role collapse to a single identity", () => {
-    // A session can serve one asset twice, so identical bytes under one role are the same evidence rather
-    // than an ambiguity. Refusing them would fail a role that is in fact perfectly determined.
+    // A session can serve one asset twice. Identical bytes under one role are one evidence item, not an ambiguity.
+    // Rejecting them fails a role that the bytes determine.
     const twice = extracted(undefined, true, { "second-index.js": indexBytes });
     const fingerprints = fingerprintBundles(twice);
     expect(fingerprints.index.sha256).toBe(fingerprintBundles(extracted()).index.sha256);

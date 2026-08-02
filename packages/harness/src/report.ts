@@ -109,11 +109,10 @@ function platformArtifacts(): PlatformArtifact[] {
 }
 
 /**
- * Which harness transport operations actually executed.
+ * The harness transport operations that actually ran.
  *
- * Coverage records that an operation ran and behaved, not that a probe agreed with its expectation. Folding
- * a probe disagreement into coverage would report the platform as broken whenever the game's balance moved,
- * which is the opposite of what the aggregate is for.
+ * Coverage records that an operation ran and behaved. It does not record that a probe agreed with its expectation.
+ * A probe disagreement means that the game balance changed. It does not mean that the platform is broken.
  */
 function externalLeafCoverage(
   executed: ReadonlySet<string>,

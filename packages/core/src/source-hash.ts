@@ -1,20 +1,17 @@
 /**
  * Source hashing for reviewed code closures.
  *
- * The compendium publishes claims about a game it does not own, so the honest question is not "does
- * this code still run" but "is this still the code that was reviewed". Two rules answer it.
+ * The compendium publishes claims about a game that it does not own.
+ * The honest question is not whether this code still runs. The question is whether this is the code that reviewers read.
+ * Two rules answer that question.
  *
- * {@link canonicalSourceSlice} is the single range rule used everywhere a byte range is cited,
- * whether that range sits inside a shipped bundle or inside this repository. Line endings and
- * trailing horizontal whitespace are normalized because an editor changes them without changing
- * meaning. Nothing else is: identifiers, literals, operators, and comments all stay, because a change
- * to any of them can change behaviour or change what a reviewer would have concluded.
+ * {@link canonicalSourceSlice} is the only range rule used when a byte range is cited.
+ * It applies to shipped bundles and repository files. It normalizes line endings and trailing horizontal whitespace because editors can change them without changing meaning.
+ * It changes nothing else. Identifiers, literals, operators, and comments remain because each can change behavior or a review conclusion.
  *
- * {@link hashSourceClosure} walks the dependency closure of named root symbols at module granularity.
- * Module granularity is deliberately coarse. A root that reads a module-scope object can be altered
- * by a top-level initializer, a write, a registration side effect, or an import evaluated only for
- * effect — none of which appear in the root's own text. Including every runtime top-level node of
- * every reached module is the only rule that excludes none of those.
+ * {@link hashSourceClosure} walks named root symbols at module granularity.
+ * This granularity is coarse by design. A root that reads a module-scope object can be changed by a top-level initializer, write, registration side effect, or import evaluated only for effect.
+ * None of those changes appear in the root's own text. Including every runtime top-level node of every reached module excludes all of them.
  */
 
 import { createHash } from "node:crypto";
@@ -42,8 +39,8 @@ const encoder = new TextEncoder();
 /**
  * The canonical bytes of one source range.
  *
- * The outer slice is never trimmed: leading indentation is part of what a reviewer read. Only CRLF
- * pairs and trailing spaces or tabs on each line are removed.
+ * The outer slice is never trimmed. Leading indentation is part of what a reviewer read.
+ * Only CRLF pairs and trailing spaces or tabs on each line are removed.
  */
 export function canonicalSourceSlice(sourceText: string, start: number, end: number): Uint8Array {
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start) {
@@ -63,7 +60,7 @@ export function canonicalSourceSlice(sourceText: string, start: number, end: num
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
-/** The canonical text of one source range, for review rendering and field-level diffs. */
+/** The canonical text of one source range, for review output and field-level diffs. */
 export function canonicalSourceText(sourceText: string, start: number, end: number): string {
   return utf8.decode(canonicalSourceSlice(sourceText, start, end));
 }
@@ -81,13 +78,13 @@ export function canonicalSha256(value: CanonicalJson): string {
 /** One root symbol of a closure. */
 export type SourceClosureRoot = { module: string; symbol: string };
 
-/** One included top-level node. Anonymous statements need no symbol; the ordinal identifies them. */
+/** One included top-level node. Anonymous statements need no symbol. The ordinal identifies them. */
 export type ClosureNodeRecord = { ordinal: number; nodeKind: string; canonicalSource: string };
 
 export type SourceClosure = {
   /** Keyed by workspace-relative POSIX module path, sorted by that key. */
   modules: Record<string, ClosureNodeRecord[]>;
-  /** Root metadata, held outside the module map so renaming a root stays visible. */
+  /** Root metadata stays outside the module map, so renaming a root stays visible. */
   entries: { module: string; symbol: string }[];
   /** `<specifier>#<symbol>` platform leaves reached by this closure, sorted. */
   externalTokens: string[];
@@ -99,21 +96,20 @@ export type SourceClosure = {
 };
 
 export type HashSourceClosureOptions = {
-  /** Which reviewed closure this is, which fixes the permitted package leaves. */
+  /** The reviewed closure. It fixes the permitted package leaves. */
   closure: SourceClosureName;
   /**
-   * Module paths whose reference serializes as a fixed token instead of being traversed, keyed by
-   * workspace-relative POSIX path.
+   * Module paths whose references serialize as fixed tokens instead of being traversed.
+   * Keys use workspace-relative POSIX paths.
    *
-   * This is the self-hash boundary. A closure that reaches its own approved hash constant cannot
-   * include that constant's value: updating the constant to the reviewed candidate would change the
-   * candidate again and no fixed point would exist.
+   * This is the self-hash boundary. A closure that reaches its own approved hash constant cannot include that constant's value.
+   * Updating the constant to the reviewed candidate changes the candidate again. No fixed point exists.
    */
   selfTokens?: Readonly<Record<string, string>>;
   /**
-   * Tokens this closure declares up front rather than discovering, currently the CDP protocol
-   * operations. They are unconditionally part of the preimage, so removing a declared capability is
-   * a reviewable change even though no import mentions it.
+   * Tokens this closure declares before discovery. These are currently CDP protocol operations.
+   *
+   * They always enter the preimage. Removing a declared capability is therefore a reviewable change even when no import mentions it.
    */
   declaredLeafTokens?: readonly string[];
 };
@@ -129,11 +125,10 @@ function parseJsonObject(file: string): Record<string, unknown> {
 }
 
 /**
- * Workspace package entry points, read from each member's manifest.
+ * Workspace package entry points, read from each member manifest.
  *
- * Resolving `@vespera/core` through the workspace rather than through `node_modules` keeps hashing
- * independent of whether the installer produced a symlink or a copy, and it makes a module outside
- * the workspace detectable instead of silently resolvable.
+ * Resolving `@vespera/core` through the workspace keeps hashing independent of a symlink or copy in `node_modules`.
+ * It also makes a module outside the workspace detectable instead of silently resolvable.
  */
 function workspacePackageEntries(workspaceRoot: string): Map<string, string> {
   const entries = new Map<string, string>();
@@ -162,7 +157,7 @@ function workspacePackageEntries(workspaceRoot: string): Map<string, string> {
   return entries;
 }
 
-/** Workspace-relative POSIX path, which is the only module identity a hash sees. */
+/** Workspace-relative POSIX path, the only module identity that a hash sees. */
 function relativeModulePath(workspaceRoot: string, file: string): string {
   const relative = path.relative(workspaceRoot, file);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
@@ -178,8 +173,8 @@ function resolveRelative(fromFile: string, specifier: string): string | null {
     const candidate = `${base}${extension}`;
     if (existsSync(candidate)) return candidate;
   }
-  // `./foo.js` is how TypeScript emits a reference to `./foo.ts`, and this repository writes the
-  // `.ts` form directly; both must land on the same file.
+  // `./foo.js` is how TypeScript emits a reference to `./foo.ts`. This repository writes the `.ts` form directly.
+  // Both forms must resolve to the same file.
   const swapped = base.replace(/\.(js|mjs|cjs)$/, "");
   if (swapped !== base) {
     for (const extension of SOURCE_EXTENSIONS) {
@@ -220,7 +215,7 @@ function isTypeOnlyStatement(statement: ts.Statement): boolean {
 type ModuleSpecifierUse = {
   specifier: string;
   node: ts.ImportDeclaration | ts.ExportDeclaration;
-  /** Imported symbol names as they appear at the boundary; `default` for a default import. */
+  /** Imported symbol names at the boundary. `default` names a default import. */
   symbols: string[];
   namespaceBinding: ts.Identifier | null;
 };
@@ -265,7 +260,7 @@ function moduleSpecifierUses(source: ts.SourceFile): ModuleSpecifierUse[] {
   return uses;
 }
 
-/** Rejects `import(...)` and `require(...)`, which no reviewed closure may contain. */
+/** Rejects `import(...)` and `require(...)`. No reviewed closure can contain either form. */
 function assertNoDynamicDependency(source: ts.SourceFile): void {
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node)) {
@@ -284,8 +279,8 @@ function assertNoDynamicDependency(source: ts.SourceFile): void {
 /**
  * Rejects computed access on a namespace import.
  *
- * `namespace.member` names an exact dependency a reviewer can follow. `namespace[key]` names none of
- * them and all of them, so it is refused rather than approximated.
+ * `namespace.member` names one exact dependency that a reviewer can follow.
+ * `namespace[key]` names no exact dependency, so the hash rejects it instead of approximating.
  */
 function assertExactNamespaceAccess(source: ts.SourceFile, bindings: ts.Identifier[]): void {
   if (bindings.length === 0) return;
@@ -305,7 +300,7 @@ function assertExactNamespaceAccess(source: ts.SourceFile, bindings: ts.Identifi
   ts.forEachChild(source, visit);
 }
 
-/** Identifier positions that name a property or a declaration rather than referencing a binding. */
+/** Identifier positions that name a property or declaration instead of referencing a binding. */
 function isReferencePosition(node: ts.Identifier): boolean {
   const parent = node.parent;
   if (!parent) return false;
@@ -341,10 +336,9 @@ function isTypePosition(node: ts.Node): boolean {
 }
 
 /**
- * Every ambient platform value the module actually uses, as a leaf token.
+ * Every ambient platform value that the module uses, as a leaf token.
  *
- * A free identifier that resolves nowhere is an error rather than a leaf: an unresolved dependency is
- * exactly the case this hash exists to refuse.
+ * A free identifier that resolves nowhere is an error, not a leaf. An unresolved dependency is the case that this hash refuses.
  */
 function ambientLeafTokens(
   source: ts.SourceFile,
@@ -365,7 +359,7 @@ function ambientLeafTokens(
       });
       if (!declaredInWorkspace) {
         if (ECMASCRIPT_INTRINSICS.has(name)) {
-          // The language, not a platform dependency.
+          // This is a language feature, not a platform dependency.
         } else if (declarations.length === 0 && symbol === undefined) {
           throw new Error(`${source.fileName}: unresolved free identifier ${name}`);
         } else {
@@ -373,8 +367,8 @@ function ambientLeafTokens(
             name === "Bun" && ts.isPropertyAccessExpression(node.parent)
               ? externalLeafToken("bun", `Bun.${node.parent.name.text}`)
               : externalLeafToken("global", name);
-          // An ambient platform value is a dependency even though no import mentions it, so it is held to
-          // the same declared-leaf rule as an imported symbol.
+          // An ambient platform value is a dependency even when no import mentions it.
+          // The same declared-leaf rule therefore applies to imported symbols.
           const [specifier, symbolName] = token.split("#") as [string, string];
           if (!isExternalLeaf(specifier, symbolName)) {
             throw new Error(`${source.fileName}: platform value ${token} is not a reviewed leaf`);
@@ -392,9 +386,9 @@ function ambientLeafTokens(
 /**
  * Node records for one module: every runtime top-level statement, in source order.
  *
- * The ordinal comes from the statement list rather than from a symbol table, so an anonymous
- * expression statement is as identifiable as an exported function and reordering two statements is a
- * visible change.
+ * The ordinal comes from the statement list, not a symbol table.
+ * An anonymous expression statement is therefore as identifiable as an exported function.
+ * Reordering two statements is a visible change.
  */
 function moduleNodeRecords(source: ts.SourceFile): ClosureNodeRecord[] {
   const text = source.getFullText();
@@ -416,11 +410,10 @@ function moduleNodeRecords(source: ts.SourceFile): ClosureNodeRecord[] {
 }
 
 /**
- * Every workspace file the closure can reach, found by parsing imports rather than by asking TypeScript.
+ * Every workspace file that the closure can reach, found by parsing imports instead of asking TypeScript.
  *
- * Deliberately permissive: it collects candidates and lets the hashing pass below decide what is allowed.
- * A specifier this pass cannot resolve is simply not added here, and the hashing pass then reports it as
- * the unresolved dependency it is.
+ * This pass collects candidates and lets the hashing pass decide what is allowed.
+ * A specifier that this pass cannot resolve is not added. The hashing pass then reports the unresolved dependency.
  */
 function discoverWorkspaceFiles(
   workspaceRoot: string,
@@ -481,9 +474,9 @@ function createProgram(rootFiles: string[]): ts.Program {
 /**
  * The hashed dependency closure of one set of root symbols.
  *
- * Fails rather than approximating on every boundary this repository cares about: a missing or
- * non-function root, a module outside the workspace, an unlisted platform symbol, an unlisted
- * package, a dynamic import, computed namespace access, and an unresolved free identifier.
+ * This function fails instead of approximating at every required boundary.
+ * It rejects a missing or non-function root, a module outside the workspace, and an unlisted platform symbol.
+ * It also rejects an unlisted package, dynamic import, computed namespace access, or unresolved free identifier.
  */
 export function hashSourceClosure(
   workspaceRoot: string,
@@ -501,10 +494,10 @@ export function hashSourceClosure(
     return file;
   });
 
-  // Discover the reachable files with this module's own resolution rules, then build one program over
-  // exactly those. Letting TypeScript discover them instead makes the closure depend on how the installer
-  // arranged `node_modules`: a symlinked workspace package resolves to the real repository even when the
-  // caller pointed at a copied workspace, and the copy's modules are then silently absent.
+  // Discover reachable files with this module's resolution rules. Then build one program over only those files.
+  // If TypeScript discovers files, the closure depends on the installer layout in `node_modules`.
+  // A symlinked workspace package can resolve to the real repository when the caller points to a copied workspace.
+  // The copy's modules then disappear from the closure.
   const discovered = discoverWorkspaceFiles(absoluteRoot, rootFiles, workspacePackages, selfTokenPaths);
   const program = createProgram([...discovered]);
   const checker = program.getTypeChecker();
@@ -561,8 +554,8 @@ export function hashSourceClosure(
     assertNoDynamicDependency(source);
 
     const uses = moduleSpecifierUses(source);
-    // A namespace import of a reviewed package leaf is a leaf rather than a traversable module, so
-    // its member access is that package's business; only workspace namespaces are constrained here.
+    // A namespace import from a reviewed package leaf is a leaf, not a traversable module.
+    // Its member access is that package's business. Only workspace namespaces are constrained here.
     assertExactNamespaceAccess(
       source,
       uses
@@ -616,8 +609,8 @@ export function hashSourceClosure(
     .sort()
     .map((name) => packageLeafRecord(absoluteRoot, name));
 
-  // A declared package the closure never reaches is an approval for something that is not there, so the
-  // registry must name exactly what was reached rather than a superset.
+  // A declared package that the closure never reaches is an approval for an absent dependency.
+  // The registry must name exactly what the closure reaches, not a superset.
   const declared = [...SOURCE_CLOSURE_PACKAGE_LEAVES[options.closure]].sort();
   const reached = [...packageNames].sort();
   if (declared.join(",") !== reached.join(",")) {
@@ -642,8 +635,7 @@ export function hashSourceClosure(
 /**
  * The exact preimage of a closure hash.
  *
- * Exported so review tooling and the approval writer serialize the same object rather than two
- * objects that happen to agree today.
+ * Review tooling and the approval writer call this function. Both serialize the same object instead of two objects that only happen to agree today.
  */
 export function closurePreimage(
   closureName: SourceClosureName,
@@ -689,10 +681,10 @@ export type ClosureFieldDiff = {
 };
 
 /**
- * Every difference a reviewer must read, one entry per changed node, token, or package field.
+ * Every difference that a reviewer must read, with one entry per changed node, token, or package field.
  *
- * A whole-file diff would bury the change that matters; a summary would hide it. One entry per
- * changed slice is the only rendering that lets a reviewer say what they approved.
+ * A whole-file diff hides the important change. A summary hides the same change.
+ * One entry per changed slice lets a reviewer state what the approval covers.
  */
 export function diffSourceClosures(
   approved: Omit<SourceClosure, "sha256"> | null,

@@ -53,7 +53,7 @@ export type EvidenceReport = {
   results: ProbeResult[];
 };
 
-/** The only input accepted by the harness execution boundary. */
+/** The only input that the harness execution boundary accepts. */
 export type PreparedHarnessRun = {
   readonly buildId: string;
   readonly extractedSnapshotPath: string;

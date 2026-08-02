@@ -31,10 +31,11 @@ function stripAchievementTitle(entry: DataRecord): DataRecord {
 }
 
 /**
- * Achievement gold is not literal. The bundle declares a per-achievement weight table, divides a
- * fixed total pot across it, rounds each share to 500 gold, then overwrites every matching
- * achievement's reward. The shipped declaration chain is evaluated as-is so the rounding rules and
- * the single hand-tuned exception stay the game's own rather than a restatement of them here.
+ * Achievement gold is not literal.
+ * The bundle declares a weight for each achievement.
+ * It divides a fixed total pot across the weights and rounds each share to 500 gold.
+ * It then overwrites each matching achievement reward.
+ * The code runs the shipped declaration chain, including its rounding rules and one hand-tuned exception.
  */
 function achievementGoldRewards(source: string): Record<string, number> {
   const weights = /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\(\s*\{\s*wake_first_spark:/.exec(source);
@@ -50,12 +51,11 @@ function achievementGoldRewards(source: string): Record<string, number> {
 }
 
 /**
- * The transform chain the shipped recipe expression applies to its own array literal.
- *
- * `locateTable` stops at the closing bracket, so the chain that follows it was being dropped. One
- * link in it doubles the XP of every `craft_rune_*` recipe, which meant all 28 rune recipes were
- * published at half the XP the game awards. Sliced verbatim rather than restated, so a future edit
- * to the pass travels with the bundle instead of going stale here.
+ * The shipped recipe expression applies this transform chain to its array literal.
+ * `locateTable` stops at the closing bracket, so it dropped the following chain.
+ * One link doubles the XP of every `craft_rune_*` recipe.
+ * As a result, all 28 rune recipes had half the XP that the game awards.
+ * The code slices the chain verbatim, so future edits stay in sync with the bundle.
  */
 function recipeTailSource(source: string): string {
   const start = source.indexOf(".map(normalizeReplacementEndgameRecipe)");
@@ -318,8 +318,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
       ids.map((itemId) => ({ itemId, chance, min: 1, max: 1, classRequirement })),
     );
   const shippedFeatureFlags = frozenObjectAfterAnchor(indexHtml, /__VESPERA_FEATURE_FLAGS__\s*=\s*Object\.freeze\s*\(/);
-  // Late crafting and gathering tiers are gated behind the shipped grandworks flag. While it is
-  // off the bundle never evaluates LATE_*_TIER_DEFS, so empty stand-ins keep composition honest.
+  // Late crafting and gathering tiers use the shipped grandworks flag. If it is off, the bundle does not evaluate LATE_*_TIER_DEFS, so empty stand-ins preserve composition.
   const grandworks = shippedFeatureFlags.grandworks as { enabled?: unknown } | undefined;
   const lateTierFlags = {
     GRANDWORKS_ENABLED: grandworks?.enabled === true,
@@ -367,13 +366,12 @@ export function composeAll(dir = "extracted"): ComposedTables {
   const gems = evalComposition(gemsDeclaration.text) as DataRecord;
 
   /*
-   * The Tower Rebirth gems. The index bundle imports `TOWER_REBIRTH_GEM_DEFINITIONS` from
-   * `tower-rebirth-system.js` and `Object.assign`s it into both the gem table and the item table,
-   * unconditionally: `TOWER_REBIRTH_ENABLED` gates the Tower system itself, not these records.
-   *
-   * Reading only the literal declaration above missed all six — three Eclipsed and three Apex gems
-   * at tier 5, which the live game has and the composed table did not. The filename carries no
-   * content hash, so it is safe to name.
+   * The index bundle imports `TOWER_REBIRTH_GEM_DEFINITIONS` from `tower-rebirth-system.js`.
+   * It assigns those definitions to the gem table and the item table without a condition.
+   * `TOWER_REBIRTH_ENABLED` controls the Tower system, not these records.
+   * Reading only the literal declaration missed all six gems: three Eclipsed and three Apex gems at tier 5.
+   * The live game has these gems, but the composed table did not.
+   * The filename has no content hash, so naming the file is safe.
    */
   const towerSource = readFileSync(path.join(dir, "assets", "tower-rebirth-system.js"), "utf8");
   const towerGems = frozenObjectAfterAnchor(
@@ -414,9 +412,10 @@ export function composeAll(dir = "extracted"): ComposedTables {
   }
   for (const definition of Object.values(gems) as DataRecord[]) {
     /*
-     * Tower Rebirth gems take the shipped merge's own shape, not the rune-gem one below it. The
-     * bundle spreads the gem and overrides four fields, keyed on tier: a tier-5 Eclipsed Ruby is a
-     * legendary worth 25,000, where `tier * 50` would price it at 250.
+     * Tower Rebirth gems use the shape from the shipped merge, not the rune-gem shape below.
+     * The bundle spreads the gem and overrides four fields by tier.
+     * A tier-5 Eclipsed Ruby is legendary and worth 25,000.
+     * The rule `tier * 50` can price it at 250.
      */
     if (Object.hasOwn(towerGems, String(definition.id))) {
       const elite = Number(definition.tier) >= 6;
@@ -478,8 +477,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     zonesDungeons,
   );
 
-  // The late crafting tier is spread into the shipped recipe table only while grandworks is on,
-  // so composing it unconditionally would publish eleven recipes no player can reach.
+  // The late crafting tier enters the shipped recipe table only when grandworks is on. Unconditional composition can publish eleven recipes that no player can reach.
   const lateRecipes = lateTierFlags.GRANDWORKS_ENABLED
     ? (composedDeclarationByAnchor(
         indexSource,
@@ -537,8 +535,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
   recipes.push(
     callObjectAfterAnchor(indexSource, /[A-Za-z_$][\w$]*\.push\(\s*\{/g, "craft_ring_copper"),
   );
-  // The shipped pass edits the recipe array it is handed (it removes universal boss-drop recipes
-  // and re-adds the starter ring), and our recipe list already carries both edits, so it gets a copy.
+  // The shipped pass edits its recipe array. It removes universal boss-drop recipes and adds the starter ring. Our recipe list already has both edits, so the pass receives a copy.
   const gearInput = {
     source: indexSource,
     items,
@@ -549,8 +546,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     featureFlags: shippedFeatureFlags,
   };
   applyGearBalance(gearInput);
-  // Read from a second run of the same program rather than from the mutation above, because the
-  // pass rescales stats without recording the level it scaled them against.
+  // Read from a second run of the same program, not from the mutation above. The pass rescales stats without recording the level used for scaling.
   const itemLevels = gearBalanceLevels({ ...gearInput, recipes: [...recipes] });
 
   const addedQuests = evalComposition(
@@ -634,9 +630,7 @@ export function composeAll(dir = "extracted"): ComposedTables {
     2_000,
   );
 
-  // The game's own class definitions, which carry the copy the character select shows: a title, a
-  // description, a focus line, a world role, and the four traits each class is built around. The
-  // compendium had been substituting its own one-line summaries for these.
+  // The game's class definitions provide the character-select copy: a title, description, focus line, world role, and four traits. The compendium had used one-line summaries instead.
   const classList = evalComposition(
     declarationByAnchor(
       indexSource,

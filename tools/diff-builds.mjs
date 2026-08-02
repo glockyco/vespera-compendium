@@ -2,8 +2,8 @@
 // Diff two extracted Vespera builds.
 //   node tools/diff-builds.mjs <oldDir> <newDir>
 //
-// Reports file-level adds/removes/changes, then for changed JS reports newly introduced
-// top-level identifiers and constants — which is what actually characterises a patch.
+// Reports file additions, removals, and changes. For changed JavaScript files, it reports new top-level
+// identifiers and constants. These items provide the useful signal for a patch.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -49,7 +49,7 @@ for (const k of code) {
 }
 console.log(`\n(${media.length} changed media/binary files omitted)\n`);
 
-// Newly introduced identifiers — the useful signal in a patch.
+// Newly introduced identifiers provide the useful signal in a patch.
 const IDENT = /\b[A-Z][A-Z0-9_]{4,}\b|function\s+([A-Za-z_$][\w$]{4,})/g;
 console.log("## New identifiers by file\n");
 for (const k of code.filter((f) => f.endsWith(".js") || f.endsWith(".cjs"))) {

@@ -1,19 +1,20 @@
 /**
  * The separately reviewed declarative contract.
  *
- * Extraction reads this fixture and never generates it. That separation is the whole point: if the
- * extractor and its expectations lived in one place, a bug that changed both would agree with itself and
- * no review would notice. Its canonical hash is stored in the lock, the review artifact, and the proof, so
- * an edited fixture cannot silently redefine what "unchanged" means.
+ * Extraction reads this fixture and never generates it.
+ * This separation matters.
+ * If extractor and expectations shared one module, one bug can change both and pass its own review.
+ * The canonical hash is stored in the lock, review artifact, and proof.
+ * An edited fixture cannot silently redefine "unchanged".
  *
- * It lives in its own module so the inspector closure can parse it without reaching the extractor, and
- * therefore without reaching the TypeScript compiler. An inspector whose hash moved every time the
- * extractor changed would make rotation routine, and a routine rotation is not a trust root.
+ * This module is separate so the inspector closure can parse it without the extractor or TypeScript compiler.
+ * A changing inspector hash can make rotation routine.
+ * Routine rotation is not a trust root.
  */
 
 import type { CanonicalJson } from "@vespera/core";
 
-/** How a derived raw value becomes the text a page renders. */
+/** How a derived raw value becomes the text that a page shows. */
 export type MechanicValueFormat =
   | "identity"
   | "integer"
@@ -45,11 +46,12 @@ export type MechanicsContractFixture = {
 };
 
 /**
- * Parses the fixture bytes.
+ * Parse the fixture bytes.
  *
- * Deliberately shallow: the fixture is a tracked repository file rather than untrusted input, and the real
- * check is that every extracted claim matches it exactly. A schema library here would add a second
- * description of the same shape without adding a guarantee.
+ * Keep this parser shallow.
+ * The fixture is a tracked repository file, not untrusted input.
+ * The real check is that each extracted claim matches it exactly.
+ * A schema library adds another description of the same shape without a new guarantee.
  */
 export function parseMechanicsContract(bytes: Uint8Array): MechanicsContractFixture {
   const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
