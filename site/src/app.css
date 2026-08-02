@@ -1,7 +1,11 @@
 /**
- * The palette, panel treatment and typography are Vespera's own, read out of the shipped bundle
+ * The palette, panel treatment and surface idiom are Vespera's own, read out of the shipped bundle
  * (`index-TpX1HTVU.css`, `GameView-V33hRMR7.css`, `mercenary-war-table.css`) rather than invented, so
  * the compendium reads as an extension of the game instead of a third-party table dump.
+ *
+ * The game supplies weight, tracking, case, colour and surface treatment. It does not supply size:
+ * its 9px kicker and 11px button labels are HUD sizes for a fixed desktop client, and a browser page
+ * that is read rather than operated has to stay legible at arm's length and on a phone.
  */
 
 :root {
@@ -16,12 +20,12 @@
   /* Brass accents */
   --brass: #d6a94f;
   --brass-warm: #f0c76a;
-  --brass-deep: #9b6f24;
+  --brass-deep: #b4812a;
 
   /* Ink */
   --parchment: #f1e6c8;
   --lavender-grey: #aeb9c8;
-  --text-muted: #718095;
+  --text-muted: #7d8da5;
 
   /* Secondary hues */
   --royal-blue: #3b5980;
@@ -94,19 +98,24 @@
   /* Type ramp.
 
      Nine steps, because a compendium is read by scanning and every step has a distinct job: page
-     title, section title, opening sentence, body, secondary prose, metadata, chip labels, and the
-     game's own two pixel-sized idioms. Those two are inherited rather than chosen — the game's
-     kicker is 9px and its buttons 11px, and rounding them to a rem step would stop the compendium
-     reading as an extension of the game. */
-  --text-display: clamp(1.6rem, 3.4vw, 2.3rem);
-  --text-title: 1.1rem;
-  --text-lead: 1.05rem;
-  --text-body: 1rem;
-  --text-sm: 0.88rem;
-  --text-xs: 0.8rem;
-  --text-2xs: 0.72rem;
-  --text-kicker: 9px;
-  --text-control: 11px;
+     title, section title, opening sentence, body, secondary prose, metadata, chip labels, the
+     tracked kicker, and control labels. The last two are the game's own idioms in weight, tracking
+     and case, but not in size: the shipped 9px kicker and 11px button label are HUD sizes for a
+     fixed client viewport and are unreadable as page furniture, so both sit on the rem ramp. */
+  --text-display: clamp(2rem, 4vw, 3rem);
+  --text-title: 1.25rem;
+  --text-lead: 1.125rem;
+  --text-body: 1.0625rem;
+  --text-sm: 0.9375rem;
+  --text-xs: 0.875rem;
+  --text-2xs: 0.75rem;
+  --text-kicker: 0.75rem;
+  --text-control: 0.875rem;
+  /* Panel headings. They were reading two steps below the body copy they introduce, which inverts the
+     hierarchy, and one semantic level rendered at three sizes on a single page. These two tokens give each
+     level exactly one size while keeping the tracked-uppercase ledger character. */
+  --text-panel-title: 1.125rem;
+  --text-panel-sub: 1rem;
 }
 
 *,
@@ -123,6 +132,7 @@ body {
   background-attachment: fixed;
   color: var(--parchment);
   font-family: var(--font-ui);
+  font-size: var(--text-body);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -258,7 +268,10 @@ th {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.55rem 0.7rem;
+  /* The sort control fills the header cell, so the cell owns the 44px target rather than adding
+     padding around a 20px button that a thumb cannot hit. */
+  height: 2.75rem;
+  padding: 0 0.7rem;
   background: var(--painted-elevated);
   color: var(--kicker);
   font-size: var(--text-kicker);
@@ -270,6 +283,9 @@ th {
 }
 
 th button {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -347,10 +363,22 @@ tbody tr:nth-child(even) {
   margin-bottom: 0.9rem;
 }
 
+/* The browser default placeholder is dimmer than any token here and misses the contrast floor. Placeholder
+   text names what the field accepts, so it has to be legible rather than decorative. */
+input[type="search"]::placeholder,
+input[type="text"]::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
 input[type="search"],
 input[type="text"],
 textarea {
-  padding: 0.45rem 0.6rem;
+  /* 44px minimum: these are the two controls a phone user hits most, and the shipped client's own
+     dense field height is a mouse target, not a thumb target. */
+  min-block-size: 2.75rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
   background: var(--panel-inset);
@@ -368,7 +396,12 @@ textarea {
 }
 
 .btn {
-  padding: 0.38rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid var(--brass-edge);
   border-radius: var(--radius-control);
   background: linear-gradient(180deg, var(--brass-wash-top), var(--brass-wash-bottom));
@@ -432,7 +465,7 @@ code {
 }
 
 .chip-note {
-  color: var(--text-muted);
+  color: var(--lavender-grey);
   font-size: var(--text-xs);
 }
 
@@ -455,9 +488,23 @@ code {
 }
 
 .crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
   margin-bottom: 0.9rem;
   color: var(--text-muted);
   font-size: var(--text-xs);
+}
+
+/* The one link back out of a record is a thumb target, not a 20px word. */
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  padding-inline: 0.15rem;
 }
 
 .schema-table {

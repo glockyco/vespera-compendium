@@ -22,12 +22,19 @@
     image?: string | null;
     rarity?: string | null;
     sub?: string | null;
+    /** Frame size for the art, which selects the generated variant behind it. */
     size?: "sm" | "md";
   } = $props();
 </script>
 
 <a class="entity" href={resolve(`/${slug}/${id}/`)}>
-  <Art src={image} alt={name} {size} {rarity} />
+  <!-- Branched rather than passed through, because every Art callsite states its kind and variant
+       literally and `check:art` reads them from the markup. -->
+  {#if size === "md"}
+    <Art src={image} alt={name} kind="general" variant="card" {rarity} />
+  {:else}
+    <Art src={image} alt={name} kind="general" variant="thumb" {rarity} />
+  {/if}
   <span class="entity-text">
     <span class="entity-name" class:rarity-common={rarity === "common"} class:rarity-uncommon={rarity === "uncommon"} class:rarity-rare={rarity === "rare"} class:rarity-epic={rarity === "epic"} class:rarity-legendary={rarity === "legendary"} class:rarity-mythic={rarity === "mythic"} class:rarity-living={rarity === "living"}>{name}</span>
     {#if sub}<span class="entity-sub">{sub}</span>{/if}
@@ -39,6 +46,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
+    /* Every cross-reference on the site is this element, so it carries the thumb target rather than
+       each page adding its own. */
+    min-block-size: 2.75rem;
     min-inline-size: 0;
     padding: 0.2rem 0.35rem 0.2rem 0.2rem;
     border-radius: var(--radius-art);

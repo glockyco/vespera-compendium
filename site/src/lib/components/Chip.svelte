@@ -24,14 +24,24 @@
 <style>
   .chip {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: 0.4ch;
+    max-inline-size: 100%;
     padding: 0.18rem 0.5rem;
     border: 1px solid var(--line-soft);
     border-radius: var(--radius-chip);
     background: var(--panel-raised);
     font-size: var(--text-xs);
     line-height: 1.35;
+  }
+
+  /*
+   * The label and the value each stay on one line, but a long pair breaks between them rather than
+   * running off a 320 px viewport. A short chip still reads as one pill because it has the room.
+   */
+  .chip-label,
+  .chip-value {
     white-space: nowrap;
   }
 

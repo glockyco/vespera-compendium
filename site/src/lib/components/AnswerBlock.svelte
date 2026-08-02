@@ -48,7 +48,7 @@
   .answer-head h2 {
     margin: 0;
     color: var(--kicker);
-    font-size: var(--text-xs);
+    font-size: var(--text-panel-title);
     font-weight: 800;
     letter-spacing: 0.13em;
     text-transform: uppercase;
