@@ -554,9 +554,10 @@ export function composeAll(dir = "extracted"): ComposedTables {
     definitions: soulbound as DataRecord,
     featureFlags: shippedFeatureFlags,
   };
+  const levelItems = structuredClone(items);
   applyGearBalance(gearInput);
-  // Read from a second run of the same program, not from the mutation above. The pass rescales stats without recording the level used for scaling.
-  const itemLevels = gearBalanceLevels({ ...gearInput, recipes: [...recipes] });
+  // Run level discovery on raw items because the shipped program mutates its input.
+  const itemLevels = gearBalanceLevels({ ...gearInput, items: levelItems, recipes: [...recipes] });
 
   const addedQuests = evalComposition(
     declarationByAnchor(indexSource, [/q_ash_bridge_001/, /Smoke and Bloodstone/], "{").text,

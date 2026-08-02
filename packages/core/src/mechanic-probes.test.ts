@@ -16,11 +16,18 @@ import type { CanonicalJson } from "./canonical-public-evidence.ts";
 import { canonicalJson } from "./canonical-public-evidence.ts";
 import { sha256Hex } from "./source-hash.ts";
 
+/**
+ * The reviewed contract hashes.
+ *
+ * A contract hash covers the executor closure as well as the cases and the expression. An approved change to
+ * the executor therefore moves every hash here. Update these values only after `probe-executor:check` passes
+ * against the reviewed constant. That check proves that the closure moved by review and not by accident.
+ */
 const EXPECTED_CONTRACT_HASHES: Record<string, string> = {
-  mitigationCap: "389be6e3b6aa80e26329dc3622d67816827167d966e695e98d6d636f7e95b2e7",
-  mitigationLevelClamp: "61d19a58366ab68a8fbfc5027e5da72db30a3750e07d16374b58c36a65a84683",
-  xpGainMultiplier: "8e34608cb47614397ba906a33b01ad42bbcde42a8b8314e29e32d266d73d4b9d",
-  sellValueRarityMultipliers: "1096504e5bca09ac4ea2e09b0c82370426a69ebdbcdb3c096d77eabae7205740",
+  mitigationCap: "8a14cc72291d4c3c90c27a5c9398481bc1ea9fb85bc84fa85c800a0b225fe795",
+  mitigationLevelClamp: "0a7af3d7b2c0a00e617575fde70a7fc038b9150d9df306ec1a176958dfdf45d7",
+  xpGainMultiplier: "bb3582f9bc93a42af88a05405ae61df44b2f52c8518ec2732bf269ad24e98896",
+  sellValueRarityMultipliers: "ce566c13cde249697bd09bc68bc253c91a78641058d3ff4bd3cdb969426fa248",
 };
 
 describe("mechanic probe contracts", () => {
