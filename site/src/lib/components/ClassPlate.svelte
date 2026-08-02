@@ -31,7 +31,7 @@
 </script>
 
 <a class="plate" href={resolve(`/classes/${id}/`)} data-class={id}>
-  <Art src={image} alt={name} size="portrait" />
+  <Art src={image} alt={name} kind="class" variant="portrait" />
   <span class="plate-name">{name}</span>
   <span class="plate-title">{title}</span>
   <span class="plate-role">{worldRole}</span>
