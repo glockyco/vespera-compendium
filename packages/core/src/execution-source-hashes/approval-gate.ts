@@ -8,4 +8,4 @@
  * An edit without a reviewed diff only moves the failure.
  */
 export const MECHANICS_APPROVAL_GATE_SHA256 =
-  "6bd9b97ecd9762ff28860021e6f30218f32818afeefb4823718b171d8bae5f23";
+  "78bc0cf4ad0630a24a301ae6c710180b68b693d141088802980901f88ed9deb0";

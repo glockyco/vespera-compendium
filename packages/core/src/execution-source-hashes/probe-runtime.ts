@@ -6,4 +6,4 @@
  * A mismatch changes every document model because the lock approves one complete evidence object, not a per-document slice.
  */
 export const PROBE_RUNTIME_SHA256 =
-  "fa27c0487f1e9438e407a2415f0c8652c9d41d6dd781ce361a01b16db9008ad0";
+  "cf8dc3a7a468e801108ac900508894a6595ceb35ea92379f3714a2a80bd3e5cb";
