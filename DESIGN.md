@@ -190,24 +190,25 @@ components:
 
 ## Overview
 
-**The Quartermaster's Provenance Ledger.** Every record is a requisition entry that answers where a
-thing comes from and at what level it becomes reachable, and the page is laid out as that ledger:
-brass hairline panels on painted indigo, small tracked labels above each section, tabular figures,
-and separately ruled gutters for quantities that must never be added together.
+**The Quartermaster's Provenance Ledger.** Each record is a requisition entry. It answers where a thing comes from and at what level it becomes reachable.
 
-The palette, panel treatment, kicker typography, rarity hues and typeface are not chosen. They are
-Vespera's own, read out of the game's shipped stylesheets (`index-TpX1HTVU.css` for surfaces and
-brass, `GameView-V33hRMR7.css` for rarity, `mercenary-war-table.css` for the panel and kicker idiom)
-so the compendium reads as an extension of the game rather than a third-party table dump. Treat that
-inheritance as fixed. New surfaces extend this vocabulary, they do not restyle it.
+The page follows that ledger pattern. Brass hairline panels sit on painted indigo. Tracked labels sit above each section. Tabular figures use separate gutters for quantities that must not be added together.
 
-The game supplies weight, tracking, case, colour and surface treatment. It does not supply size. Its
-own sizes are HUD sizes for a fixed client viewport, and this page is read rather than operated, so
-every size in this system sits on the rem ramp below.
+The palette, panel treatment, kicker typography, rarity hues, and typeface come from Vespera. The compendium takes them from the shipped stylesheets.
 
-The mood is a lit reading table in a dark room. Ink is warm, ground is cold, and the one saturated
-accent is brass. The anti-reference is the generic data browser this replaced: `snake_case` headers,
-one wide table per page, and a home page whose first line was schema metadata.
+`index-TpX1HTVU.css` defines surfaces and brass. `GameView-V33hRMR7.css` defines rarity. `mercenary-war-table.css` defines the panel and kicker idiom.
+
+The compendium reads as an extension of the game, not a third-party table dump.
+
+The game fixes this inheritance. New surfaces extend this vocabulary. They do not restyle it.
+
+The game supplies weight, tracking, case, colour, and surface treatment. It does not supply size.
+
+The game uses HUD sizes for a fixed client viewport. This page is for reading, not operation. Every size in this system uses the rem ramp below.
+
+The mood is a lit reading table in a dark room. Ink is warm. The ground is cold. Brass is the only saturated accent.
+
+The anti-reference is the generic data browser that this design replaced. It used `snake_case` headers, one wide table per page, and schema metadata as the first line on the home page.
 
 **Key Characteristics:**
 
@@ -218,82 +219,93 @@ one wide table per page, and a home page whose first line was schema metadata.
 
 ## Colors
 
-Painted indigo is the ground. Obsidian is the darkest value, and the sticky top bar sits on it at
-88% behind a blur. Surfaces step up through the alpha-composited panel tokens, and
-`painted-elevated` is the one opaque lifted plane, used for the sticky table header and the skip
-link. Brass is the only accent that carries emphasis, and it is rationed to the
-wordmark, a quantity, a hovered border, an active filter and a provenance mark. Parchment is body
-ink, `lavender-grey` is secondary prose, and `text-muted` is metadata.
+Painted indigo is the ground. Obsidian is the darkest value. The sticky top bar sits on it at 88% behind a blur.
 
-The surface, hairline, control, confirm and error values are all tokens too (`panel-*`, `hairline*`,
-`brass-*`, `confirm-*`, `error-*`). They are alpha-composited over the ground rather than opaque, so
-a panel inside a panel deepens instead of flattening, and every one of them is the game's own value.
+Surfaces step up through the alpha-composited panel tokens. `painted-elevated` is the only opaque lifted plane. It serves the sticky table header and the skip link.
 
-Three declarations in `:root` carry no role in this build: `--painted-surface`, `--royal-blue` and
-`--red`. They are inherited values with no caller, so they are not part of this system. Do not reach
-for them to solve a new problem.
+Brass is the only accent that carries emphasis. Use it for the wordmark, a quantity, a hovered border, an active filter, and a provenance mark.
+
+Parchment is body ink. `lavender-grey` is secondary prose. `text-muted` is metadata.
+
+The surface, hairline, control, and error values are also tokens (`panel-*`, `hairline*`,
+`brass-*`, `confirm-*`, `error-*`). They use alpha composition over the ground rather than opaque fills.
+
+A panel inside a panel therefore becomes darker instead of flat. Every value comes from the game.
+
+Three declarations in `:root` have no role in this build: `--painted-surface`, `--royal-blue`, and `--red`.
+
+The build inherits these values, but no caller uses them. They are not part of this system. Do not use them to solve a new problem.
 
 ### Primary
 
-- **Brass** (`brass`): the wordmark, an emphasised figure, a hovered panel border, an active filter.
-- **Warm Brass** (`brass-warm`): the hover and focus ink for links, control labels and the focus ring.
-- **Deep Brass** (`brass-deep`): the provenance mark. It is the darkest brass step and the only one
-  used as small text on a panel. Measured against every ground it can land on, it holds 5.45:1 on
-  `panel-top`, 4.97:1 on `panel-raised`, 4.76:1 on `panel-hover`, 4.60:1 on `panel-hover-strong` and
-  5.71:1 on `panel-inset`. Every one of those clears the 4.5:1 AA floor for small text.
+- **Brass** (`brass`): the wordmark, an emphasized figure, a hovered panel border, an active filter.
+- **Warm Brass** (`brass-warm`): hover and focus ink for links, control labels, and the focus ring.
+- **Deep Brass** (`brass-deep`): the provenance mark. It is the darkest brass step and the only one used as small text on a panel.
+
+Measured against every ground where it can appear, it holds 5.45:1 on `panel-top` and 4.97:1 on `panel-raised`.
+
+It holds 4.76:1 on `panel-hover`.
+
+It holds 4.60:1 on `panel-hover-strong` and 5.71:1 on `panel-inset`. Each result clears the 4.5:1 AA floor for small text.
 
 ### Neutral
 
-- **Parchment** (`parchment`): body ink and every heading. 14.86:1 on the page ground.
-- **Lavender Grey** (`lavender-grey`): paragraph prose and secondary lines. 9.3:1 on the page ground.
-- **Muted Slate** (`text-muted`): chip labels, guide stamps, counts, breadcrumbs and placeholder text.
-  It holds 5.55:1 on `panel-top`, 5.07:1 on `panel-raised`, 4.85:1 on `panel-hover`, 4.68:1 on
-  `panel-hover-strong` and 5.81:1 on `panel-inset`. All clear the 4.5:1 AA floor.
+- **Parchment** (`parchment`): body ink and every heading. It measures 14.86:1 on the page ground.
+- **Lavender Grey** (`lavender-grey`): paragraph prose and secondary lines. It measures 9.3:1 on the page ground.
+- **Muted Slate** (`text-muted`): chip labels, guide stamps, counts, breadcrumbs, and placeholder text.
 
-Placeholder text is pinned to `text-muted` with `opacity: 1` rather than left to the browser default.
-The browser default is dimmer than any token here and misses the floor. Placeholder text names what a
-field accepts, so it must be legible. It measures 5.80:1 or better on every field in the build, at
-18px on the home page and 15px on inner pages.
+It holds 5.55:1 on `panel-top`, 5.07:1 on `panel-raised`, and 4.85:1 on `panel-hover`.
+
+It holds 4.68:1 on `panel-hover-strong` and 5.81:1 on `panel-inset`. Each result clears the 4.5:1 AA floor.
+
+Placeholder text uses `text-muted` with `opacity: 1`. The browser default is dimmer than every token here and misses the floor.
+
+Placeholder text names what a field accepts, so it must be legible. It measures 5.80:1 or better on every field in the build.
+
+It appears at 18px on the home page and 15px on inner pages.
 
 ### Semantic
 
-Two colour families are semantic and must never be repurposed for decoration.
+Two colour families have semantic meaning. Do not reuse them for decoration.
 
-- **Rarity**: the seven hues are the game's own and always mean rarity. They tint a name, an art
-  frame or a chip value, never a background or an unrelated accent.
-- **The three level scales**: ember for Combat, green for Gathering, cyan for Crafting. These exist
-  because the game gates three different skills and its own quest guidance keeps them apart. A hue
-  never carries a scale on its own. The chip prints the scale's name beside the number, and the
-  progression gutters are labelled as well as tinted.
+- **Rarity**: the seven hues come from the game and always mean rarity. They tint a name, an art frame, or a chip value.
+
+They never tint a background or an unrelated accent.
+
+- **The three level scales**: ember means Combat, green means Gathering, and cyan means Crafting.
+
+The game gates three different skills. Its quest guidance keeps those skills apart.
+
+A hue never carries a scale by itself. The chip prints the scale name beside the number. The progression gutters also have labels and tints.
 
 ### Named Rules
 
-**The One Status One Colour Rule.** A provenance status wears one colour on every surface. "Source
-checked" is deep brass wherever it appears. The home page's formula stamp used to render in
-`brass-warm` while the same status rendered deep elsewhere, which made one status look like two. The
-stamp now takes `brass-deep`, and any new provenance surface takes the same colour for the same
-status.
+**The One Status One Colour Rule.** A provenance status uses one colour on every surface.
 
-**The Rationed Brass Rule.** Brass marks the thing the reader is looking for. If a screen has more
-than a few brass elements, the accent has stopped meaning anything and something must go back to
-parchment or lavender.
+"Source checked" is deep brass wherever it appears. The home page's formula stamp once used `brass-warm`, while the same status used deep brass elsewhere.
+
+That difference made one status look like two. The stamp now uses `brass-deep`. Each new provenance surface uses the same colour for the same status.
+
+**The Rationed Brass Rule.** Brass marks the thing that the reader seeks.
+
+If a screen has more than a few brass elements, the accent loses meaning. Change some elements to parchment or lavender.
 
 ## Typography
 
 **Display and Body Font:** Source Sans 3 (with `ui-sans-serif`, `system-ui`, `sans-serif`)
 **Mono Font:** `ui-monospace` (with SFMono-Regular, Menlo, Monaco, Consolas)
 
-**Character:** one family, the game's own. Hierarchy comes from size, weight and tracking rather than
-from a second face. Headings are 800 weight and tight at 1.15. Body is 1.5 line-height at normal
-weight.
+**Character:** one family, the game's own. Hierarchy comes from size, weight, and tracking rather than a second face.
 
-The ramp is eleven `--text-*` custom properties, and nothing outside it may declare a literal size.
-Sizes a fraction of a step apart are noise rather than hierarchy. No reader can tell them
-apart, and no contributor can tell which one to reach for.
+Headings use 800 weight and tight 1.15 line-height. Body text uses 1.5 line-height at normal weight.
+
+The ramp has eleven `--text-*` custom properties. Nothing outside it can declare a literal size.
+
+Sizes that differ by a fraction of a step add noise instead of hierarchy. Readers cannot tell them apart. Contributors cannot tell which one to use.
 
 ### Hierarchy
 
-| Token | Size | Renders at | Job |
+| Token | Size | Shows at | Job |
 |---|---|---|---|
 | `--text-display` | `clamp(2rem, 4vw, 3rem)` | 32-48px | the page title, one per page |
 | `--text-title` | `1.25rem` | 20px | card and band titles outside the panel-heading system |
@@ -307,150 +319,162 @@ apart, and no contributor can tell which one to reach for.
 | `--text-panel-title` | `1.125rem` | 18px | the h2 heading of a panel |
 | `--text-panel-sub` | `1rem` | 16px | the h3 heading inside a panel |
 
-Eleven tokens resolve to eight distinct rendered sizes. Three pairs are one value with two names:
+Eleven tokens resolve to eight distinct sizes. Three pairs have one value with two names:
 
 - `--text-2xs` and `--text-kicker` are both 12px.
 - `--text-xs` and `--text-control` are both 14px.
 - `--text-lead` and `--text-panel-title` are both 18px.
 
-Each name in a pair keeps a distinct job, and the job decides which name to write. A chip label is
-`--text-2xs` and a tracked uppercase mark is `--text-kicker`. A metadata line is `--text-xs` and a
-button label is `--text-control`. An opening sentence is `--text-lead` and a panel heading is
-`--text-panel-title`. The names stay apart because the jobs are different. A future change to one
-name is not a change to the other.
+Each name in a pair keeps a distinct job. The job decides which name to write.
 
-`--text-kicker` and `--text-control` are on the rem ramp, not on the game's pixel values. The shipped
-client sets its kicker at 9px and its button label at 11px. Those are HUD sizes for a fixed client
-viewport, and they were unreadable as page furniture on a browser page that is read at arm's length
-and on a phone. Rounding them onto the rem ramp keeps the game's weight, tracking, case and colour,
-which is where the inheritance lives. Size is not part of that inheritance.
+A chip label is `--text-2xs`. A tracked uppercase mark is `--text-kicker`.
 
-The one deliberate exception to the ramp is the lettered art fallback, which sizes in `em` so the
-initials scale with whichever art box holds them. It is the only literal font size in the build.
+A metadata line is `--text-xs`. A button label is `--text-control`.
 
-The kicker is the signature: 12px, 800 weight, `0.15em` tracking, uppercase, in `kicker` teal. It
-sits above a page title and marks a table column header. It is what makes a panel read as a ledger
-entry. Monospace is reserved for identifiers a reader may need to copy, such as a record's raw id or
-a SQL string, and never for prose or figures.
+An opening sentence is `--text-lead`. A panel heading is `--text-panel-title`.
 
-Every figure that can be compared down a column uses `font-variant-numeric: tabular-nums`.
+The names stay apart because the jobs differ. A future change to one name does not change the other.
+
+`--text-kicker` and `--text-control` use the rem ramp, not the game's pixel values.
+
+The shipped client sets its kicker at 9px and its button label at 11px. These are HUD sizes for a fixed client viewport.
+
+They were unreadable as page furniture on a browser page read at arm's length and on a phone.
+
+The rem ramp keeps the game's weight, tracking, case, and colour. These properties carry the inheritance. Size does not.
+
+The one deliberate exception to the ramp is the lettered art fallback. It uses `em` so the initials scale with each art box.
+
+It is the only literal font size in the build.
+
+The kicker is the signature: 12px, 800 weight, `0.15em` tracking, uppercase, in `kicker` teal.
+
+It sits above a page title and marks a table column header. It gives a panel the character of a ledger entry.
+
+Reserve monospace for identifiers that a reader can copy, such as a record's raw id or a SQL string.
+
+It is never used for prose or figures.
+
+Every figure that readers can compare down a column uses `font-variant-numeric: tabular-nums`.
 
 ### Named Rules
 
-**The One Level One Size Rule.** A semantic heading level renders at exactly one size on a page. A
-panel h2 is `--text-panel-title` and a panel h3 is `--text-panel-sub`. Before this build one level
-rendered at three sizes on a single page, and panel headings were smaller than the body copy they
-introduced, which inverts the hierarchy. Every panel h2 on `/classes/arcanist/` and on
-`/items/eclipse_gem_ruby/` now measures 18px, and every panel h3 on `/classes/arcanist/` measures
-16px. A panel heading keeps the tracked uppercase ledger character at both levels.
+**The One Level One Size Rule.** A semantic heading level shows at one size on a page.
 
-**The Ramp Rule.** No file declares a literal font size. A size that has no token is a missing token,
-not an exception.
+A panel h2 is `--text-panel-title`. A panel h3 is `--text-panel-sub`.
 
-**The Measure Rule.** Running prose is capped at 68ch. Tables, chip rows and record lists keep the
-full column width, because a fact list is scanned down rather than read across. The cap sits on the
-paragraph, not on the column: a 20rem claim grid is what keeps a provenance gutter aligned, and a
-98-character line is what makes a paragraph hard to read.
+Before this build, one level showed at three sizes on one page. Panel headings were smaller than the body copy that they introduced.
+
+This difference inverted the hierarchy. Every panel h2 on `/classes/arcanist/` and `/items/eclipse_gem_ruby/` now measures 18px.
+
+Every panel h3 on `/classes/arcanist/` measures 16px. A panel heading keeps the tracked uppercase ledger character at both levels.
+
+**The Ramp Rule.** No file declares a literal font size. A size without a token is a missing token, not an exception.
+
+**The Measure Rule.** Use body prose with a 68ch cap. Tables, chip rows, and record lists keep the full column width.
+
+Readers scan a fact list down rather than read it across. The cap sits on the paragraph, not on the column.
+
+A 20rem claim grid keeps the provenance gutter aligned. A 98-character line makes a paragraph hard to read.
 
 ## Layout
 
-A 76rem centred column, with the top bar and the footer spanning it. That page cap is separate from
-the 68ch prose measure. The column decides how wide a page may be, and the measure decides how long a
-line of running text may be. The two never substitute for each other. The home hero holds its lede
-and its hint tighter still, at 40rem, and its route list at 44rem.
+The centred column is 76rem wide. The top bar and footer span it.
 
-Content grids are intrinsic first: `repeat(auto-fit, minmax(<floor>, 1fr))` with the floor set by
-what the content needs to stay legible. The floors in use are 20rem for record blocks, 18rem for
-mechanics facts, 16rem for browse card grids, 15rem for slot groups, 13rem for the shared card
-grid and 11rem for a paired fact list. A named breakpoint is used only where a two-column
-composition has to collapse to one, and there are thirteen such queries in the build, at 38, 40,
-48, 52, 54, 58 and 62rem. The top bar is one of them, and stacks its search field below the
-wordmark under 54rem.
+The page cap is separate from the 68ch prose measure. The column sets page width. The measure sets the length of each running-text line.
 
-Density is high by intent. A compendium is read by scanning, so rows are tight and separators are
-dotted hairlines rather than full rules. A wide join table scrolls sideways inside its own frame
-rather than breaking the mobile viewport. The two longest lists, search results and the class gear
-list, cap their height and scroll inside their panel rather than lengthening the page.
+The two values never replace each other. The home hero keeps its lede and hint at 40rem. Its route list uses 44rem.
 
-Every control a thumb must hit is at least 44px: the search field, the buttons, the sort control in a
-table header, and the breadcrumb link out of a record.
+Content grids are intrinsic first: `repeat(auto-fit, minmax(<floor>, 1fr))`. The floor keeps the content legible.
+
+The floors are 20rem for record blocks, 18rem for mechanics facts, and 16rem for browse card grids.
+
+They are 15rem for slot groups, 13rem for the shared card grid, and 11rem for a paired fact list.
+
+A named breakpoint appears only when a two-column composition must collapse to one. The build has thirteen such queries at 38, 40, 48, 52, 54, 58, and 62rem.
+
+The top bar is one of these queries. It places the search field below the wordmark under 54rem.
+
+Density is high by intent. A compendium supports quick reading, so rows are tight and separators are dotted hairlines instead of full rules.
+
+A wide join table scrolls sideways inside its own frame. It does not break the mobile viewport.
+
+The two longest lists are search results and the class gear list. Each list has a height cap and scrolls inside its panel instead of making the page longer.
+
+Every control that a thumb must hit is at least 44px. This includes the search field, buttons, the sort control in a table header, and the breadcrumb link out of a record.
 
 ## Elevation & Depth
 
-Tonal, not lifted. Depth comes from the brass hairline and the panel's own gradient, plus a single
-shared shadow that reads as the page's ambient recess rather than as a raised card. There is exactly
-one shadow token, `--panel-shadow`, and no elevation scale. A surface that needs to feel closer gets
-a lighter ground, not a bigger shadow. The one other shadow in the build is the inset hairline ring
-on the Bar track, which is a border drawn with a shadow rather than an elevation step. The body
-carries the game's own radial vignette so the page is never a flat slab.
+The design is tonal, not lifted. Depth comes from the brass hairline and the panel gradient.
+
+A single shared shadow reads as the page's ambient recess rather than as a raised card. The build has exactly one shadow token, `--panel-shadow`, and no elevation scale.
+
+A surface that needs to feel closer gets a lighter ground, not a bigger shadow.
+
+The only other shadow is the inset hairline ring on the Bar track. It is a border drawn with a shadow, not an elevation step.
+
+The body carries the game's radial vignette. The page is never a flat slab.
 
 ### Named Rules
 
-**The Flat Ledger Rule.** Surfaces do not float. If a new surface seems to need a second shadow step,
-it needs a lighter ground token instead.
+**The Flat Ledger Rule.** Surfaces do not float. If a new surface seems to need a second shadow step, give it a lighter ground token instead.
 
 ## Shapes
 
-Radius is functional and steps with the element's size: 999px for chips, 5px for controls, 6px for
-fields, 8px for art frames and 12px for panels. Borders are single-pixel and low-contrast, with warm
-brass for a panel edge and cool `line-soft` for an internal division. Art sits in a fixed square
-frame whose border takes the rarity tint.
+Radius has a function. It steps with element size: 999px for chips, 5px for controls, and 6px for fields.
+
+It uses 8px for art frames and 12px for panels.
+
+Borders are single-pixel and low-contrast. Warm brass marks a panel edge. Cool `line-soft` marks an internal division.
+
+Art sits in a fixed square frame. The border uses the rarity tint.
 
 ## Components
 
-- **Panel** - the ledger entry. Brass hairline, gradient ground, 12px radius, one shared shadow, and
-  a `clamp(0.9rem, 2vw, 1.4rem)` pad. Every record section, every browse group and every band on the
-  spine is one.
-- **AnswerBlock** - a panel section with a tracked uppercase h2 in `--text-panel-title`, an optional
-  count in `--text-xs`, and a `line-soft` rule under the head. All twelve record types use it, so a
-  reader learns the page shape once. Its empty state is a sentence, never a dash. The default reads
-  "Nothing modelled here yet", and a caller passes a sharper sentence such as "No source is modelled
-  for this item yet". Callers pass emptiness explicitly, because a snippet that renders nothing is
-  still a snippet.
-- **Chip** - one labelled fact, label above value in miniature. The chip is `--text-xs` and the label
-  is `--text-2xs` uppercase in `text-muted`. The three level-scale tones are the only coloured
-  variants, and each tints its border as well as its ground.
-- **Stamp** - the provenance mark. A pill with a brass hairline, `--text-2xs` at 700 weight, in
-  `brass-deep`. It states what was checked, never that a whole page passed a probe.
-- **Art** - the game's own picture in a fixed box per size (2rem, 3.5rem, 6rem or full). The box is
-  reserved before load so grids never reflow, the image is decorative because a name always sits
-  beside it, and a record with no art gets its first two letters rather than an empty frame.
-  Thumbnails load lazily. The one hero panorama loads eagerly, because it is the first viewport.
-- **EntityLink** - the single way one record points at another: thumbnail, name in rarity colour,
-  optional sub-line. Names wrap rather than truncate.
-- **ClassPlate** - a panel whose ground is tinted with the class's own hue at 11-15% over
-  `panel-top`. The tint is a portrait frame, not a status colour.
+- **Panel** - the ledger entry. It has a brass hairline, gradient ground, 12px radius, one shared shadow, and a `clamp(0.9rem, 2vw, 1.4rem)` pad.
+  Every record section, browse group, and spine band uses it.
+- **AnswerBlock** - a panel section with a tracked uppercase h2 in `--text-panel-title`, an optional count in `--text-xs`, and a `line-soft` rule under the head.
+  All twelve record types use it, so a reader learns the page shape once. Its empty state is a sentence, never a dash.
+  The default reads "Nothing modelled here yet". A caller can pass a sharper sentence such as "No source is modelled for this item yet".
+  Callers pass emptiness explicitly because a snippet that shows nothing is still a snippet.
+- **Chip** - one labelled fact with the label above the value in miniature. The chip is `--text-xs` and the label is `--text-2xs` uppercase in `text-muted`.
+  The three level-scale tones are the only coloured variants. Each tints its border and ground.
+- **Stamp** - the provenance mark. It is a pill with a brass hairline and `--text-2xs` at 700 weight in `brass-deep`.
+  It states what was checked, never that a whole page passed a probe.
+- **Art** - the game's own picture in a fixed box per size (2rem, 3.5rem, 6rem, or full).
+  The layout reserves the box before image load, so grids never reflow. The image is decorative because a name always sits beside it.
+  A record without art gets its first two letters instead of an empty frame. Thumbnails load lazily.
+  The one hero panorama loads eagerly because it is in the first viewport.
+- **EntityLink** - the single way for one record to point at another: thumbnail, name in rarity colour, and optional sub-line.
+  Names wrap rather than truncate.
+- **ClassPlate** - a panel whose ground uses the class's own hue at 11-15% over `panel-top`.
+  The tint is a portrait frame, not a status colour.
 - **Bar** - a proportion with its figure printed beside it, never width alone.
-- **Button** - small, uppercase, tracked, brass on a faint brass wash, 5px radius, and 44px tall. The
-  active filter state fills with brass at 22% and switches ink to parchment. The facet variant is the
-  one place a button is denser, and it drops to `--text-xs` and a 0.15rem pad.
-- **Field** - a sunken `panel-inset` ground behind a brass hairline, 6px radius, 44px tall, with text
-  at `--text-sm` and a placeholder pinned to `text-muted`.
+- **Button** - small, uppercase, tracked, and brass on a faint brass wash. It has a 5px radius and is 44px tall.
+  The active filter state fills with brass at 22% and switches ink to parchment.
+  The facet variant is the one denser button. It uses `--text-xs` and a 0.15rem pad.
+- **Field** - a sunken `panel-inset` ground behind a brass hairline. It has a 6px radius, is 44px tall, and uses text at `--text-sm`.
+  Its placeholder uses `text-muted`.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** state which level scale a number belongs to, every time. A bare `10` is ambiguous between
-  three skills the game deliberately separates.
-- **Do** lead a record with the answer. The first block is what the reader came for, and the table is
-  the fallback.
-- **Do** say when the model does not know something, in words. Absence of a modelled source is a
-  boundary of this dataset, never evidence that an item cannot be obtained.
-- **Do** cap running prose at 68ch and leave tables, chip rows and record lists at full width.
+- **Do** state which level scale a number belongs to every time. A bare `10` is ambiguous between three skills that the game separates.
+- **Do** lead a record with the answer. The first block gives the requested information, and the table is the fallback.
+- **Do** say when the model does not know something. The absence of a modelled source is a boundary of this dataset, never evidence that an item cannot be obtained.
+- **Do** cap running prose at 68ch. Leave tables, chip rows, and record lists at full width.
 - **Do** give one provenance status one colour on every surface.
-- **Do** reserve layout before art loads, and lazy-load below the fold.
+- **Do** reserve layout before art loads. Load content below the fold lazily.
 - **Do** keep a thumb target at 44px or more.
 
 ### Don't:
 
-- **Don't** signal rarity or level scale by colour alone. The label always carries it too.
-- **Don't** write a literal colour or font size. Every value comes from a `--` token in `app.css`,
-  and those come from the game. A value that genuinely has no token is a missing token, not an
-  exception. Add it here and in `:root` in the same change.
-- **Don't** size a label from the game's own pixel values. The game supplies weight, tracking, case
-  and colour. It does not supply size.
-- **Don't** render a `snake_case` column name, a raw asset path, or a bare enum token to a player.
+- **Don't** signal rarity or level scale by colour alone. The label carries the meaning too.
+- **Don't** write a literal colour or font size. Every value comes from a `--` token in `app.css`, and those tokens come from the game.
+  A value without a token is a missing token, not an exception. Add it here and in `:root` in the same change.
+- **Don't** size a label from the game's pixel values. The game supplies weight, tracking, case, and colour, but not size.
+- **Don't** show a `snake_case` column name, a raw asset path, or a bare enum token to a player.
 - **Don't** add a second shadow step or a card that floats. Depth here is tonal.
-- **Don't** put schema metadata in a page's opening. The build stamp lives in the footer.
-- **Don't** let one semantic heading level render at two sizes on one page.
+- **Don't** put schema metadata in a page opening. The build stamp lives in the footer.
+- **Don't** show one semantic heading level at two sizes on one page.

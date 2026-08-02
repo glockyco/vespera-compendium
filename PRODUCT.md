@@ -8,101 +8,113 @@ web
 
 ## Users
 
-Casual Vespera players, mid-session, holding one concrete question about the game: where a specific
-item comes from, what they should be doing at their current level, what their class wears and casts, or
-what a zone contains. A second, much smaller audience is data-literate players and modders who query
-the published dataset directly.
+Casual Vespera players use the compendium during a session. Each player has one concrete question about the game.
+
+They can ask where an item comes from. They can ask what to do at their level. They can ask what their class wears and casts. They can ask what a zone contains.
+
+A much smaller audience consists of data-literate players and modders. They query the published dataset directly.
 
 ## Product Purpose
 
-Answer a player's question about Vespera in one page, from verified records plus source-locked game
-logic, with selected formulas checked against the running game. No Vespera wiki or guide hub exists, so
-the compendium is the only place these answers are assembled. Success is a player arriving from a search
-or a Discord link, getting the answer without reading a schema, and trusting it.
+The compendium answers a player's question about Vespera on one page. It uses checked records and source-locked game logic.
+
+The compendium checks selected formulas against the live game. No Vespera wiki or guide hub exists. The compendium assembles these answers in one place.
+
+A successful visit starts from a search or a Discord link. The player gets the answer without reading a schema. The player trusts the answer.
 
 ## Provenance Classes
 
-Every published mechanics claim carries one of three gameplay provenance classes.
+Every published mechanics claim has one of three gameplay provenance classes.
 
-1. Game-authored guide or codex text, extracted verbatim from the shipped bundles.
-2. Structured values derived from shipped logic, produced by executing the game's own functions.
-3. Compendium-authored explanatory wording with `source-derived` provenance and locked source regions.
+1. Game-authored guide or codex text comes verbatim from the shipped bundles.
+2. Structured values come from shipped logic. The game's own functions produce these values.
+3. Compendium-authored explanations use `source-derived` provenance and locked source regions.
 
-Editorial headings, labels, and navigation carry a separate non-gameplay class. They are marked as
-compendium wording and never presented as source checked.
+Editorial headings, labels, and navigation use a separate non-gameplay class. The compendium marks them as compendium wording.
+
+The compendium never shows this wording as source checked.
 
 ## Positioning
 
-The dataset is reconstructed from the shipped game bundles and then verified against the live game over
-the Chrome DevTools Protocol, with the game's own composition passes executed rather than restated. Item
-stats and levels are the game's own numbers, not a contributor's transcription, and the build id is
-published beside them. A hand-edited wiki cannot make that claim.
+The dataset comes from the shipped game bundles. The compendium checks it against the live game over the Chrome DevTools Protocol.
 
-Mechanics carry the same standard. Each explanation is anchored to the shipped code that produces it, and
-a source change blocks publication until the claim is reviewed again. Pure or observable mechanics are in
-scope when the pipeline can anchor their implementation and either run them statically or probe them in
-the live game.
+The compendium runs the game's own composition passes. It does not restate them. Item stats and levels are the game's own numbers, not a contributor's transcription.
+
+The compendium publishes the build id beside the numbers. A hand-edited wiki cannot make the same claim.
+
+Mechanics use the same standard. Each explanation links to the shipped code that produces it.
+
+A source change blocks publication until the compendium reviews the claim again. Pure or observable mechanics are in scope when the pipeline can link their implementation to shipped logic.
+
+The pipeline must also run these mechanics statically or probe them in the live game.
 
 ## Operating Context
 
-Players are in-game or beside it, often on a phone, and want one lookup.
+Players are in the game or beside it. They often use a phone and want one lookup.
 
 System coverage and record coverage are separate claims.
 
-System coverage is what the compendium can explain. The mechanics guides explain Combat mathematics,
-ability calculations, skills and crafting, equipment value, and the endgame rules for Nightmare, the
-Tower, Corruption, the Celestial Forge, Tower Vanguards, the Spire, the Frontier, and Grandworks.
+System coverage shows what the compendium can explain. The mechanics guides explain Combat mathematics, ability calculations, skills and crafting, and equipment value.
 
-Record coverage is what the compendium can enumerate. Reachable record systems in the published data are
-combat and zones, dungeons, quests, crafting, gathering, items, abilities, gems, shops and achievements.
-The game also ships Talents, Elements, Factions, Mercenaries, Bank, Caravans, Dominion, the Veiled
-Reliquary, Reliquary Expeditions, Leaderboards and Event Calendar, whose records the pipeline does not
-model. Explaining an endgame system is not a claim of complete records or complete acquisition paths for
-it.
+They also explain the endgame rules for Nightmare, the Tower, Corruption, the Celestial Forge, Tower Vanguards, the Spire, the Frontier, and Grandworks.
+
+Record coverage shows what the compendium can enumerate. Reachable record systems in the published data include combat and zones, dungeons, quests, crafting, gathering, items, abilities, gems, shops, and achievements.
+
+The game also ships Talents, Elements, Factions, Mercenaries, Bank, Caravans, Dominion, the Veiled Reliquary, Reliquary Expeditions, Leaderboards, and Event Calendar.
+
+The pipeline does not model records for these systems. An explanation of an endgame system does not claim complete records or complete acquisition paths for that system.
 
 ## Capabilities and Constraints
 
-Thirty published tables, twelve of them entities, plus five mechanics guides; the site is fully
-prerendered static output with no server at request time, so every surface must be derivable at build
-time. The game's own three level scales are distinct and must never be merged in display: Gathering
-skill, Crafting skill and Combat level. Item level for equipment is the game's own balance level; for
-other items it is stated as a property of the source. Some items have no level and some have no modelled
-source, both because the record systems above are not modelled. Generated pages report the current
-build's counts; this document does not restate them, because they change with the build.
+The site publishes thirty tables. Twelve tables are entities. It also publishes five mechanics guides.
 
-Those unmodelled record systems are a named gap, not an oversight to be papered over. Measured against
-the official Discord, questions about them are the second-largest shape players ask (20.2% of classified
-questions), behind only questions about how a mechanic works. The compendium now answers that largest
-shape for the systems it can anchor in shipped logic, and it must never ship a stub for a system it has
-no data for. One further shape stays out of reach: how to operate the game's interface. The compendium's
-honest claim is that it explains the systems it can anchor and exhausts the records it can model.
+The site uses fully prerendered static output with no server at request time. Every surface must come from data available at build time.
+
+The game's three level scales are distinct. The site must never merge them in output: Gathering skill, Crafting skill, and Combat level.
+
+For equipment, item level is the game's own balance level. For other items, the source states item level as a property.
+
+Some items have no level. Some items have no modelled source. The pipeline does not model the related record systems.
+
+Generated pages report the counts for the current build. This document does not repeat those counts because they change with the build.
+
+These unmodelled record systems are a named gap, not an oversight. In the official Discord, questions about them form the second-largest question group at 20.2% of classified questions.
+
+Questions about how a mechanic works form the largest group. The compendium answers that group for systems that it can link to shipped logic.
+
+The compendium must never publish a stub for a system without data. It cannot explain how to operate the game's interface.
+
+The honest claim is that the compendium explains systems linked to shipped logic. It also exhausts the records that the pipeline can model.
 
 ## Brand Commitments
 
-The name is Vespera Compendium. The visual system is the game's own shipped palette, panel treatment,
-kicker typography, rarity colours and Source Sans 3 typeface, read out of the game's stylesheets so the
-compendium reads as an extension of Vespera.
+The name is Vespera Compendium. The visual system uses the game's shipped palette, panel treatment, kicker typography, rarity colours, and Source Sans 3 typeface.
+
+The compendium reads as an extension of Vespera because the game supplies these elements.
 
 ## Evidence on Hand
 
-`data/latest/` holds the published tables, the `mechanics.json` guide artifact, and the `index.json`
-manifest; `extracted/assets` holds the game's own art, which the compendium republishes as canonical
-files plus generated responsive variants. Runtime verification lives in
-`docs/RUNTIME-EVIDENCE-<buildId>.md`, and `mechanics.lock.json` plus `mechanics-source.lock.json` hold the
-reviewed data and source-closure baselines. Community demand is measured from a local capture of the
-official Discord in `research/discord/`, which is gitignored and never quoted. There are no user
-counts, testimonials, reviews or traffic figures, and none may be invented.
+`data/latest/` holds the published tables, the `mechanics.json` guide artifact, and the `index.json` manifest.
+
+`extracted/assets` holds the game's own art. The compendium republishes this art as canonical files and generated responsive variants.
+
+Runtime checks live in `docs/RUNTIME-EVIDENCE-<buildId>.md`. `mechanics.lock.json` and `mechanics-source.lock.json` hold the reviewed data and source-closure baselines.
+
+A local capture in `research/discord/` measures community demand from the official Discord. Git ignores the directory, and the compendium never quotes it.
+
+There are no user counts, testimonials, reviews, or traffic figures. Do not invent any.
 
 ## Product Principles
 
-- Explain the system, then exhaust the records.
-- Answer the question first; the table is a fallback, never the opening.
-- Publish the game's numbers, never a plausible substitute, and say where each one came from.
-- Absence of a modelled source is a boundary of this model, never evidence an item is unobtainable.
-- Keep the three level scales distinct and always labelled.
-- The compendium looks like the game because the tokens are the game's.
+- Explain the system. Then exhaust the records.
+- Answer the question first. Use the table as a fallback, never as the opening.
+- Publish the game's numbers, never a plausible substitute. State the source for each number.
+- Treat the absence of a modelled source as a boundary of this model, never as evidence that an item is unobtainable.
+- Keep the three level scales distinct and label each one.
+- Make the compendium look like the game because the tokens come from the game.
 
 ## Accessibility & Inclusion
 
-Keyboard reachable throughout, visible focus, and text contrast holding on the game's dark surfaces.
-Rarity and skill are never signalled by colour alone.
+The interface is keyboard reachable throughout. Focus is visible. Text contrast holds on the game's dark surfaces.
+
+Use labels with rarity and skill. Do not signal either by colour alone.
