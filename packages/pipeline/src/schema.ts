@@ -6,7 +6,7 @@
  * object or splits one out into a join table, the reason is noted on the table.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type ColumnType = "text" | "integer" | "real" | "boolean";
 export type Column = { name: string; type: ColumnType };

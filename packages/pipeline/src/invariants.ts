@@ -1,4 +1,11 @@
 import type { ComposedTables } from "./compose.ts";
+import type {
+  MechanicDocument,
+  MechanicFact,
+  MechanicFormula,
+  MechanicSection,
+  MechanicText,
+} from "./mechanics.ts";
 import { CURRENCY_ITEM_IDS, LEVEL_SOURCES, type Dataset, type Row } from "./project.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
@@ -80,8 +87,113 @@ const COMPOSED_BY_TABLE: Record<string, string> = {
   classes: "classes",
 };
 
-export function checkInvariants(dataset: Dataset, composed: ComposedTables): InvariantResult[] {
-  return [
+export type MechanicsInvariantManifest = { mechanicCount: number };
+
+function mechanicTexts(document: MechanicDocument): MechanicText[] {
+  const texts: MechanicText[] = [document.title, document.summary];
+  const addFormula = (formula: MechanicFormula): void => {
+    texts.push(formula.label, formula.expression);
+    if (formula.note) texts.push(formula.note);
+  };
+  const addFact = (fact: MechanicFact): void => {
+    texts.push(fact.label, fact.value);
+  };
+  const addSection = (section: MechanicSection): void => {
+    texts.push(section.title, ...section.paragraphs, ...section.bullets);
+    section.formulas.forEach(addFormula);
+    section.facts.forEach(addFact);
+  };
+  document.sections.forEach(addSection);
+  document.related.forEach((related) => texts.push(related.label, related.href));
+  return texts;
+}
+
+export function checkMechanicDocuments(documents: readonly MechanicDocument[]): InvariantResult {
+  const problems: string[] = [];
+  if (documents.length !== 5) problems.push(`expected five mechanic documents, found ${documents.length}`);
+  const expectedIds = new Set(["combat-mathematics", "ability-calculations", "skills-and-crafting", "equipment-and-value", "endgame-systems"]);
+  for (const expected of expectedIds) if (!documents.some((document) => document.id === expected)) problems.push(`missing mechanic document ${expected}`);
+  const documentIds = new Set<string>();
+  for (const document of documents) {
+    if (!document.id || documentIds.has(document.id)) {
+      problems.push(`duplicate or empty mechanic document id ${document.id || "(empty)"}`);
+      continue;
+    }
+    documentIds.add(document.id);
+    const targetHashes = new Map(
+      document.sourceTargets.map((target) => [target.id, target.sha256]),
+    );
+    const textIds = new Set<string>();
+    for (const text of mechanicTexts(document)) {
+      if (!text.id || textIds.has(text.id)) problems.push(`${document.id} has duplicate text id ${text.id || "(empty)"}`);
+      textIds.add(text.id);
+      if (text.evidence.kind === "editorial") continue;
+      if (text.evidence.sourceTargetIds.length === 0) {
+        problems.push(`${document.id}.${text.id} has no source target`);
+        continue;
+      }
+      for (const targetId of text.evidence.sourceTargetIds) {
+        const hash = targetHashes.get(targetId);
+        if (!hash) problems.push(`${document.id}.${text.id} has unknown source target ${targetId}`);
+        else if (!/^[0-9a-f]{64}$/i.test(hash)) problems.push(`${document.id}.${text.id} source target ${targetId} has invalid hash`);
+      }
+    }
+    if (document.id === "endgame-systems") {
+      const bulletCount = document.sections.reduce((count, section) => count + section.bullets.length, 0);
+      if (document.sections.length !== 11) problems.push(`endgame-systems has ${document.sections.length} sections, expected 11`);
+      if (bulletCount !== 63) problems.push(`endgame-systems has ${bulletCount} bullets, expected 63`);
+    }
+    const expectedTextCounts: Record<string, number> = {
+      "combat-mathematics": 50,
+      "ability-calculations": 18,
+      "skills-and-crafting": 34,
+      "equipment-and-value": 43,
+      "endgame-systems": 86,
+    };
+    const actualTextCount = mechanicTexts(document).length;
+    if (expectedTextCounts[document.id] !== actualTextCount) problems.push(`${document.id} has ${actualTextCount} text ids, expected ${expectedTextCounts[document.id]}`);
+  }
+  return {
+    id: "mechanics",
+    status: problems.length === 0 ? "PASS" : "FAIL",
+    detail: problems.length === 0 ? `${documents.length} mechanic documents are structurally complete` : problems.join("; "),
+  };
+}
+
+export function checkMechanicSearchRows(
+  dataset: Dataset,
+  documents: readonly MechanicDocument[],
+): InvariantResult {
+  const expected = documents.map((document) => document.id);
+  const actual = (dataset.search_index ?? [])
+    .filter((row) => row.table === "mechanics")
+    .map((row) => String(row.id ?? ""));
+  const valid = actual.length === expected.length && expected.every((id, index) => actual[index] === id);
+  return {
+    id: "mechanicSearchRows",
+    status: valid ? "PASS" : "FAIL",
+    detail: valid ? `${expected.length} mechanics search rows match document order` : `expected [${expected.join(",")}] got [${actual.join(",")}]`,
+  };
+}
+
+export function checkMechanicManifest(
+  manifest: MechanicsInvariantManifest,
+  documents: readonly MechanicDocument[],
+): InvariantResult {
+  const valid = manifest.mechanicCount === documents.length;
+  return {
+    id: "mechanicCount",
+    status: valid ? "PASS" : "FAIL",
+    detail: valid ? `manifest mechanicCount is ${manifest.mechanicCount}` : `manifest mechanicCount is ${manifest.mechanicCount}, expected ${documents.length}`,
+  };
+}
+export function checkInvariants(
+  dataset: Dataset,
+  composed: ComposedTables,
+  documents?: readonly MechanicDocument[],
+  manifest?: MechanicsInvariantManifest,
+): InvariantResult[] {
+  const checks: InvariantResult[] = [
     checkColumns(dataset),
     checkPrimaryKeys(dataset),
     checkReferences(dataset),
@@ -89,6 +201,11 @@ export function checkInvariants(dataset: Dataset, composed: ComposedTables): Inv
     checkLevels(dataset),
     checkMeta(dataset),
   ];
+  if (documents) {
+    checks.push(checkMechanicDocuments(documents), checkMechanicSearchRows(dataset, documents));
+    if (manifest) checks.push(checkMechanicManifest(manifest, documents));
+  }
+  return checks;
 }
 
 /**

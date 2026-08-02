@@ -1,4 +1,5 @@
 import type { ComposedTables } from "./compose.ts";
+import type { MechanicDocument } from "./mechanics.ts";
 import { collectImages, indexRefs } from "./images.ts";
 import { SCHEMA_VERSION, TABLES } from "./schema.ts";
 
@@ -790,6 +791,26 @@ const SEARCH_SHAPES: Record<
     subtitle: (row) => row.epithet,
   },
 };
+
+export function appendMechanicSearchRows(
+  dataset: Dataset,
+  documents: readonly MechanicDocument[],
+): void {
+  const rows = dataset.search_index ?? (dataset.search_index = []);
+  for (const document of documents) {
+    rows.push({
+      table: "mechanics",
+      id: document.id,
+      slug: "mechanics",
+      kind: "Mechanic guide",
+      name: document.title.text,
+      subtitle: document.summary.text,
+      level: null,
+      rarity: null,
+      image: null,
+    });
+  }
+}
 
 function buildSearchIndex(dataset: Dataset): Row[] {
   const rows: Row[] = [];

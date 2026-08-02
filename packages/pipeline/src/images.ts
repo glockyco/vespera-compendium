@@ -1,6 +1,9 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import sharp from "sharp";
+import { canonicalJson } from "@vespera/core";
 import type { ComposedTables } from "./compose.ts";
 
 /**
@@ -17,6 +20,58 @@ import type { ComposedTables } from "./compose.ts";
  * the source columns are dropped.
  */
 
+const IMAGE_DIR = "images";
+
+export const IMAGE_VARIANTS = {
+  thumb: 64,
+  card: 192,
+  portrait: 384,
+  wide: 640,
+  hero: 1280,
+} as const;
+
+export type ImageVariant = keyof typeof IMAGE_VARIANTS;
+export type ArtKind = "general" | "class" | "zone";
+
+export const VARIANTS_BY_KIND: Record<ArtKind, readonly ImageVariant[]> = {
+  general: ["thumb", "card"],
+  class: ["thumb", "card", "portrait"],
+  zone: ["thumb", "card", "wide", "hero"],
+};
+
+const VARIANT_CONFIG = {
+  format: "webp",
+  sizes: IMAGE_VARIANTS,
+  fit: "inside",
+  withoutEnlargement: true,
+  quality: 82,
+  effort: 6,
+} as const;
+
+export function artVariantConfigSha256(): string {
+  return createHash("sha256").update(canonicalJson(VARIANT_CONFIG)).digest("hex");
+}
+
+export type VariantFile = {
+  path: string;
+  width: number;
+  height: number;
+  bytes: number;
+  sha256: string;
+};
+
+export type VariantIndex = {
+  version: 1;
+  configSha256: string;
+  entries: Record<
+    string,
+    {
+      source: { width: number; height: number; bytes: number; sha256: string };
+      variants: Partial<Record<ImageVariant, VariantFile>>;
+    }
+  >;
+};
+
 export type ImageRef = {
   /** Published table name. */
   table: string;
@@ -26,6 +81,8 @@ export type ImageRef = {
   source: string;
   /** Path inside the published dataset, content-hashed, which is what the `image` column carries. */
   published: string;
+  /** Art contract for this table. */
+  kind?: ArtKind;
 };
 
 /**
@@ -117,10 +174,12 @@ export function collectImages(
     const relative = source.slice("assets/".length);
     const extension = path.posix.extname(relative);
     const stem = relative.slice(0, relative.length - extension.length);
+    const kind: ArtKind = table === "classes" ? "class" : table === "zones_dungeons" ? "zone" : "general";
     refs.push({
       table,
       id,
       source,
+      kind,
       published: `images/${stem}.${contentHash(file)}${extension}`,
     });
   };
@@ -145,25 +204,140 @@ export function collectImages(
   return refs;
 }
 
-/**
- * Copies each distinct image into `outDir`, returning how many files were written.
- *
- * Distinct by published path: several rows share one picture, and copying it once per reference
- * would multiply the published byte count for no gain.
- */
-export function copyImages(refs: readonly ImageRef[], extractedDir: string, outDir: string): number {
-  const seen = new Set<string>();
-  let written = 0;
-  for (const ref of refs) {
-    if (seen.has(ref.published)) continue;
-    seen.add(ref.published);
-    const destination = path.join(outDir, ...ref.published.split("/").slice(1));
-    mkdirSync(path.dirname(destination), { recursive: true });
-    copyFileSync(path.join(extractedDir, ref.source), destination);
-    written++;
-  }
-  return written;
+function variantPath(canonical: string, variant: ImageVariant): string {
+  const relative = canonical.replace(/^images\//, "");
+  const extension = path.posix.extname(relative);
+  const stem = extension ? relative.slice(0, -extension.length) : relative;
+  return `images/variants/${variant}/${stem}.webp`;
 }
+
+function kindForRef(ref: ImageRef): ArtKind {
+  if (ref.kind) return ref.kind;
+  if (ref.table === "classes") return "class";
+  if (ref.table === "zones_dungeons") return "zone";
+  return "general";
+}
+
+async function sourceMetadata(file: string, source: string): Promise<sharp.Metadata> {
+  try {
+    return await sharp(file, { failOn: "error" }).metadata();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Image variant generation failed for ${source}: ${message}`);
+  }
+}
+
+/**
+ * Copies canonical art and writes one deterministic WebP set for every table that references it.
+ * A shared canonical path is decoded once, while its variant set is the union of all referencing
+ * table kinds, so a class portrait cannot accidentally suppress a general thumbnail.
+ */
+export async function writeImages(
+  refs: readonly ImageRef[],
+  extractedDir: string,
+  outDir: string,
+): Promise<VariantIndex> {
+  const grouped = new Map<string, { ref: ImageRef; kinds: Set<ArtKind> }>();
+  for (const ref of refs) {
+    const current = grouped.get(ref.published);
+    if (current) {
+      current.kinds.add(kindForRef(ref));
+    } else {
+      grouped.set(ref.published, { ref, kinds: new Set([kindForRef(ref)]) });
+    }
+  }
+
+  const entries: VariantIndex["entries"] = {};
+  for (const [canonical, group] of grouped) {
+    const sourceFile = path.join(extractedDir, group.ref.source);
+    const metadata = await sourceMetadata(sourceFile, group.ref.source);
+    if (typeof metadata.width !== "number" || typeof metadata.height !== "number") {
+      throw new Error(`Image variant generation failed for ${group.ref.source}: missing image dimensions`);
+    }
+    const sourceBytes = readFileSync(sourceFile);
+    const sourceRecord = {
+      width: metadata.width,
+      height: metadata.height,
+      bytes: sourceBytes.byteLength,
+      sha256: createHash("sha256").update(sourceBytes).digest("hex"),
+    };
+
+    const canonicalDestination = path.join(outDir, ...canonical.split("/"));
+    mkdirSync(path.dirname(canonicalDestination), { recursive: true });
+    await copyFile(sourceFile, canonicalDestination);
+
+    const required = new Set<ImageVariant>();
+    for (const kind of group.kinds) {
+      for (const variant of VARIANTS_BY_KIND[kind]) required.add(variant);
+    }
+    const variants: Partial<Record<ImageVariant, VariantFile>> = {};
+    for (const variant of Object.keys(IMAGE_VARIANTS) as ImageVariant[]) {
+      if (!required.has(variant)) continue;
+      const size = IMAGE_VARIANTS[variant];
+      const destinationRelative = variantPath(canonical, variant);
+      const destination = path.join(outDir, ...destinationRelative.split("/"));
+      mkdirSync(path.dirname(destination), { recursive: true });
+      try {
+        await sharp(sourceFile, { failOn: "error" })
+          .resize({ width: size, height: size, fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 82, effort: 6 })
+          .toFile(destination);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Image variant generation failed for ${group.ref.source}: ${message}`);
+      }
+      const outputBytes = readFileSync(destination);
+      let outputMetadata: sharp.Metadata;
+      try {
+        outputMetadata = await sharp(destination, { failOn: "error" }).metadata();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Image variant generation failed for ${group.ref.source}: ${message}`);
+      }
+      if (
+        typeof outputMetadata.width !== "number" ||
+        typeof outputMetadata.height !== "number" ||
+        outputMetadata.width > size ||
+        outputMetadata.height > size ||
+        outputMetadata.width > metadata.width ||
+        outputMetadata.height > metadata.height
+      ) {
+        throw new Error(`Image variant generation failed for ${group.ref.source}: variant dimensions exceed configured bounds`);
+      }
+      variants[variant] = {
+        path: destinationRelative,
+        width: outputMetadata.width,
+        height: outputMetadata.height,
+        bytes: outputBytes.byteLength,
+        sha256: createHash("sha256").update(outputBytes).digest("hex"),
+      };
+    }
+    entries[canonical] = { source: sourceRecord, variants };
+  }
+
+  const index: VariantIndex = { version: 1, configSha256: artVariantConfigSha256(), entries };
+  const indexFile = path.join(outDir, IMAGE_DIR, "variants.json");
+  mkdirSync(path.dirname(indexFile), { recursive: true });
+  const indexBytes = `${JSON.stringify(index, null, 2)}\n`;
+  await Bun.write(indexFile, indexBytes);
+
+  for (const [canonical, entry] of Object.entries(index.entries)) {
+    const canonicalFile = path.join(outDir, ...canonical.split("/"));
+    if (!existsSync(canonicalFile)) throw new Error(`published image missing: ${canonical}`);
+    for (const [variantName, variant] of Object.entries(entry.variants) as [ImageVariant, VariantFile | undefined][]) {
+      if (!variant) continue;
+      const variantFile = path.join(outDir, ...variant.path.split("/"));
+      if (!existsSync(variantFile)) throw new Error(`published image variant missing: ${variant.path}`);
+      const checked = await sharp(variantFile, { failOn: "error" }).metadata();
+      const limit = IMAGE_VARIANTS[variantName];
+      if (typeof checked.width !== "number" || typeof checked.height !== "number" || checked.width > limit || checked.height > limit) {
+        throw new Error(`published image variant exceeds bounds: ${variant.path}`);
+      }
+    }
+  }
+  return index;
+}
+
 
 /** Refs indexed by `(table, id)`, which is how projection fills the `image` column. */
 export function indexRefs(refs: readonly ImageRef[]): Map<string, string> {
