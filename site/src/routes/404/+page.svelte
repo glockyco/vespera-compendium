@@ -10,6 +10,7 @@
    * shape carried enough measured demand to earn one.
    */
   const WAYS_IN = [
+    { href: "/mechanics/", label: "Mechanics", blurb: "The rules and formulas the game runs on" },
     { href: "/progression/", label: "Progression", blurb: "What to do at your level, 1 to 140" },
     { href: "/classes/", label: "Classes", blurb: "Abilities and gear for each of the four" },
     { href: "/items/", label: "Items", blurb: "Every item and where it comes from" },
@@ -29,7 +30,12 @@
 </p>
 
 <div class="notfound-search">
-  <Search size="lg" placeholder="Search an item, enemy, quest, recipe or zone…" narrowPlaceholder="Search the compendium…" />
+  <Search
+    idBase="notfound-search"
+    size="lg"
+    placeholder="Search an item, enemy, quest, recipe or zone…"
+    narrowPlaceholder="Search the compendium…"
+  />
 </div>
 
 <div class="ways">

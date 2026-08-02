@@ -9,11 +9,13 @@
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 
   /**
-   * Six destinations, ordered by measured question demand rather than by table size: progression
-   * and class hubs answer the two most-asked answerable shapes, and the two tools sit last because
-   * they serve the much smaller data-literate audience.
+   * Seven destinations, ordered by what a visitor needs first: the guides explain the systems, the
+   * two hubs answer the most-asked progression and class questions, three indexes carry the bulk of
+   * the records, and the two tools sit last because they serve the much smaller data-literate
+   * audience.
    */
   const DESTINATIONS = [
+    { href: "/mechanics/", label: "Mechanics" },
     { href: "/progression/", label: "Progression" },
     { href: "/classes/", label: "Classes" },
     { href: "/zones-dungeons/", label: "Zones" },
@@ -48,7 +50,7 @@
 
     {#if showShellSearch}
       <div class="topbar-search">
-        <Search />
+        <Search idBase="shell-search" />
       </div>
     {/if}
 
@@ -82,8 +84,11 @@
   .skip:focus {
     position: fixed;
     z-index: 100;
+    display: flex;
+    align-items: center;
     inset-block-start: 0.5rem;
     inset-inline-start: 0.5rem;
+    min-block-size: 2.75rem;
     padding: 0.5rem 0.8rem;
     border-radius: var(--radius-art);
     background: var(--painted-elevated);
@@ -111,6 +116,8 @@
   .wordmark {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    min-block-size: 2.75rem;
     color: inherit;
     line-height: 1.05;
     text-decoration: none;
@@ -146,6 +153,9 @@
   }
 
   .topbar-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
     padding: 0.3rem 0.55rem;
     border-radius: var(--radius-control);
     color: var(--lavender-grey);
@@ -183,15 +193,33 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Below the search field's usable width, the bar stacks rather than crushing all three. */
+  /*
+   * Below the search field's usable width the bar stacks. The nav takes its own full-width row
+   * rather than sharing one with the wordmark, because seven 44px destinations squeezed into half a
+   * 320px viewport wrapped to four lines and made a sticky header eat a fifth of the screen. The bar
+   * also stops sticking there: a stacked header that follows the reader down costs more than it
+   * gives back on a phone.
+   */
   @media (max-width: 54rem) {
+    .topbar {
+      position: static;
+    }
+
     .topbar-inner {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .topbar-search {
-      grid-column: 1 / -1;
       grid-row: 2;
+    }
+
+    .topbar-nav {
+      grid-row: 3;
+      gap: 0.1rem 0.25rem;
+    }
+
+    .topbar-nav a {
+      padding-inline: 0.4rem;
     }
   }
 </style>

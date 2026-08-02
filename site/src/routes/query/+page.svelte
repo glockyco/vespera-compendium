@@ -9,26 +9,9 @@
     type LoadProgress,
     type QueryOutcome,
   } from "$lib/client/sql";
+  import { fetchManifest } from "$lib/manifest";
+  import type { Manifest } from "$lib/manifest";
   import type { SqlValue } from "sql.js/dist/sql-wasm.js";
-
-  type ManifestColumn = { name: string; type: string };
-  type ManifestTable = {
-    name: string;
-    slug: string;
-    kind: "entity" | "join" | "meta";
-    rows: number;
-    primaryKey: string[];
-    columns: ManifestColumn[];
-    json: string;
-    csv: string;
-  };
-  type Manifest = {
-    schemaVersion: number;
-    buildId: string;
-    generatedAt: string;
-    sqlite: string;
-    tables: ManifestTable[];
-  };
 
   const EXAMPLES = [
     {
@@ -104,14 +87,6 @@
 
   function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
-  }
-
-  async function fetchManifest(): Promise<Manifest> {
-    const response = await fetch("/data/index.json");
-    if (!response.ok) {
-      throw new Error(`manifest fetch failed: ${response.status}`);
-    }
-    return (await response.json()) as Manifest;
   }
 
   function handleProgress(generation: number, progress: LoadProgress): void {
@@ -339,3 +314,29 @@
     {/if}
   </section>
 </div>
+
+<style>
+  /*
+   * A grid column defaults to max-content, so the widest result table stretched the whole page and
+   * pushed every panel past a phone viewport. Pinning the column to the container makes the table's
+   * own scroll container the thing that scrolls, which is what it was already built to do.
+   */
+  .stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * An example's title is a sentence, not a word. The shared chip row pins a button to its
+   * intrinsic width, which pushed the longest one off a phone viewport, so here it may wrap.
+   */
+  .chip-row .btn {
+    flex: 0 1 auto;
+    max-inline-size: 100%;
+    text-align: start;
+  }
+
+  /* Padding rather than a flex box, so the disclosure marker survives reaching the 44 px floor. */
+  .schema-table summary {
+    padding-block: 0.6rem;
+  }
+</style>

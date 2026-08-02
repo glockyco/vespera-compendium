@@ -32,6 +32,12 @@
   <Chip tone="crafting" label="Crafting" value="recipes" />
 </div>
 
+<p class="endgame">
+  Past the last band the game changes shape.
+  <a href={resolve("/mechanics/endgame-systems/")}>Read Endgame Systems</a>
+  for Nightmare, Tower, Corruption, the Forge, Vanguards, the Spire, and the Frontier.
+</p>
+
 <ol class="spine">
   {#each data.bands as band (band.zone.id)}
     <li class="band">
@@ -143,7 +149,27 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-block: 1rem 1.5rem;
+    margin-block: 1rem 0.9rem;
+  }
+
+  /*
+   * The route ends where the endgame begins, so the handoff sits at the top rather than after 32
+   * bands of scrolling.
+   */
+  .endgame {
+    max-inline-size: 50rem;
+    margin-block-end: 1.5rem;
+    padding-inline-start: 0.6rem;
+    border-inline-start: 2px solid var(--brass-deep);
+    color: var(--lavender-grey);
+    font-size: var(--text-sm);
+  }
+
+  .endgame a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    font-weight: 700;
   }
 
   .spine {
@@ -204,7 +230,8 @@
 
   .gutters {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    /* `min()` so the 15rem track collapses on a 320 px phone instead of overflowing the viewport. */
+    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
     gap: 1rem;
     align-items: start;
   }
@@ -253,6 +280,15 @@
     gap: 0.4rem;
     padding-block: 0.1rem;
     font-size: var(--text-sm);
+  }
+
+  /* Quest and recipe rows are bare links, so they need the touch floor the shared row already has. */
+  .entries li > a,
+  .gutter p a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    min-inline-size: 44px;
   }
 
   .entry-meta {

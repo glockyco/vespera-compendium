@@ -18,6 +18,7 @@
   let maxLevel = $state<number | null>(null);
 
   let isCardGrid = $derived(CARD_GRID_TABLES.has(data.name));
+  let isPlaceGrid = $derived(data.name === "zones_dungeons");
 
   /** "Jump to an item", not "Jump to a item". Four of the twelve table nouns start with a vowel. */
   let jumpPlaceholder = $derived.by(() => {
@@ -180,7 +181,11 @@
 
 <div class="browse-controls">
   <div class="browse-search">
-    <Search scopeTable={data.name} placeholder={jumpPlaceholder} />
+    <Search
+      idBase={`browse-${data.slug}-search`}
+      scopeTable={data.name}
+      placeholder={jumpPlaceholder}
+    />
   </div>
   <input type="search" bind:value={filter} placeholder="Filter this list" aria-label="Filter the list" />
 </div>
@@ -248,7 +253,25 @@
   <div class="card-grid">
     {#each matched as row (row[data.keyColumn])}
       <a class="panel record-card" href={resolve(`/${data.slug}/${row[data.keyColumn]}/`)}>
-        <Art src={row.image as string | null} alt={String(row.name ?? row[data.keyColumn])} size="md" rarity={row.rarity as string | null} />
+        <!-- Places are painted landscapes; contained in a square they read as a colour smear, so
+             the one card grid that lists them gets a frame in the art's own aspect. -->
+        {#if isPlaceGrid}
+          <Art
+            src={row.image as string | null}
+            alt={String(row.name ?? row[data.keyColumn])}
+            kind="zone"
+            variant="card"
+            box="wide"
+          />
+        {:else}
+          <Art
+            src={row.image as string | null}
+            alt={String(row.name ?? row[data.keyColumn])}
+            kind="general"
+            variant="card"
+            rarity={row.rarity as string | null}
+          />
+        {/if}
         <span class="record-body">
           <span
             class="record-name"
@@ -337,6 +360,8 @@
 
   .range input {
     flex: 1 1 0;
+    /* A 16px native slider is not a thumb target; the track stays thin, the hit area does not. */
+    min-block-size: 2.75rem;
     accent-color: var(--brass);
   }
 

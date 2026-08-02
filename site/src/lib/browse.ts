@@ -1,5 +1,5 @@
 /**
- * What each entity browser shows, and in what order the twelve are presented.
+ * What each entity browser shows, and the order the record types are presented in.
  *
  * Columns are named per table rather than taken from the schema, because "every column" is what
  * made these pages unreadable: descriptions, dialogue, accent colours and display keys are all real
@@ -8,22 +8,66 @@
  */
 
 /**
- * The browse order, grouped by the question each pair of tables answers, ranked by measured demand
- * from the official Discord. Progression leads because "what should I be doing at my level" is the
- * most-asked answerable question; the acquisition tables sit fourth despite items being the largest
- * table, because table size is not demand.
+ * The compendium index: every entity table, in one flat reading order.
+ *
+ * Flat rather than grouped by a player question. The question grouping made the home a directory of
+ * riddles, and the twelve counts underneath it were the real content. Order runs from what a player
+ * is before they own anything (class, abilities, gems) through where they go and what they fight, to
+ * what they carry, make, and sell.
  */
-export const BROWSE_GROUPS: { question: string; tables: string[] }[] = [
-  { question: "What should I be doing at my level?", tables: ["zones_dungeons", "quests"] },
-  { question: "What does my class use?", tables: ["abilities", "gems"] },
-  { question: "What do I need to craft or gather this?", tables: ["recipes", "gathering_nodes"] },
-  { question: "Where do I get this?", tables: ["items", "shop_listings"] },
-  { question: "What is in this zone or dungeon?", tables: ["enemies", "world_bosses"] },
-  { question: "Which of these is actually better?", tables: ["affixes", "achievements"] },
+export const COMPENDIUM_INDEX: string[] = [
+  "classes",
+  "abilities",
+  "gems",
+  "zones_dungeons",
+  "enemies",
+  "world_bosses",
+  "quests",
+  "items",
+  "recipes",
+  "gathering_nodes",
+  "shop_listings",
+  "achievements",
 ];
 
-/** Flat table order derived from the groups, which is what the browse strip iterates. */
-export const BROWSE_ORDER: string[] = BROWSE_GROUPS.flatMap((group) => group.tables);
+/**
+ * The three chapters of the normal Combat route.
+ *
+ * Bounds are the game's own gates, not even thirds: each chapter opens on a zone and closes on the
+ * dungeon that stands before the next zone. `to` is null on the last chapter because the route runs
+ * to whatever the highest shipped place requires.
+ */
+export type RouteChapter = {
+  id: string;
+  label: string;
+  blurb: string;
+  from: number;
+  to: number | null;
+};
+
+export const ROUTE_CHAPTERS: RouteChapter[] = [
+  {
+    id: "frontier",
+    label: "The Frontier",
+    blurb: "The opening zones. Learn one class, gather the first materials, and clear one dungeon.",
+    from: 1,
+    to: 34,
+  },
+  {
+    id: "contested-lands",
+    label: "Contested Lands",
+    blurb: "The middle route. Gear decides the pace here, and a dungeon closes each stretch.",
+    from: 35,
+    to: 68,
+  },
+  {
+    id: "endgame",
+    label: "Endgame",
+    blurb: "The last normal places. Nightmare, the Tower, the Spire, and the Frontier follow them.",
+    from: 69,
+    to: null,
+  },
+];
 
 /**
  * What one row of each table is called.
