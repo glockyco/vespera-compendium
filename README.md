@@ -1,5 +1,14 @@
 # Vespera Compendium
 
+> **Discontinued on 2026-08-16.**
+>
+> Work on this project stopped. The site at `vespera.compendiums.org` is retired and the
+> subdomain no longer resolves. The datasets, mechanics guides, and evidence reports
+> describe build `24510288`. Later game patches make them stale.
+>
+> Nothing here is maintained. Read this repository as a historical snapshot of the
+> extraction pipeline, not as current game data.
+
 A searchable compendium for Vespera items, enemies, quests, recipes, and more.
 
 The project rebuilds the game's runtime data tables from the shipped Electron bundles. It also extracts the game's mechanics guides and formulas from those bundles.
@@ -7,8 +16,6 @@ The project rebuilds the game's runtime data tables from the shipped Electron bu
 The project checks both data sources against the running game through the Chrome DevTools Protocol. It then publishes build-versioned JSON, CSV, and SQLite datasets.
 
 The project also publishes five source-locked system guides and a static site that browses the datasets.
-
-Live at [vespera.compendiums.org](https://vespera.compendiums.org).
 
 ## Requirements
 
